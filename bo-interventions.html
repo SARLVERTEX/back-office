@@ -5,8 +5,155 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interventions · Vertex Backoffice</title>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <span data-module-title="Interventions" style="display:none"></span>
     <script src="bo-shell.js"></script>
+    <span data-module-title="Interventions" style="display:none"></span>
+    <style>
+        /* ── RESET & TOKENS (reprend votre charte bo-shell) ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #0a0e1a;
+            --surface:   #111827;
+            --surface2:  #1a2236;
+            --border:    rgba(255,255,255,0.07);
+            --muted:     #475569;
+            --text:      #e2e8f0;
+            --gold:      #d4a843;
+            --gold-dark: #b8902e;
+            --radius:    0.875rem;
+        }
+
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+        /* ── PAGE LAYOUT ── */
+        .bo-page { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+        .bo-animate { animation: fadeUp .35s ease both; }
+        @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform:none; } }
+
+        .bo-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .bo-eyebrow { font-size: .6rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: .35rem; }
+        .bo-page-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -.02em; }
+
+        /* ── STAT CARD ── */
+        .bo-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+        .bo-stat-label { font-size: .6rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .4rem; }
+        .bo-stat-value { font-size: 1.75rem; font-weight: 800; line-height: 1; }
+        .bo-stat-sub { font-size: .62rem; color: var(--muted); margin-top: .3rem; }
+
+        /* ── CARD ── */
+        .bo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+
+        /* ── ROW ── */
+        .bo-row { display: flex; align-items: center; gap: .875rem; padding: .875rem 1.1rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s; }
+        .bo-row:last-child { border-bottom: none; }
+        .bo-row:hover { background: rgba(255,255,255,.03); }
+
+        /* ── BUTTONS ── */
+        .bo-btn-gold { display: inline-flex; align-items: center; gap: .4rem; background: var(--gold); color: #000; font-size: .78rem; font-weight: 700; padding: .5rem .9rem; border: none; border-radius: .5rem; cursor: pointer; transition: background .15s; }
+        .bo-btn-gold:hover { background: var(--gold-dark); }
+        .bo-btn-ghost { display: inline-flex; align-items: center; gap: .4rem; background: transparent; color: var(--text); font-size: .78rem; font-weight: 600; padding: .5rem .9rem; border: 1px solid var(--border); border-radius: .5rem; cursor: pointer; transition: border-color .15s; }
+        .bo-btn-ghost:hover { border-color: rgba(255,255,255,.2); }
+        .bo-btn-icon { background: transparent; border: none; cursor: pointer; padding: .3rem; border-radius: .35rem; transition: background .15s; }
+        .bo-btn-icon:hover { background: rgba(255,255,255,.06); }
+        .bo-btn-danger { background: transparent; border: none; cursor: pointer; padding: .3rem; border-radius: .35rem; transition: background .15s; }
+        .bo-btn-danger:hover { background: rgba(239,68,68,.12); }
+
+        /* ── SEARCH ── */
+        .bo-search-wrap { position: relative; }
+        .bo-search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+        .bo-search { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: .82rem; padding: .55rem .75rem .55rem 2.25rem; border-radius: .5rem; outline: none; transition: border-color .15s; }
+        .bo-search:focus { border-color: var(--gold); }
+
+        /* ── PILLS ── */
+        .bo-pill { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: .72rem; font-weight: 600; padding: .3rem .75rem; border-radius: 999px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+        .bo-pill:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+        .bo-pill.active { background: var(--gold); border-color: var(--gold); color: #000; }
+
+        /* ── BADGE ── */
+        .bo-badge { display: inline-flex; align-items: center; font-size: .65rem; font-weight: 700; padding: .2rem .6rem; border-radius: 999px; white-space: nowrap; }
+
+        /* ── FORM FIELDS ── */
+        .bo-field { display: flex; flex-direction: column; gap: .35rem; }
+        .bo-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+        .bo-label .req { color: var(--gold); }
+        .bo-input, .bo-select, .bo-textarea { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: .82rem; padding: .55rem .75rem; border-radius: .5rem; outline: none; width: 100%; transition: border-color .15s; }
+        .bo-input:focus, .bo-select:focus, .bo-textarea:focus { border-color: var(--gold); }
+        .bo-select option { background: var(--surface); }
+        .bo-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+
+        /* ── CHIPS ── */
+        .bo-chip { display: inline-flex; align-items: center; gap: .3rem; background: rgba(212,168,67,.1); border: 1px solid rgba(212,168,67,.25); color: var(--gold); font-size: .7rem; font-weight: 600; padding: .25rem .55rem; border-radius: 999px; }
+        .bo-chip-btn { background: none; border: none; cursor: pointer; color: inherit; display: flex; align-items: center; padding: 0; opacity: .7; }
+        .bo-chip-btn:hover { opacity: 1; }
+
+        /* ── MODAL ── */
+        .bo-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+        .bo-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; width: 100%; max-height: 92vh; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .bo-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .bo-modal-title { font-size: 1.05rem; font-weight: 800; }
+        .bo-modal-close { background: rgba(255,255,255,.06); border: none; border-radius: .4rem; cursor: pointer; padding: .35rem; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+        .bo-modal-close:hover { background: rgba(255,255,255,.1); }
+        .bo-modal-footer { display: flex; justify-content: flex-end; gap: .75rem; margin-top: .5rem; }
+
+        /* ── EMPTY ── */
+        .bo-empty { text-align: center; padding: 3rem 1rem; }
+        .bo-empty-title { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+        .bo-empty-desc { font-size: .8rem; color: var(--muted); }
+
+        /* ── TOAST — géré par bo-shell.js ── */
+
+        /* ── KANBAN ── */
+        .kanban-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+        @media (max-width: 900px) { .kanban-board { grid-template-columns: repeat(2,1fr); } }
+        @media (max-width: 560px) { .kanban-board { grid-template-columns: 1fr; } }
+        .kanban-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 200px; }
+        .kanban-col-header { padding: .875rem 1rem .75rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .kanban-col-title { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+        .kanban-count { font-size: .65rem; font-weight: 700; padding: .1rem .45rem; border-radius: 999px; }
+        .kanban-cards { padding: .75rem; display: flex; flex-direction: column; gap: .6rem; flex: 1; }
+        .kanban-card { background: var(--surface2); border: 1px solid var(--border); border-radius: .75rem; padding: .875rem; cursor: pointer; transition: border-color .15s, transform .15s; }
+        .kanban-card:hover { border-color: rgba(212,168,67,.3); transform: translateY(-1px); }
+        .kanban-card-title { font-size: .8rem; font-weight: 700; margin-bottom: .4rem; line-height: 1.35; }
+        .kanban-card-meta { font-size: .62rem; color: var(--muted); display: flex; flex-direction: column; gap: .2rem; }
+        .kanban-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: .6rem; }
+        .kanban-empty { font-size: .72rem; color: var(--muted); text-align: center; padding: 1.5rem; }
+
+        /* ── TIMELINE ── */
+        .timeline { display: flex; flex-direction: column; gap: 0; }
+        .tl-item { display: flex; gap: .875rem; padding-bottom: 1.25rem; position: relative; }
+        .tl-line { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 28px; }
+        .tl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+        .tl-connector { width: 1px; background: var(--border); flex: 1; margin-top: 4px; }
+        .tl-item:last-child .tl-connector { display: none; }
+        .tl-content { flex: 1; padding-bottom: .25rem; }
+        .tl-action { font-size: .78rem; font-weight: 700; }
+        .tl-date { font-size: .62rem; color: var(--muted); margin-top: .15rem; }
+        .tl-note { font-size: .75rem; color: #94a3b8; margin-top: .35rem; background: rgba(0,0,0,.25); border-radius: .5rem; padding: .5rem .75rem; line-height: 1.55; }
+
+        /* ── VIEW TOGGLE ── */
+        .view-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: .5rem; padding: 2px; }
+        .view-btn { display: flex; align-items: center; gap: .35rem; padding: .35rem .65rem; border: none; background: none; color: var(--muted); font-size: .72rem; font-weight: 600; border-radius: .35rem; cursor: pointer; transition: all .15s; }
+        .view-btn.active { background: var(--surface2); color: var(--text); }
+        .view-btn:hover:not(.active) { color: var(--text); }
+
+        /* ── RAPPORT FIELD ── */
+        .rapport-block { background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2); border-radius: .75rem; padding: 1rem; }
+        .rapport-block .bo-label { color: #6ee7b7; }
+
+        /* ── SECTION DIVIDER ── */
+        .bo-divider { height: 1px; background: var(--border); margin: .25rem 0; }
+
+        /* ── PROGRESS BAR ── */
+        .pbar-wrap { height: 4px; background: rgba(255,255,255,.06); border-radius: 999px; overflow: hidden; }
+        .pbar-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
+
+        /* ── COLLAPSIBLE ── */
+        .collapsible-btn { width: 100%; background: none; border: none; color: var(--muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: .5rem; cursor: pointer; padding: .5rem 0; }
+        .collapsible-btn:hover { color: var(--text); }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
 </head>
 <body>
 
@@ -17,37 +164,83 @@
             <div class="bo-eyebrow">Suivi terrain</div>
             <h1 class="bo-page-title">Interventions</h1>
         </div>
-        <button class="bo-btn-gold" onclick="openForm()">
-            <i data-lucide="plus" style="width:14px;height:14px;"></i>
-            Nouvelle intervention
-        </button>
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+            <button class="bo-btn-ghost" onclick="exportCSV()" title="Exporter CSV">
+                <i data-lucide="download" style="width:14px;height:14px;"></i>
+                Export CSV
+            </button>
+            <button class="bo-btn-gold" onclick="openForm()">
+                <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                Nouvelle intervention
+            </button>
+        </div>
     </div>
 
     <!-- KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;margin-bottom:2rem;" id="kpi-row"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;margin-bottom:2rem;" id="kpi-row"></div>
 
-    <!-- Filters -->
-    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center;">
-        <div class="bo-search-wrap" style="flex:1;min-width:200px;">
-            <i data-lucide="search" class="bo-search-icon" style="width:15px;height:15px;"></i>
-            <input id="search" class="bo-search" placeholder="Titre, technicien…" oninput="render()">
+    <!-- Progression globale -->
+    <div class="bo-card" style="padding:1rem 1.25rem;margin-bottom:1.5rem;" id="progress-bar-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+            <span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Taux de résolution</span>
+            <span style="font-size:.85rem;font-weight:800;color:#6ee7b7;" id="pct-label">—</span>
         </div>
-        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;" id="status-pills">
-            <!-- injected -->
-        </div>
-        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;" id="prio-pills">
-            <!-- injected -->
+        <div class="pbar-wrap">
+            <div class="pbar-fill" id="pbar" style="width:0%;background:linear-gradient(90deg,#10b981,#6ee7b7);"></div>
         </div>
     </div>
 
-    <!-- Table -->
-    <div class="bo-card" id="table-wrap"></div>
+    <!-- Filters + view toggle -->
+    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center;">
+        <div class="bo-search-wrap" style="flex:1;min-width:200px;">
+            <i data-lucide="search" class="bo-search-icon" style="width:15px;height:15px;"></i>
+            <input id="search" class="bo-search" placeholder="Titre, client, technicien…" oninput="render()">
+        </div>
+
+        <div class="view-toggle">
+            <button class="view-btn active" id="vbtn-list" onclick="setView('list')">
+                <i data-lucide="list" style="width:13px;height:13px;"></i> Liste
+            </button>
+            <button class="view-btn" id="vbtn-kanban" onclick="setView('kanban')">
+                <i data-lucide="columns" style="width:13px;height:13px;"></i> Kanban
+            </button>
+        </div>
+
+        <select class="bo-select" id="sel-tech" onchange="render()" style="width:auto;font-size:.78rem;padding:.4rem .65rem;">
+            <option value="">Tous les techniciens</option>
+        </select>
+
+        <select class="bo-select" id="sel-type" onchange="render()" style="width:auto;font-size:.78rem;padding:.4rem .65rem;">
+            <option value="">Tous les types</option>
+        </select>
+    </div>
+
+    <!-- Pills statut + priorité -->
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center;">
+        <span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-right:.25rem;">Statut :</span>
+        <div id="status-pills" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
+        <div style="width:1px;height:18px;background:var(--border);margin:0 .4rem;"></div>
+        <span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-right:.25rem;">Priorité :</span>
+        <div id="prio-pills" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
+        <div style="width:1px;height:18px;background:var(--border);margin:0 .4rem;"></div>
+        <button class="bo-pill" id="pill-overdue" onclick="toggleOverdue()">⏰ En retard</button>
+    </div>
+
+    <!-- Vue principale -->
+    <div id="view-list">
+        <div class="bo-card" id="table-wrap"></div>
+    </div>
+    <div id="view-kanban" style="display:none;">
+        <div class="kanban-board" id="kanban-wrap"></div>
+    </div>
 
 </main>
 
-<!-- ── MODAL ── -->
+<!-- ══════════════════════════════════════════
+     MODAL : FORM NOUVELLE / MODIFIER
+══════════════════════════════════════════ -->
 <div class="bo-modal-overlay" id="modal" style="display:none;">
-    <div class="bo-modal" style="max-width:620px;">
+    <div class="bo-modal" style="max-width:660px;">
         <div class="bo-modal-header">
             <div class="bo-modal-title" id="modal-title">Nouvelle intervention</div>
             <button class="bo-modal-close" onclick="closeModal()">
@@ -57,7 +250,7 @@
 
         <div class="bo-field">
             <label class="bo-label">Titre <span class="req">*</span></label>
-            <input id="f-titre" class="bo-input" placeholder="Ex: Remplacement écran LED lobby">
+            <input id="f-titre" class="bo-input" placeholder="Ex : Remplacement écran LED lobby">
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
@@ -66,20 +259,42 @@
                 <select id="f-client" class="bo-select"></select>
             </div>
             <div class="bo-field">
-                <label class="bo-label">Technicien</label>
-                <input id="f-tech" class="bo-input" placeholder="Nom du technicien">
+                <label class="bo-label">Type d'intervention</label>
+                <select id="f-type" class="bo-select">
+                    <option value="">— Choisir —</option>
+                    <option>Installation</option>
+                    <option>Maintenance préventive</option>
+                    <option>SAV / Dépannage</option>
+                    <option>Mise à jour contenu</option>
+                    <option>Câblage</option>
+                    <option>Audit</option>
+                </select>
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Technicien assigné</label>
+                <select id="f-tech" class="bo-select">
+                    <option value="">— Non assigné —</option>
+                </select>
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Adresse / Site</label>
+                <input id="f-site" class="bo-input" placeholder="Ex : Siège Paris 8e">
             </div>
             <div class="bo-field">
                 <label class="bo-label">Statut</label>
                 <select id="f-statut" class="bo-select">
-                    <option>Ouvert</option><option>En cours</option>
-                    <option>Résolu</option><option>Annulé</option>
+                    <option>Ouvert</option>
+                    <option>En cours</option>
+                    <option>Résolu</option>
+                    <option>Annulé</option>
                 </select>
             </div>
             <div class="bo-field">
                 <label class="bo-label">Priorité</label>
                 <select id="f-prio" class="bo-select">
-                    <option>Haute</option><option selected>Moyenne</option><option>Basse</option>
+                    <option>Haute</option>
+                    <option selected>Moyenne</option>
+                    <option>Basse</option>
                 </select>
             </div>
             <div class="bo-field">
@@ -87,25 +302,53 @@
                 <input id="f-date-c" type="date" class="bo-input">
             </div>
             <div class="bo-field">
-                <label class="bo-label">Date échéance</label>
+                <label class="bo-label">Date d'échéance</label>
                 <input id="f-date-e" type="date" class="bo-input">
             </div>
         </div>
 
         <div class="bo-field">
-            <label class="bo-label">Description</label>
-            <textarea id="f-desc" class="bo-textarea" placeholder="Détails de l'intervention…"></textarea>
+            <label class="bo-label">Description du problème</label>
+            <textarea id="f-desc" class="bo-textarea" rows="3" placeholder="Décrivez le problème observé ou la mission à effectuer…"></textarea>
         </div>
 
+        <!-- Matériel -->
         <div class="bo-field">
             <label class="bo-label">Matériel utilisé</label>
-            <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
-                <input id="f-mat-input" class="bo-input" placeholder="Ex: Écran LED P2" onkeydown="if(event.key==='Enter'){event.preventDefault();addMat();}">
+            <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+                <input id="f-mat-input" class="bo-input" placeholder="Ex : Écran LED P2 55″" onkeydown="if(event.key==='Enter'){event.preventDefault();addMat();}">
                 <button class="bo-btn-gold" onclick="addMat()" style="flex-shrink:0;">
                     <i data-lucide="plus" style="width:12px;height:12px;"></i>
                 </button>
             </div>
-            <div id="f-mat-chips" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+            <div id="f-mat-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+        </div>
+
+        <!-- Rapport de clôture (visible si Résolu) -->
+        <div id="rapport-section" style="display:none;">
+            <div class="bo-divider"></div>
+            <div class="rapport-block">
+                <div class="bo-field">
+                    <label class="bo-label" style="color:#6ee7b7;">✓ Rapport de clôture</label>
+                    <textarea id="f-rapport" class="bo-textarea" rows="3" style="border-color:rgba(16,185,129,.3);" placeholder="Décrivez les actions réalisées, les pièces remplacées, les tests effectués…"></textarea>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem;">
+                    <div class="bo-field">
+                        <label class="bo-label" style="color:#6ee7b7;">Durée (heures)</label>
+                        <input id="f-duree" type="number" min="0" step="0.5" class="bo-input" style="border-color:rgba(16,185,129,.3);" placeholder="Ex : 3.5">
+                    </div>
+                    <div class="bo-field">
+                        <label class="bo-label" style="color:#6ee7b7;">Date de résolution</label>
+                        <input id="f-date-r" type="date" class="bo-input" style="border-color:rgba(16,185,129,.3);">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Note interne -->
+        <div class="bo-field">
+            <label class="bo-label">Note interne</label>
+            <textarea id="f-note" class="bo-textarea" rows="2" placeholder="Remarques internes non visibles dans le rapport…"></textarea>
         </div>
 
         <div class="bo-modal-footer">
@@ -118,12 +361,24 @@
     </div>
 </div>
 
-<!-- ── DETAIL MODAL ── -->
+<!-- ══════════════════════════════════════════
+     MODAL : DÉTAIL INTERVENTION
+══════════════════════════════════════════ -->
 <div class="bo-modal-overlay" id="detail-modal" style="display:none;">
-    <div class="bo-modal" style="max-width:580px;" id="detail-content"></div>
+    <div class="bo-modal" style="max-width:620px;" id="detail-content"></div>
 </div>
 
 <script>
+/* ══════════════════════════════════════════
+   MODULE — bo-shell.js est chargé dans le <head>
+   BO.KEYS, BO.read, BO.write, BO.toast, BO.uid,
+   BO.today, BO.fmt sont fournis par le shell.
+══════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════
+   STATE & CONFIG
+══════════════════════════════════════════ */
 const STATUS_C = {
     'Ouvert':   { bg:'rgba(59,130,246,0.15)',  border:'#3b82f6', text:'#93c5fd' },
     'En cours': { bg:'rgba(245,158,11,0.15)',  border:'#f59e0b', text:'#fcd34d' },
@@ -131,14 +386,18 @@ const STATUS_C = {
     'Annulé':   { bg:'rgba(100,116,139,0.15)', border:'#64748b', text:'#94a3b8' },
 };
 const PRIO_DOT = { 'Haute':'#ef4444', 'Moyenne':'#f59e0b', 'Basse':'#10b981' };
-const TECHS = ['Marc Dubois','Sophie Lenoir','Julien Moreau','Clara Petit'];
+const PRIO_ORDER = { 'Haute': 0, 'Moyenne': 1, 'Basse': 2 };
+const TECHS = ['Marc Dubois', 'Sophie Lenoir', 'Julien Moreau', 'Clara Petit'];
 
 let interventions = [], clients = [];
-let filterStatus = 'Tous', filterPrio = 'Toutes';
+let filterStatus = 'Tous', filterPrio = 'Toutes', filterOverdue = false;
+let currentView = 'list';
 let editId = null;
 let formMat = [];
 
-/* ── LOAD ── */
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
 async function init() {
     [interventions, clients] = await Promise.all([
         BO.read(BO.KEYS.interventions, []),
@@ -146,13 +405,17 @@ async function init() {
     ]);
     buildPills();
     buildClientSelect();
+    buildTechSelect();
+    buildTypeSelect();
     render();
     document.getElementById('f-date-c').value = BO.today();
+    document.getElementById('f-statut').addEventListener('change', onStatutChange);
     lucide.createIcons();
 }
 
 function buildPills() {
     const sCont = document.getElementById('status-pills');
+    sCont.innerHTML = '';
     ['Tous','Ouvert','En cours','Résolu','Annulé'].forEach(s => {
         const b = document.createElement('button');
         b.className = 'bo-pill' + (s === filterStatus ? ' active' : '');
@@ -170,6 +433,9 @@ function buildPills() {
         b.onclick = () => { filterPrio = p; buildPills(); render(); };
         pCont.appendChild(b);
     });
+
+    const od = document.getElementById('pill-overdue');
+    od.className = 'bo-pill' + (filterOverdue ? ' active' : '');
 }
 
 function buildClientSelect() {
@@ -178,89 +444,253 @@ function buildClientSelect() {
         clients.map(c => `<option value="${c.id}">${c.nom}</option>`).join('');
 }
 
-/* ── RENDER ── */
-function render() {
-    const q = document.getElementById('search').value.toLowerCase();
-    const filtered = interventions.filter(i => {
-        const ms = filterStatus === 'Tous' || i.statut === filterStatus;
-        const mp = filterPrio === 'Toutes' || i.priorite === filterPrio;
-        const mq = !q || i.titre.toLowerCase().includes(q) || (i.technicien||'').toLowerCase().includes(q);
-        return ms && mp && mq;
-    });
+function buildTechSelect() {
+    const sel = document.getElementById('f-tech');
+    sel.innerHTML = `<option value="">— Non assigné —</option>` +
+        TECHS.map(t => `<option value="${t}">${t}</option>`).join('');
 
-    // KPIs
-    const kpis = [
-        { label:'Ouverts',   val: interventions.filter(i=>i.statut==='Ouvert').length,    color:'#3b82f6' },
-        { label:'En cours',  val: interventions.filter(i=>i.statut==='En cours').length,  color:'#f59e0b' },
-        { label:'Résolus',   val: interventions.filter(i=>i.statut==='Résolu').length,    color:'#10b981' },
-        { label:'Haute prio',val: interventions.filter(i=>i.priorite==='Haute'&&i.statut!=='Résolu').length, color:'#ef4444' },
-    ];
-    document.getElementById('kpi-row').innerHTML = kpis.map(k => `
-        <div class="bo-stat">
-            <div class="bo-stat-label">${k.label}</div>
-            <div class="bo-stat-value" style="color:${k.color};">${k.val}</div>
-        </div>`).join('');
+    const fsel = document.getElementById('sel-tech');
+    fsel.innerHTML = `<option value="">Tous les techniciens</option>` +
+        TECHS.map(t => `<option value="${t}">${t}</option>`).join('');
+}
 
-    // Table
-    const wrap = document.getElementById('table-wrap');
-    if (filtered.length === 0) {
-        wrap.innerHTML = `<div class="bo-empty"><div class="bo-empty-title">Aucune intervention</div><div class="bo-empty-desc">Modifiez vos filtres ou créez un ticket.</div></div>`;
-    } else {
-        wrap.innerHTML = filtered.map((i, idx) => {
-            const c  = clients.find(cl => cl.id === i.clientId);
-            const st = STATUS_C[i.statut] || STATUS_C['Ouvert'];
-            const overdue = i.dateEcheance && new Date(i.dateEcheance) < new Date() && i.statut !== 'Résolu';
-            return `
-            <div class="bo-row" onclick="openDetail('${i.id}')">
-                <div style="width:10px;height:10px;border-radius:50%;background:${PRIO_DOT[i.priorite]||'#64748b'};flex-shrink:0;" title="${i.priorite}"></div>
-                <div style="flex:0 0 2.5rem;font-size:0.6rem;color:#334155;font-weight:700;">#${i.id.slice(-4)}</div>
-                <div style="flex:3;min-width:0;">
-                    <div style="font-size:0.875rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${i.titre}</div>
-                    <div style="font-size:0.65rem;color:var(--muted);">${c?.nom||'—'} · ${i.technicien||'Non assigné'}</div>
-                </div>
-                <div style="flex:1;font-size:0.65rem;color:var(--muted);white-space:nowrap;">
-                    ${i.dateCreation}<br>
-                    ${i.dateEcheance ? `<span style="color:${overdue?'#f87171':'var(--muted)'};">${overdue?'⏰ ':''}${i.dateEcheance}</span>` : ''}
-                </div>
-                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
-                <div style="display:flex;gap:0.4rem;" onclick="event.stopPropagation()">
-                    <button class="bo-btn-icon" onclick="openForm('${i.id}')"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
-                    <button class="bo-btn-danger" onclick="remove('${i.id}')"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
-                </div>
-            </div>`;
-        }).join('');
-    }
+function buildTypeSelect() {
+    const types = ['Installation','Maintenance préventive','SAV / Dépannage','Mise à jour contenu','Câblage','Audit'];
+    const fsel = document.getElementById('sel-type');
+    fsel.innerHTML = `<option value="">Tous les types</option>` +
+        types.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+function setView(v) {
+    currentView = v;
+    document.getElementById('view-list').style.display   = v === 'list' ? '' : 'none';
+    document.getElementById('view-kanban').style.display = v === 'kanban' ? '' : 'none';
+    document.getElementById('vbtn-list').className   = 'view-btn' + (v==='list' ? ' active' : '');
+    document.getElementById('vbtn-kanban').className = 'view-btn' + (v==='kanban' ? ' active' : '');
+    render();
     lucide.createIcons();
 }
 
-/* ── FORM ── */
+function toggleOverdue() {
+    filterOverdue = !filterOverdue;
+    buildPills();
+    render();
+}
+
+function onStatutChange() {
+    const v = document.getElementById('f-statut').value;
+    const sec = document.getElementById('rapport-section');
+    sec.style.display = v === 'Résolu' ? '' : 'none';
+    if (v === 'Résolu' && !document.getElementById('f-date-r').value) {
+        document.getElementById('f-date-r').value = BO.today();
+    }
+}
+
+/* ══════════════════════════════════════════
+   FILTER + HELPERS
+══════════════════════════════════════════ */
+function isOverdue(i) {
+    return i.dateEcheance && new Date(i.dateEcheance) < new Date() && i.statut !== 'Résolu' && i.statut !== 'Annulé';
+}
+
+function getFiltered() {
+    const q    = document.getElementById('search').value.toLowerCase();
+    const tech = document.getElementById('sel-tech').value;
+    const type = document.getElementById('sel-type').value;
+    return interventions
+        .filter(i => {
+            const ms  = filterStatus === 'Tous' || i.statut === filterStatus;
+            const mp  = filterPrio === 'Toutes' || i.priorite === filterPrio;
+            const mt  = !tech || i.technicien === tech;
+            const mty = !type || i.type === type;
+            const mq  = !q || i.titre.toLowerCase().includes(q)
+                           || (i.technicien||'').toLowerCase().includes(q)
+                           || (clients.find(c=>c.id===i.clientId)?.nom||'').toLowerCase().includes(q)
+                           || (i.site||'').toLowerCase().includes(q);
+            const mo  = !filterOverdue || isOverdue(i);
+            return ms && mp && mt && mty && mq && mo;
+        })
+        .sort((a,b) => PRIO_ORDER[a.priorite] - PRIO_ORDER[b.priorite]);
+}
+
+/* ══════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════ */
+function render() {
+    const filtered = getFiltered();
+
+    // KPIs
+    const total   = interventions.length;
+    const resolus = interventions.filter(i=>i.statut==='Résolu').length;
+    const enCours = interventions.filter(i=>i.statut==='En cours').length;
+    const ouverts = interventions.filter(i=>i.statut==='Ouvert').length;
+    const retard  = interventions.filter(i=>isOverdue(i)).length;
+    const pct     = total ? Math.round(resolus / total * 100) : 0;
+
+    document.getElementById('kpi-row').innerHTML = [
+        { label:'Total',       val: total,   color:'var(--text)',  sub: '' },
+        { label:'Ouverts',     val: ouverts, color:'#93c5fd',     sub: '' },
+        { label:'En cours',    val: enCours, color:'#fcd34d',     sub: '' },
+        { label:'Résolus',     val: resolus, color:'#6ee7b7',     sub: `${pct}%` },
+        { label:'⏰ En retard', val: retard,  color:'#f87171',     sub: '' },
+    ].map(k => `
+        <div class="bo-stat">
+            <div class="bo-stat-label">${k.label}</div>
+            <div class="bo-stat-value" style="color:${k.color};">${k.val}</div>
+            ${k.sub ? `<div class="bo-stat-sub">${k.sub} de résolution</div>` : ''}
+        </div>`).join('');
+
+    // Progress bar
+    document.getElementById('pbar').style.width = pct + '%';
+    document.getElementById('pct-label').textContent = pct + '%';
+
+    if (currentView === 'list') renderList(filtered);
+    else renderKanban(filtered);
+}
+
+/* ── LIST ── */
+function renderList(filtered) {
+    const wrap = document.getElementById('table-wrap');
+    if (filtered.length === 0) {
+        wrap.innerHTML = `<div class="bo-empty">
+            <div style="font-size:2rem;margin-bottom:.75rem;">📋</div>
+            <div class="bo-empty-title">Aucune intervention</div>
+            <div class="bo-empty-desc">Modifiez vos filtres ou créez un nouveau ticket.</div>
+        </div>`;
+        return;
+    }
+
+    const TYPE_ICON = {
+        'Installation':'monitor-check','Maintenance préventive':'wrench','SAV / Dépannage':'alert-triangle',
+        'Mise à jour contenu':'refresh-cw','Câblage':'cable','Audit':'clipboard-list',
+    };
+
+    wrap.innerHTML = filtered.map(i => {
+        const c   = clients.find(cl=>cl.id===i.clientId);
+        const st  = STATUS_C[i.statut] || STATUS_C['Ouvert'];
+        const ov  = isOverdue(i);
+        const ico = TYPE_ICON[i.type] || 'zap';
+        return `
+        <div class="bo-row" onclick="openDetail('${i.id}')">
+            <div style="width:8px;height:8px;border-radius:50%;background:${PRIO_DOT[i.priorite]||'#64748b'};flex-shrink:0;box-shadow:0 0 6px ${PRIO_DOT[i.priorite]||'#64748b'}66;" title="Priorité ${i.priorite}"></div>
+            <div style="flex:0 0 2.25rem;font-size:.58rem;color:var(--muted);font-weight:700;font-family:monospace;">#${i.id.slice(-4).toUpperCase()}</div>
+            <div style="flex:0 0 22px;"><i data-lucide="${ico}" style="width:14px;height:14px;color:var(--muted);"></i></div>
+            <div style="flex:3;min-width:0;">
+                <div style="font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${i.titre}</div>
+                <div style="font-size:.63rem;color:var(--muted);margin-top:.1rem;">${c?.nom||'—'} ${i.site ? '· '+i.site : ''}</div>
+            </div>
+            <div style="flex:1.2;min-width:0;">
+                <div style="font-size:.72rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    ${i.technicien ? `<i data-lucide="user" style="width:11px;height:11px;vertical-align:middle;color:var(--muted);"></i> ${i.technicien}` : '<span style="color:var(--muted);font-style:italic;">Non assigné</span>'}
+                </div>
+                ${i.type ? `<div style="font-size:.6rem;color:var(--muted);margin-top:.1rem;">${i.type}</div>` : ''}
+            </div>
+            <div style="flex:0 0 100px;font-size:.62rem;color:var(--muted);text-align:right;line-height:1.5;">
+                <div>${BO.fmt(i.dateCreation)}</div>
+                ${i.dateEcheance ? `<div style="color:${ov?'#f87171':'var(--muted)'};">${ov?'⏰ ':''}${BO.fmt(i.dateEcheance)}</div>` : ''}
+            </div>
+            <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
+            <div style="display:flex;gap:.35rem;" onclick="event.stopPropagation()">
+                <button class="bo-btn-icon" onclick="openForm('${i.id}')" title="Modifier"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+                <button class="bo-btn-danger" onclick="remove('${i.id}')" title="Supprimer"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+
+    lucide.createIcons();
+}
+
+/* ── KANBAN ── */
+function renderKanban(filtered) {
+    const wrap = document.getElementById('kanban-wrap');
+    const COLS = [
+        { key:'Ouvert',   label:'Ouvert',   color:'#3b82f6', bg:'rgba(59,130,246,0.1)' },
+        { key:'En cours', label:'En cours', color:'#f59e0b', bg:'rgba(245,158,11,0.1)' },
+        { key:'Résolu',   label:'Résolu',   color:'#10b981', bg:'rgba(16,185,129,0.1)' },
+        { key:'Annulé',   label:'Annulé',   color:'#64748b', bg:'rgba(100,116,139,0.1)'},
+    ];
+
+    wrap.innerHTML = COLS.map(col => {
+        const cards = filtered.filter(i=>i.statut===col.key);
+        return `
+        <div class="kanban-col">
+            <div class="kanban-col-header">
+                <span class="kanban-col-title" style="color:${col.color};">${col.label}</span>
+                <span class="kanban-count" style="background:${col.bg};color:${col.color};">${cards.length}</span>
+            </div>
+            <div class="kanban-cards">
+                ${cards.length === 0 ? `<div class="kanban-empty">Aucune</div>` : ''}
+                ${cards.map(i => {
+                    const c  = clients.find(cl=>cl.id===i.clientId);
+                    const ov = isOverdue(i);
+                    return `
+                    <div class="kanban-card" onclick="openDetail('${i.id}')">
+                        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.45rem;">
+                            <div style="width:7px;height:7px;border-radius:50%;background:${PRIO_DOT[i.priorite]};box-shadow:0 0 5px ${PRIO_DOT[i.priorite]}66;flex-shrink:0;"></div>
+                            <span style="font-size:.58rem;color:var(--muted);font-family:monospace;font-weight:700;">#${i.id.slice(-4).toUpperCase()}</span>
+                            ${ov ? `<span style="font-size:.6rem;color:#f87171;margin-left:auto;">⏰ Retard</span>` : ''}
+                        </div>
+                        <div class="kanban-card-title">${i.titre}</div>
+                        <div class="kanban-card-meta">
+                            <span>${c?.nom||'—'}</span>
+                            ${i.technicien ? `<span>👤 ${i.technicien}</span>` : '<span style="font-style:italic;">Non assigné</span>'}
+                            ${i.dateEcheance ? `<span>📅 ${BO.fmt(i.dateEcheance)}</span>` : ''}
+                        </div>
+                        <div class="kanban-card-foot">
+                            ${i.type ? `<span class="bo-badge" style="background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);">${i.type}</span>` : '<span></span>'}
+                            ${i.materiel?.length ? `<span style="font-size:.6rem;color:var(--muted);">📦 ${i.materiel.length}</span>` : ''}
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ══════════════════════════════════════════
+   FORM
+══════════════════════════════════════════ */
 function openForm(id = null) {
     editId = id;
     formMat = [];
     document.getElementById('modal-title').textContent = id ? 'Modifier l\'intervention' : 'Nouvelle intervention';
 
     if (id) {
-        const i = interventions.find(x => x.id === id);
+        const i = interventions.find(x=>x.id===id);
         if (!i) return;
         document.getElementById('f-titre').value  = i.titre;
         document.getElementById('f-client').value = i.clientId;
         document.getElementById('f-tech').value   = i.technicien || '';
+        document.getElementById('f-type').value   = i.type || '';
+        document.getElementById('f-site').value   = i.site || '';
         document.getElementById('f-statut').value = i.statut;
         document.getElementById('f-prio').value   = i.priorite;
         document.getElementById('f-date-c').value = i.dateCreation;
         document.getElementById('f-date-e').value = i.dateEcheance || '';
         document.getElementById('f-desc').value   = i.description || '';
+        document.getElementById('f-rapport').value = i.rapport || '';
+        document.getElementById('f-duree').value  = i.duree || '';
+        document.getElementById('f-date-r').value = i.dateResolution || '';
+        document.getElementById('f-note').value   = i.note || '';
         formMat = [...(i.materiel || [])];
+        document.getElementById('rapport-section').style.display = i.statut === 'Résolu' ? '' : 'none';
     } else {
         document.getElementById('f-titre').value  = '';
         document.getElementById('f-client').value = '';
         document.getElementById('f-tech').value   = '';
+        document.getElementById('f-type').value   = '';
+        document.getElementById('f-site').value   = '';
         document.getElementById('f-statut').value = 'Ouvert';
         document.getElementById('f-prio').value   = 'Moyenne';
         document.getElementById('f-date-c').value = BO.today();
         document.getElementById('f-date-e').value = '';
         document.getElementById('f-desc').value   = '';
+        document.getElementById('f-rapport').value = '';
+        document.getElementById('f-duree').value  = '';
+        document.getElementById('f-date-r').value = '';
+        document.getElementById('f-note').value   = '';
         formMat = [];
+        document.getElementById('rapport-section').style.display = 'none';
     }
     renderMatChips();
     document.getElementById('modal').style.display = 'flex';
@@ -279,45 +709,61 @@ function addMat() {
     formMat.push(val);
     inp.value = '';
     renderMatChips();
+    lucide.createIcons();
 }
 
 function removeMat(idx) {
-    formMat.splice(idx, 1);
+    formMat.splice(idx,1);
     renderMatChips();
+    lucide.createIcons();
 }
 
 function renderMatChips() {
     document.getElementById('f-mat-chips').innerHTML = formMat.map((m,i) => `
-        <span class="bo-chip">
-            ${m}
+        <span class="bo-chip">${m}
             <button class="bo-chip-btn" onclick="removeMat(${i})">
                 <i data-lucide="x" style="width:10px;height:10px;"></i>
             </button>
         </span>`).join('');
-    lucide.createIcons();
 }
 
 async function saveForm() {
     const titre  = document.getElementById('f-titre').value.trim();
     const client = document.getElementById('f-client').value;
-    if (!titre || !client) { BO.toast('Titre et client obligatoires', 'warn'); return; }
+    if (!titre)  { BO.toast('Le titre est obligatoire', 'warn'); return; }
+    if (!client) { BO.toast('Sélectionnez un client', 'warn'); return; }
+
+    const newStatut = document.getElementById('f-statut').value;
 
     const data = {
         titre,
-        clientId:      client,
-        technicien:    document.getElementById('f-tech').value.trim(),
-        statut:        document.getElementById('f-statut').value,
-        priorite:      document.getElementById('f-prio').value,
-        dateCreation:  document.getElementById('f-date-c').value,
-        dateEcheance:  document.getElementById('f-date-e').value,
-        description:   document.getElementById('f-desc').value.trim(),
-        materiel:      [...formMat],
+        clientId:       client,
+        technicien:     document.getElementById('f-tech').value,
+        type:           document.getElementById('f-type').value,
+        site:           document.getElementById('f-site').value.trim(),
+        statut:         newStatut,
+        priorite:       document.getElementById('f-prio').value,
+        dateCreation:   document.getElementById('f-date-c').value,
+        dateEcheance:   document.getElementById('f-date-e').value,
+        description:    document.getElementById('f-desc').value.trim(),
+        materiel:       [...formMat],
+        rapport:        document.getElementById('f-rapport').value.trim(),
+        duree:          parseFloat(document.getElementById('f-duree').value) || 0,
+        dateResolution: document.getElementById('f-date-r').value,
+        note:           document.getElementById('f-note').value.trim(),
     };
 
     if (editId) {
-        interventions = interventions.map(i => i.id === editId ? { ...i, ...data } : i);
+        const old = interventions.find(i=>i.id===editId);
+        const hist = [...(old?.historique||[])];
+        if (old && old.statut !== newStatut) {
+            hist.push({ date: BO.today(), action: `Statut → ${newStatut}`, couleur: STATUS_C[newStatut]?.border||'#64748b' });
+        }
+        data.historique = hist;
+        interventions = interventions.map(i => i.id===editId ? {...i,...data} : i);
         BO.toast('Intervention mise à jour', 'success');
     } else {
+        data.historique = [{ date: BO.today(), action: 'Ticket ouvert', couleur: '#3b82f6' }];
         interventions.unshift({ id: BO.uid(), ...data });
         BO.toast('Intervention créée', 'success');
     }
@@ -328,54 +774,115 @@ async function saveForm() {
 }
 
 async function remove(id) {
-    if (!confirm('Supprimer cette intervention ?')) return;
-    interventions = interventions.filter(i => i.id !== id);
+    if (!confirm('Supprimer cette intervention ? Cette action est irréversible.')) return;
+    interventions = interventions.filter(i=>i.id!==id);
     await BO.write(BO.KEYS.interventions, interventions);
     BO.toast('Intervention supprimée', 'info');
     render();
 }
 
-/* ── DETAIL ── */
+/* ══════════════════════════════════════════
+   DETAIL MODAL
+══════════════════════════════════════════ */
 function openDetail(id) {
-    const i  = interventions.find(x => x.id === id);
+    const i  = interventions.find(x=>x.id===id);
     if (!i) return;
-    const c  = clients.find(cl => cl.id === i.clientId);
+    const c  = clients.find(cl=>cl.id===i.clientId);
     const st = STATUS_C[i.statut] || STATUS_C['Ouvert'];
-    const overdue = i.dateEcheance && new Date(i.dateEcheance) < new Date() && i.statut !== 'Résolu';
+    const ov = isOverdue(i);
+
+    const hist = (i.historique||[]).slice().reverse();
+
+    const timelineHTML = hist.length ? `
+        <div style="margin-bottom:1.5rem;">
+            <div style="font-size:.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.875rem;">
+                Historique
+            </div>
+            <div class="timeline">
+                ${hist.map(h => `
+                <div class="tl-item">
+                    <div class="tl-line">
+                        <div class="tl-dot" style="background:${h.couleur};box-shadow:0 0 6px ${h.couleur}66;"></div>
+                        <div class="tl-connector"></div>
+                    </div>
+                    <div class="tl-content">
+                        <div class="tl-action">${h.action}</div>
+                        <div class="tl-date">${BO.fmt(h.date)}</div>
+                        ${h.note ? `<div class="tl-note">${h.note}</div>` : ''}
+                    </div>
+                </div>`).join('')}
+            </div>
+        </div>` : '';
+
+    const rapportHTML = i.rapport ? `
+        <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:.75rem;padding:1rem;margin-bottom:1.5rem;">
+            <div style="font-size:.6rem;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">
+                ✓ Rapport de clôture ${i.duree ? `· ${i.duree}h` : ''} ${i.dateResolution ? `· résolu le ${BO.fmt(i.dateResolution)}` : ''}
+            </div>
+            <div style="font-size:.8rem;color:#cbd5e1;line-height:1.65;">${i.rapport}</div>
+        </div>` : '';
+
+    const noteHTML = i.note ? `
+        <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:.75rem;padding:.875rem;margin-bottom:1.5rem;">
+            <div style="font-size:.6rem;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;">Note interne</div>
+            <div style="font-size:.78rem;color:#cbd5e1;">${i.note}</div>
+        </div>` : '';
 
     document.getElementById('detail-content').innerHTML = `
         <div class="bo-modal-header">
-            <div class="bo-modal-title">${i.titre}</div>
+            <div>
+                <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:.2rem;">#${i.id.slice(-4).toUpperCase()} · ${i.type||'Intervention'}</div>
+                <div class="bo-modal-title" style="font-size:1rem;">${i.titre}</div>
+            </div>
             <button class="bo-modal-close" onclick="closeModal()">
                 <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
             </button>
         </div>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
             <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
-            <span class="bo-badge" style="background:${PRIO_DOT[i.priorite]}22;color:${PRIO_DOT[i.priorite]};border:1px solid ${PRIO_DOT[i.priorite]}44;">Priorité ${i.priorite}</span>
-            ${i.materiel?.length ? `<span class="bo-badge" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">${i.materiel.length} matériel(s)</span>` : ''}
+            <span class="bo-badge" style="background:${PRIO_DOT[i.priorite]}22;color:${PRIO_DOT[i.priorite]};border:1px solid ${PRIO_DOT[i.priorite]}44;">⬤ ${i.priorite}</span>
+            ${i.materiel?.length ? `<span class="bo-badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);">📦 ${i.materiel.length} matériel(s)</span>` : ''}
+            ${ov ? `<span class="bo-badge" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);">⏰ En retard</span>` : ''}
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.875rem;margin-bottom:1.5rem;">
-            ${[['Client', c?.nom||'—'], ['Technicien', i.technicien||'Non assigné'], ['Créé le', BO.fmt(i.dateCreation)], ['Échéance', i.dateEcheance ? (overdue?'⏰ ':'') + BO.fmt(i.dateEcheance) : '—']].map(([l,v]) => `
-            <div style="background:rgba(0,0,0,0.3);border-radius:0.75rem;padding:0.875rem;">
-                <div style="font-size:0.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:0.3rem;">${l}</div>
-                <div style="font-size:0.875rem;font-weight:600;color:${l==='Échéance'&&overdue?'#f87171':'white'};">${v}</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem;">
+            ${[
+                ['Client',      c?.nom||'—'],
+                ['Site',        i.site||'—'],
+                ['Technicien',  i.technicien||'Non assigné'],
+                ['Créé le',     BO.fmt(i.dateCreation)],
+                ['Échéance',    i.dateEcheance ? (ov?'⏰ ':'')+BO.fmt(i.dateEcheance) : '—'],
+                ['Durée',       i.duree ? i.duree+'h' : '—'],
+            ].map(([l,v]) => `
+            <div style="background:rgba(0,0,0,.25);border-radius:.75rem;padding:.875rem;">
+                <div style="font-size:.55rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.25rem;">${l}</div>
+                <div style="font-size:.82rem;font-weight:600;color:${l==='Échéance'&&ov?'#f87171':'white'};">${v}</div>
             </div>`).join('')}
         </div>
-        ${i.description ? `<div style="background:rgba(0,0,0,0.3);border-radius:0.75rem;padding:1rem;margin-bottom:1.5rem;">
-            <div style="font-size:0.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:0.5rem;">Description</div>
-            <div style="font-size:0.8rem;color:#cbd5e1;line-height:1.65;">${i.description}</div>
+
+        ${i.description ? `
+        <div style="background:rgba(0,0,0,.25);border-radius:.75rem;padding:1rem;margin-bottom:1.5rem;">
+            <div style="font-size:.55rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">Description</div>
+            <div style="font-size:.8rem;color:#cbd5e1;line-height:1.65;">${i.description}</div>
         </div>` : ''}
-        ${i.materiel?.length ? `<div style="margin-bottom:1.5rem;">
-            <div style="font-size:0.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:0.5rem;">Matériel</div>
-            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
-                ${i.materiel.map(m => `<span class="bo-badge" style="background:rgba(139,92,246,0.12);color:#a78bfa;border:1px solid rgba(139,92,246,0.25);">${m}</span>`).join('')}
+
+        ${i.materiel?.length ? `
+        <div style="margin-bottom:1.5rem;">
+            <div style="font-size:.55rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">Matériel utilisé</div>
+            <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
+                ${i.materiel.map(m => `<span class="bo-badge" style="background:rgba(139,92,246,.1);color:#a78bfa;border:1px solid rgba(139,92,246,.25);">📦 ${m}</span>`).join('')}
             </div>
         </div>` : ''}
+
+        ${rapportHTML}
+        ${noteHTML}
+        ${timelineHTML}
+
         <div class="bo-modal-footer">
             <button class="bo-btn-ghost" onclick="closeModal()">Fermer</button>
             <button class="bo-btn-gold" onclick="closeModal();openForm('${i.id}')">
-                <i data-lucide="pencil" style="width:13px;height:13px;"></i>Modifier
+                <i data-lucide="pencil" style="width:13px;height:13px;"></i> Modifier
             </button>
         </div>`;
 
@@ -383,8 +890,33 @@ function openDetail(id) {
     lucide.createIcons();
 }
 
+/* ══════════════════════════════════════════
+   EXPORT CSV
+══════════════════════════════════════════ */
+function exportCSV() {
+    const cols = ['ID','Titre','Client','Site','Type','Technicien','Statut','Priorité','Date création','Date échéance','Date résolution','Durée (h)','Matériel','Description','Rapport'];
+    const rows = interventions.map(i => {
+        const c = clients.find(cl=>cl.id===i.clientId);
+        return [
+            i.id, i.titre, c?.nom||'', i.site||'', i.type||'', i.technicien||'',
+            i.statut, i.priorite, i.dateCreation, i.dateEcheance||'', i.dateResolution||'',
+            i.duree||0, (i.materiel||[]).join(' | '),
+            (i.description||'').replace(/\n/g,' '), (i.rapport||'').replace(/\n/g,' '),
+        ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+    });
+    const csv = [cols.join(','), ...rows].join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF'+csv);
+    a.download = `interventions_${BO.today()}.csv`;
+    a.click();
+    BO.toast('Export CSV téléchargé', 'success');
+}
+
+/* ── CLOSE on overlay click ── */
+document.getElementById('modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+document.getElementById('detail-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
 document.addEventListener('DOMContentLoaded', init);
 </script>
-
 </body>
 </html>
