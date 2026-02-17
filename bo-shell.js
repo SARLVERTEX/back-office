@@ -14,16 +14,10 @@
 /* ── STORAGE HELPERS ────────────────────────────────────────────────────── */
 const BO = {
     /**
-     * Read a key from window.storage (artifact env) or localStorage.
+     * Read a key from localStorage.
      * Returns parsed value or `fallback`.
      */
     async read(key, fallback = null) {
-        try {
-            if (window.storage) {
-                const res = await window.storage.get(key);
-                return res ? JSON.parse(res.value) : fallback;
-            }
-        } catch {}
         try {
             const raw = localStorage.getItem(key);
             return raw ? JSON.parse(raw) : fallback;
@@ -32,14 +26,10 @@ const BO = {
     },
 
     /**
-     * Write a value to window.storage and localStorage (dual write for compatibility).
+     * Write a value to localStorage.
      */
     async write(key, value) {
-        const json = JSON.stringify(value);
-        try {
-            if (window.storage) await window.storage.set(key, json);
-        } catch {}
-        try { localStorage.setItem(key, json); } catch {}
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
     },
 
     /* Storage keys */
@@ -437,3 +427,34 @@ BO._logout = function() {
     sessionStorage.removeItem('vtx_bo_auth');
     window.location.replace('backoffice.html');
 };
+
+/* ── SEED DATA (premier chargement uniquement) ── */
+(function initSeed() {
+    if (localStorage.getItem('vtx_seeded')) return;
+    const clients = [
+        { id:"c1", nom:"Casino de Monte-Carlo", contact:"Jean-Pierre Martin", email:"jp.martin@casino.mc", tel:"+377 98 06 21 21", adresse:"Place du Casino, Monaco", tags:["VIP","Gaming"] },
+        { id:"c2", nom:"Hôtel de Paris", contact:"Sophie Duval", email:"s.duval@hoteldeparis.mc", tel:"+377 98 06 30 00", adresse:"Place du Casino, Monaco", tags:["Hôtellerie"] },
+        { id:"c3", nom:"Fairmont Monaco", contact:"Luca Ferrari", email:"l.ferrari@fairmont.com", tel:"+377 93 50 65 00", adresse:"12 Av. des Spélugues, Monaco", tags:["Hôtellerie","VIP"] },
+        { id:"c4", nom:"Monaco Telecom", contact:"Claire Blanc", email:"c.blanc@monaco-telecom.mc", tel:"+377 99 99 00 00", adresse:"25 Bd de Suisse, Monaco", tags:["Telecom"] },
+    ];
+    const interventions = [
+        { id:"i1", titre:"Remplacement écran LED P2", clientId:"c1", statut:"En cours", priorite:"Haute", technicien:"Marc Dubois", dateCreation:"2026-02-10", dateEcheance:"2026-02-18", description:"Dalle P2 défaillante en zone VIP — remplacement module + recalibration colorimétrique", materiel:["LED P2 (1m²)","Processeur NovaLCT"] },
+        { id:"i2", titre:"Installation totem 65\" lobby", clientId:"c2", statut:"Ouvert", priorite:"Moyenne", technicien:"Sophie Lenoir", dateCreation:"2026-02-14", dateEcheance:"2026-02-25", description:"Totem interactif lobby principal — pose + câblage réseau + configuration CMS", materiel:["Totem 65\"","Câble HDMI 4K"] },
+        { id:"i3", titre:"Maintenance préventive afficheurs", clientId:"c3", statut:"Résolu", priorite:"Basse", technicien:"Marc Dubois", dateCreation:"2026-01-20", dateEcheance:"2026-01-25", description:"Check annuel : nettoyage, mise à jour firmware, vérification alimentations", materiel:[] },
+        { id:"i4", titre:"Panne boîtier VTX-55 réception", clientId:"c4", statut:"Ouvert", priorite:"Haute", technicien:"Julien Moreau", dateCreation:"2026-02-16", dateEcheance:"2026-02-17", description:"Boîtier double-face ne démarre plus — diagnostic alimentation 12V en cours", materiel:["VTX Doubleface 55"] },
+    ];
+    const stocks = [
+        { id:"s1", ref:"VTX-55DF", nom:"Écran VTX DoubleF 55\"", categorie:"Affichage", quantite:3, seuilAlerte:2, prix:2800, emplacement:"Entrepôt A" },
+        { id:"s2", ref:"LED-P2-M", nom:"Module LED P2 (500×500mm)", categorie:"LED", quantite:12, seuilAlerte:10, prix:450, emplacement:"Entrepôt A" },
+        { id:"s3", ref:"TOT-65", nom:"Totem Interactif 65\"", categorie:"Totem", quantite:1, seuilAlerte:1, prix:4200, emplacement:"Entrepôt B" },
+        { id:"s4", ref:"CBL-HDMI4K-5", nom:"Câble HDMI 4K 5m", categorie:"Câblage", quantite:24, seuilAlerte:5, prix:35, emplacement:"Stock bureau" },
+        { id:"s5", ref:"PWR-12V-5A", nom:"Alimentation 12V 5A", categorie:"Électronique", quantite:8, seuilAlerte:5, prix:55, emplacement:"Entrepôt A" },
+        { id:"s6", ref:"NOVA-SW", nom:"Licence NovaLCT Pro", categorie:"Logiciel", quantite:2, seuilAlerte:1, prix:890, emplacement:"Numérique" },
+    ];
+    try {
+        localStorage.setItem('vtx_clients', JSON.stringify(clients));
+        localStorage.setItem('vtx_interventions', JSON.stringify(interventions));
+        localStorage.setItem('vtx_stocks', JSON.stringify(stocks));
+        localStorage.setItem('vtx_seeded', '1');
+    } catch(e) {}
+})();
