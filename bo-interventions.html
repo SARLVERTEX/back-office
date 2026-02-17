@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interventions · Vertex Backoffice</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <span data-module-title="Interventions" style="display:none"></span>
+    <script src="bo-shell.js"></script>
+</head>
+<body>
+
+<main class="bo-page bo-animate">
+
+    <div class="bo-page-header">
+        <div>
+            <div class="bo-eyebrow">Suivi terrain</div>
+            <h1 class="bo-page-title">Interventions</h1>
+        </div>
+        <button class="bo-btn-gold" onclick="openForm()">
+            <i data-lucide="plus" style="width:14px;height:14px;"></i>
+            Nouvelle intervention
+        </button>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;margin-bottom:2rem;" id="kpi-row"></div>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center;">
+        <div class="bo-search-wrap" style="flex:1;min-width:200px;">
+            <i data-lucide="search" class="bo-search-icon" style="width:15px;height:15px;"></i>
+            <input id="search" class="bo-search" placeholder="Titre, technicien…" oninput="render()">
+        </div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;" id="status-pills">
+            <!-- injected -->
+        </div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;" id="prio-pills">
+            <!-- injected -->
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bo-card" id="table-wrap"></div>
+
+</main>
+
+<!-- ── MODAL ── -->
+<div class="bo-modal-overlay" id="modal" style="display:none;">
+    <div class="bo-modal" style="max-width:620px;">
+        <div class="bo-modal-header">
+            <div class="bo-modal-title" id="modal-title">Nouvelle intervention</div>
+            <button class="bo-modal-close" onclick="closeModal()">
+                <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
+            </button>
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Titre <span class="req">*</span></label>
+            <input id="f-titre" class="bo-input" placeholder="Ex: Remplacement écran LED lobby">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="bo-field">
+                <label class="bo-label">Client <span class="req">*</span></label>
+                <select id="f-client" class="bo-select"></select>
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Technicien</label>
+                <input id="f-tech" class="bo-input" placeholder="Nom du technicien">
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Statut</label>
+                <select id="f-statut" class="bo-select">
+                    <option>Ouvert</option><option>En cours</option>
+                    <option>Résolu</option><option>Annulé</option>
+                </select>
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Priorité</label>
+                <select id="f-prio" class="bo-select">
+                    <option>Haute</option><option selected>Moyenne</option><option>Basse</option>
+                </select>
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Date création</label>
+                <input id="f-date-c" type="date" class="bo-input">
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Date échéance</label>
+                <input id="f-date-e" type="date" class="bo-input">
+            </div>
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Description</label>
+            <textarea id="f-desc" class="bo-textarea" placeholder="Détails de l'intervention…"></textarea>
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Matériel utilisé</label>
+            <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
+                <input id="f-mat-input" class="bo-input" placeholder="Ex: Écran LED P2" onkeydown="if(event.key==='Enter'){event.preventDefault();addMat();}">
+                <button class="bo-btn-gold" onclick="addMat()" style="flex-shrink:0;">
+                    <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                </button>
+            </div>
+            <div id="f-mat-chips" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+        </div>
+
+        <div class="bo-modal-footer">
+            <button class="bo-btn-ghost" onclick="closeModal()">Annuler</button>
+            <button class="bo-btn-gold" onclick="saveForm()">
+                <i data-lucide="check" style="width:14px;height:14px;"></i>
+                Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── DETAIL MODAL ── -->
+<div class="bo-modal-overlay" id="detail-modal" style="display:none;">
+    <div class="bo-modal" style="max-width:580px;" id="detail-content"></div>
+</div>
+
+<script>
+const STATUS_C = {
+    'Ouvert':   { bg:'rgba(59,130,246,0.15)',  border:'#3b82f6', text:'#93c5fd' },
+    'En cours': { bg:'rgba(245,158,11,0.15)',  border:'#f59e0b', text:'#fcd34d' },
+    'Résolu':   { bg:'rgba(16,185,129,0.15)',  border:'#10b981', text:'#6ee7b7' },
+    'Annulé':   { bg:'rgba(100,116,139,0.15)', border:'#64748b', text:'#94a3b8' },
+};
+const PRIO_DOT = { 'Haute':'#ef4444', 'Moyenne':'#f59e0b', 'Basse':'#10b981' };
+const TECHS = ['Marc Dubois','Sophie Lenoir','Julien Moreau','Clara Petit'];
+
+let interventions = [], clients = [];
+let filterStatus = 'Tous', filterPrio = 'Toutes';
+let editId = null;
+let formMat = [];
+
+/* ── LOAD ── */
+async function init() {
+    [interventions, clients] = await Promise.all([
+        BO.read(BO.KEYS.interventions, []),
+        BO.read(BO.KEYS.clients, []),
+    ]);
+    buildPills();
+    buildClientSelect();
+    render();
+    document.getElementById('f-date-c').value = BO.today();
+    lucide.createIcons();
+}
+
+function buildPills() {
+    const sCont = document.getElementById('status-pills');
+    ['Tous','Ouvert','En cours','Résolu','Annulé'].forEach(s => {
+        const b = document.createElement('button');
+        b.className = 'bo-pill' + (s === filterStatus ? ' active' : '');
+        b.textContent = s;
+        b.onclick = () => { filterStatus = s; buildPills(); render(); };
+        sCont.appendChild(b);
+    });
+
+    const pCont = document.getElementById('prio-pills');
+    pCont.innerHTML = '';
+    ['Toutes','Haute','Moyenne','Basse'].forEach(p => {
+        const b = document.createElement('button');
+        b.className = 'bo-pill' + (p === filterPrio ? ' active' : '');
+        b.textContent = p;
+        b.onclick = () => { filterPrio = p; buildPills(); render(); };
+        pCont.appendChild(b);
+    });
+}
+
+function buildClientSelect() {
+    const sel = document.getElementById('f-client');
+    sel.innerHTML = `<option value="">— Sélectionner —</option>` +
+        clients.map(c => `<option value="${c.id}">${c.nom}</option>`).join('');
+}
+
+/* ── RENDER ── */
+function render() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const filtered = interventions.filter(i => {
+        const ms = filterStatus === 'Tous' || i.statut === filterStatus;
+        const mp = filterPrio === 'Toutes' || i.priorite === filterPrio;
+        const mq = !q || i.titre.toLowerCase().includes(q) || (i.technicien||'').toLowerCase().includes(q);
+        return ms && mp && mq;
+    });
+
+    // KPIs
+    const kpis = [
+        { label:'Ouverts',   val: interventions.filter(i=>i.statut==='Ouvert').length,    color:'#3b82f6' },
+        { label:'En cours',  val: interventions.filter(i=>i.statut==='En cours').length,  color:'#f59e0b' },
+        { label:'Résolus',   val: interventions.filter(i=>i.statut==='Résolu').length,    color:'#10b981' },
+        { label:'Haute prio',val: interventions.filter(i=>i.priorite==='Haute'&&i.statut!=='Résolu').length, color:'#ef4444' },
+    ];
+    document.getElementById('kpi-row').innerHTML = kpis.map(k => `
+        <div class="bo-stat">
+            <div class="bo-stat-label">${k.label}</div>
+            <div class="bo-stat-value" style="color:${k.color};">${k.val}</div>
+        </div>`).join('');
+
+    // Table
+    const wrap = document.getElementById('table-wrap');
+    if (filtered.length === 0) {
+        wrap.innerHTML = `<div class="bo-empty"><div class="bo-empty-title">Aucune intervention</div><div class="bo-empty-desc">Modifiez vos filtres ou créez un ticket.</div></div>`;
+    } else {
+        wrap.innerHTML = filtered.map((i, idx) => {
+            const c  = clients.find(cl => cl.id === i.clientId);
+            const st = STATUS_C[i.statut] || STATUS_C['Ouvert'];
+            const overdue = i.dateEcheance && new Date(i.dateEcheance) < new Date() && i.statut !== 'Résolu';
+            return `
+            <div class="bo-row" onclick="openDetail('${i.id}')">
+                <div style="width:10px;height:10px;border-radius:50%;background:${PRIO_DOT[i.priorite]||'#64748b'};flex-shrink:0;" title="${i.priorite}"></div>
+                <div style="flex:0 0 2.5rem;font-size:0.6rem;color:#334155;font-weight:700;">#${i.id.slice(-4)}</div>
+                <div style="flex:3;min-width:0;">
+                    <div style="font-size:0.875rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${i.titre}</div>
+                    <div style="font-size:0.65rem;color:var(--muted);">${c?.nom||'—'} · ${i.technicien||'Non assigné'}</div>
+                </div>
+                <div style="flex:1;font-size:0.65rem;color:var(--muted);white-space:nowrap;">
+                    ${i.dateCreation}<br>
+                    ${i.dateEcheance ? `<span style="color:${overdue?'#f87171':'var(--muted)'};">${overdue?'⏰ ':''}${i.dateEcheance}</span>` : ''}
+                </div>
+                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
+                <div style="display:flex;gap:0.4rem;" onclick="event.stopPropagation()">
+                    <button class="bo-btn-icon" onclick="openForm('${i.id}')"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+                    <button class="bo-btn-danger" onclick="remove('${i.id}')"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    lucide.createIcons();
+}
+
+/* ── FORM ── */
+function openForm(id = null) {
+    editId = id;
+    formMat = [];
+    document.getElementById('modal-title').textContent = id ? 'Modifier l\'intervention' : 'Nouvelle intervention';
+
+    if (id) {
+        const i = interventions.find(x => x.id === id);
+        if (!i) return;
+        document.getElementById('f-titre').value  = i.titre;
+        document.getElementById('f-client').value = i.clientId;
+        document.getElementById('f-tech').value   = i.technicien || '';
+        document.getElementById('f-statut').value = i.statut;
+        document.getElementById('f-prio').value   = i.priorite;
+        document.getElementById('f-date-c').value = i.dateCreation;
+        document.getElementById('f-date-e').value = i.dateEcheance || '';
+        document.getElementById('f-desc').value   = i.description || '';
+        formMat = [...(i.materiel || [])];
+    } else {
+        document.getElementById('f-titre').value  = '';
+        document.getElementById('f-client').value = '';
+        document.getElementById('f-tech').value   = '';
+        document.getElementById('f-statut').value = 'Ouvert';
+        document.getElementById('f-prio').value   = 'Moyenne';
+        document.getElementById('f-date-c').value = BO.today();
+        document.getElementById('f-date-e').value = '';
+        document.getElementById('f-desc').value   = '';
+        formMat = [];
+    }
+    renderMatChips();
+    document.getElementById('modal').style.display = 'flex';
+    lucide.createIcons();
+}
+
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+    document.getElementById('detail-modal').style.display = 'none';
+}
+
+function addMat() {
+    const inp = document.getElementById('f-mat-input');
+    const val = inp.value.trim();
+    if (!val) return;
+    formMat.push(val);
+    inp.value = '';
+    renderMatChips();
+}
+
+function removeMat(idx) {
+    formMat.splice(idx, 1);
+    renderMatChips();
+}
+
+function renderMatChips() {
+    document.getElementById('f-mat-chips').innerHTML = formMat.map((m,i) => `
+        <span class="bo-chip">
+            ${m}
+            <button class="bo-chip-btn" onclick="removeMat(${i})">
+                <i data-lucide="x" style="width:10px;height:10px;"></i>
+            </button>
+        </span>`).join('');
+    lucide.createIcons();
+}
+
+async function saveForm() {
+    const titre  = document.getElementById('f-titre').value.trim();
+    const client = document.getElementById('f-client').value;
+    if (!titre || !client) { BO.toast('Titre et client obligatoires', 'warn'); return; }
+
+    const data = {
+        titre,
+        clientId:      client,
+        technicien:    document.getElementById('f-tech').value.trim(),
+        statut:        document.getElementById('f-statut').value,
+        priorite:      document.getElementById('f-prio').value,
+        dateCreation:  document.getElementById('f-date-c').value,
+        dateEcheance:  document.getElementById('f-date-e').value,
+        description:   document.getElementById('f-desc').value.trim(),
+        materiel:      [...formMat],
+    };
+
+    if (editId) {
+        interventions = interventions.map(i => i.id === editId ? { ...i, ...data } : i);
+        BO.toast('Intervention mise à jour', 'success');
+    } else {
+        interventions.unshift({ id: BO.uid(), ...data });
+        BO.toast('Intervention créée', 'success');
+    }
+
+    await BO.write(BO.KEYS.interventions, interventions);
+    closeModal();
+    render();
+}
+
+async function remove(id) {
+    if (!confirm('Supprimer cette intervention ?')) return;
+    interventions = interventions.filter(i => i.id !== id);
+    await BO.write(BO.KEYS.interventions, interventions);
+    BO.toast('Intervention supprimée', 'info');
+    render();
+}
+
+/* ── DETAIL ── */
+function openDetail(id) {
+    const i  = interventions.find(x => x.id === id);
+    if (!i) return;
+    const c  = clients.find(cl => cl.id === i.clientId);
+    const st = STATUS_C[i.statut] || STATUS_C['Ouvert'];
+    const overdue = i.dateEcheance && new Date(i.dateEcheance) < new Date() && i.statut !== 'Résolu';
+
+    document.getElementById('detail-content').innerHTML = `
+        <div class="bo-modal-header">
+            <div class="bo-modal-title">${i.titre}</div>
+            <button class="bo-modal-close" onclick="closeModal()">
+                <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
+            </button>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+            <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
+            <span class="bo-badge" style="background:${PRIO_DOT[i.priorite]}22;color:${PRIO_DOT[i.priorite]};border:1px solid ${PRIO_DOT[i.priorite]}44;">Priorité ${i.priorite}</span>
+            ${i.materiel?.length ? `<span class="bo-badge" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">${i.materiel.length} matériel(s)</span>` : ''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.875rem;margin-bottom:1.5rem;">
+            ${[['Client', c?.nom||'—'], ['Technicien', i.technicien||'Non assigné'], ['Créé le', BO.fmt(i.dateCreation)], ['Échéance', i.dateEcheance ? (overdue?'⏰ ':'') + BO.fmt(i.dateEcheance) : '—']].map(([l,v]) => `
+            <div style="background:rgba(0,0,0,0.3);border-radius:0.75rem;padding:0.875rem;">
+                <div style="font-size:0.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:0.3rem;">${l}</div>
+                <div style="font-size:0.875rem;font-weight:600;color:${l==='Échéance'&&overdue?'#f87171':'white'};">${v}</div>
+            </div>`).join('')}
+        </div>
+        ${i.description ? `<div style="background:rgba(0,0,0,0.3);border-radius:0.75rem;padding:1rem;margin-bottom:1.5rem;">
+            <div style="font-size:0.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:0.5rem;">Description</div>
+            <div style="font-size:0.8rem;color:#cbd5e1;line-height:1.65;">${i.description}</div>
+        </div>` : ''}
+        ${i.materiel?.length ? `<div style="margin-bottom:1.5rem;">
+            <div style="font-size:0.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:0.5rem;">Matériel</div>
+            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+                ${i.materiel.map(m => `<span class="bo-badge" style="background:rgba(139,92,246,0.12);color:#a78bfa;border:1px solid rgba(139,92,246,0.25);">${m}</span>`).join('')}
+            </div>
+        </div>` : ''}
+        <div class="bo-modal-footer">
+            <button class="bo-btn-ghost" onclick="closeModal()">Fermer</button>
+            <button class="bo-btn-gold" onclick="closeModal();openForm('${i.id}')">
+                <i data-lucide="pencil" style="width:13px;height:13px;"></i>Modifier
+            </button>
+        </div>`;
+
+    document.getElementById('detail-modal').style.display = 'flex';
+    lucide.createIcons();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
