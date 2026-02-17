@@ -2,157 +2,239 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Interventions · Vertex Backoffice</title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="bo-shell.js"></script>
     <span data-module-title="Interventions" style="display:none"></span>
     <style>
-        /* ── RESET & TOKENS (reprend votre charte bo-shell) ── */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+        --bg:        #0a0e1a;
+        --surface:   #111827;
+        --surface2:  #1a2236;
+        --surface3:  #202d42;
+        --border:    rgba(255,255,255,0.07);
+        --border2:   rgba(255,255,255,0.12);
+        --muted:     #475569;
+        --text:      #e2e8f0;
+        --gold:      #d4a843;
+        --gold-dark: #b8902e;
+        --gold-glow: rgba(212,168,67,0.18);
+        --green:     #10b981;
+        --green-bg:  rgba(16,185,129,0.1);
+        --red:       #ef4444;
+        --blue:      #3b82f6;
+        --amber:     #f59e0b;
+        --radius:    0.875rem;
+        --safe-b:    env(safe-area-inset-bottom, 0px);
+    }
+    body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,-apple-system,sans-serif; min-height:100vh; -webkit-tap-highlight-color:transparent; }
 
-        :root {
-            --bg:        #0a0e1a;
-            --surface:   #111827;
-            --surface2:  #1a2236;
-            --border:    rgba(255,255,255,0.07);
-            --muted:     #475569;
-            --text:      #e2e8f0;
-            --gold:      #d4a843;
-            --gold-dark: #b8902e;
-            --radius:    0.875rem;
-        }
+    /* PAGE */
+    .bo-page { max-width:1280px; margin:0 auto; padding:1.25rem 1rem 5rem; }
+    @media(min-width:640px){ .bo-page{ padding:2rem 1.5rem 4rem; } }
+    .bo-animate { animation:fadeUp .3s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
 
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+    .bo-page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .bo-eyebrow { font-size:.58rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); margin-bottom:.3rem; }
+    .bo-page-title { font-size:1.5rem; font-weight:800; letter-spacing:-.02em; }
+    @media(min-width:640px){ .bo-page-title{ font-size:1.75rem; } }
 
-        /* ── PAGE LAYOUT ── */
-        .bo-page { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
-        .bo-animate { animation: fadeUp .35s ease both; }
-        @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform:none; } }
+    /* STATS */
+    .bo-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:.875rem 1rem; }
+    .bo-stat-label { font-size:.58rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:.35rem; }
+    .bo-stat-value { font-size:1.6rem; font-weight:800; line-height:1; }
+    .bo-stat-sub { font-size:.6rem; color:var(--muted); margin-top:.25rem; }
 
-        .bo-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-        .bo-eyebrow { font-size: .6rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: .35rem; }
-        .bo-page-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -.02em; }
+    /* CARD & ROW */
+    .bo-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .bo-row { display:flex; align-items:center; gap:.75rem; padding:.875rem 1rem; border-bottom:1px solid var(--border); cursor:pointer; transition:background .15s; -webkit-user-select:none; user-select:none; }
+    .bo-row:last-child { border-bottom:none; }
+    .bo-row:active { background:rgba(255,255,255,.04); }
 
-        /* ── STAT CARD ── */
-        .bo-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
-        .bo-stat-label { font-size: .6rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .4rem; }
-        .bo-stat-value { font-size: 1.75rem; font-weight: 800; line-height: 1; }
-        .bo-stat-sub { font-size: .62rem; color: var(--muted); margin-top: .3rem; }
+    /* BUTTONS */
+    .bo-btn-gold { display:inline-flex; align-items:center; gap:.4rem; background:var(--gold); color:#000; font-size:.78rem; font-weight:700; padding:.55rem 1rem; border:none; border-radius:.6rem; cursor:pointer; transition:background .15s,transform .1s; touch-action:manipulation; }
+    .bo-btn-gold:active { transform:scale(.96); background:var(--gold-dark); }
+    .bo-btn-ghost { display:inline-flex; align-items:center; gap:.4rem; background:transparent; color:var(--text); font-size:.78rem; font-weight:600; padding:.55rem 1rem; border:1px solid var(--border); border-radius:.6rem; cursor:pointer; touch-action:manipulation; }
+    .bo-btn-ghost:active { border-color:var(--border2); }
+    .bo-btn-icon { background:transparent; border:none; cursor:pointer; padding:.35rem; border-radius:.4rem; display:flex; align-items:center; }
+    .bo-btn-icon:active { background:rgba(255,255,255,.08); }
+    .bo-btn-danger { background:transparent; border:none; cursor:pointer; padding:.35rem; border-radius:.4rem; display:flex; align-items:center; }
+    .bo-btn-danger:active { background:rgba(239,68,68,.15); }
 
-        /* ── CARD ── */
-        .bo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    /* BIG TOUCH BUTTONS */
+    .btn-touch { display:flex; align-items:center; justify-content:center; gap:.5rem; width:100%; padding:1rem; border-radius:.875rem; border:1px solid transparent; font-size:.9rem; font-weight:700; cursor:pointer; transition:all .15s; touch-action:manipulation; }
+    .btn-touch:active { transform:scale(.97); }
+    .btn-touch-green { background:var(--green-bg); color:var(--green); border-color:rgba(16,185,129,.25); }
+    .btn-touch-green.lit { background:var(--green); color:#000; border-color:var(--green); }
+    .btn-touch-red { background:rgba(239,68,68,.1); color:var(--red); border-color:rgba(239,68,68,.25); }
+    .btn-touch-red.lit { background:var(--red); color:#fff; border-color:var(--red); }
+    .btn-touch-blue { background:rgba(59,130,246,.1); color:#93c5fd; border-color:rgba(59,130,246,.25); }
 
-        /* ── ROW ── */
-        .bo-row { display: flex; align-items: center; gap: .875rem; padding: .875rem 1.1rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s; }
-        .bo-row:last-child { border-bottom: none; }
-        .bo-row:hover { background: rgba(255,255,255,.03); }
+    /* SEARCH */
+    .bo-search-wrap { position:relative; }
+    .bo-search-icon { position:absolute; left:.75rem; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
+    .bo-search { width:100%; background:var(--surface); border:1px solid var(--border); color:var(--text); font-size:1rem; padding:.6rem .75rem .6rem 2.25rem; border-radius:.6rem; outline:none; -webkit-appearance:none; }
+    .bo-search:focus { border-color:var(--gold); }
 
-        /* ── BUTTONS ── */
-        .bo-btn-gold { display: inline-flex; align-items: center; gap: .4rem; background: var(--gold); color: #000; font-size: .78rem; font-weight: 700; padding: .5rem .9rem; border: none; border-radius: .5rem; cursor: pointer; transition: background .15s; }
-        .bo-btn-gold:hover { background: var(--gold-dark); }
-        .bo-btn-ghost { display: inline-flex; align-items: center; gap: .4rem; background: transparent; color: var(--text); font-size: .78rem; font-weight: 600; padding: .5rem .9rem; border: 1px solid var(--border); border-radius: .5rem; cursor: pointer; transition: border-color .15s; }
-        .bo-btn-ghost:hover { border-color: rgba(255,255,255,.2); }
-        .bo-btn-icon { background: transparent; border: none; cursor: pointer; padding: .3rem; border-radius: .35rem; transition: background .15s; }
-        .bo-btn-icon:hover { background: rgba(255,255,255,.06); }
-        .bo-btn-danger { background: transparent; border: none; cursor: pointer; padding: .3rem; border-radius: .35rem; transition: background .15s; }
-        .bo-btn-danger:hover { background: rgba(239,68,68,.12); }
+    /* PILLS */
+    .bo-pill { background:transparent; border:1px solid var(--border); color:var(--muted); font-size:.7rem; font-weight:600; padding:.32rem .75rem; border-radius:999px; cursor:pointer; white-space:nowrap; touch-action:manipulation; transition:all .15s; }
+    .bo-pill.active { background:var(--gold); border-color:var(--gold); color:#000; }
 
-        /* ── SEARCH ── */
-        .bo-search-wrap { position: relative; }
-        .bo-search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
-        .bo-search { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: .82rem; padding: .55rem .75rem .55rem 2.25rem; border-radius: .5rem; outline: none; transition: border-color .15s; }
-        .bo-search:focus { border-color: var(--gold); }
+    /* BADGE */
+    .bo-badge { display:inline-flex; align-items:center; font-size:.63rem; font-weight:700; padding:.2rem .6rem; border-radius:999px; white-space:nowrap; }
 
-        /* ── PILLS ── */
-        .bo-pill { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: .72rem; font-weight: 600; padding: .3rem .75rem; border-radius: 999px; cursor: pointer; transition: all .15s; white-space: nowrap; }
-        .bo-pill:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
-        .bo-pill.active { background: var(--gold); border-color: var(--gold); color: #000; }
+    /* FORM FIELDS */
+    .bo-field { display:flex; flex-direction:column; gap:.4rem; }
+    .bo-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
+    .bo-label .req { color:var(--gold); }
+    .bo-input, .bo-select, .bo-textarea {
+        background:var(--surface2); border:1px solid var(--border); color:var(--text);
+        font-size:1rem; padding:.72rem .875rem; border-radius:.6rem; outline:none; width:100%;
+        -webkit-appearance:none; appearance:none; font-family:inherit; transition:border-color .15s;
+    }
+    .bo-input:focus, .bo-select:focus, .bo-textarea:focus { border-color:var(--gold); }
+    .bo-select {
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23475569' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat:no-repeat; background-position:right .875rem center; padding-right:2.5rem;
+    }
+    .bo-select option { background:var(--surface); }
+    .bo-textarea { resize:vertical; min-height:88px; line-height:1.55; }
 
-        /* ── BADGE ── */
-        .bo-badge { display: inline-flex; align-items: center; font-size: .65rem; font-weight: 700; padding: .2rem .6rem; border-radius: 999px; white-space: nowrap; }
+    /* CHIPS */
+    .bo-chip { display:inline-flex; align-items:center; gap:.3rem; background:rgba(212,168,67,.1); border:1px solid rgba(212,168,67,.25); color:var(--gold); font-size:.72rem; font-weight:600; padding:.28rem .6rem; border-radius:999px; }
+    .bo-chip-btn { background:none; border:none; cursor:pointer; color:inherit; display:flex; align-items:center; padding:0; opacity:.7; }
 
-        /* ── FORM FIELDS ── */
-        .bo-field { display: flex; flex-direction: column; gap: .35rem; }
-        .bo-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-        .bo-label .req { color: var(--gold); }
-        .bo-input, .bo-select, .bo-textarea { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: .82rem; padding: .55rem .75rem; border-radius: .5rem; outline: none; width: 100%; transition: border-color .15s; }
-        .bo-input:focus, .bo-select:focus, .bo-textarea:focus { border-color: var(--gold); }
-        .bo-select option { background: var(--surface); }
-        .bo-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+    /* MODAL */
+    .bo-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.82); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); display:flex; align-items:flex-end; justify-content:center; z-index:1000; }
+    @media(min-width:640px){ .bo-modal-overlay{ align-items:center; padding:1rem; } }
 
-        /* ── CHIPS ── */
-        .bo-chip { display: inline-flex; align-items: center; gap: .3rem; background: rgba(212,168,67,.1); border: 1px solid rgba(212,168,67,.25); color: var(--gold); font-size: .7rem; font-weight: 600; padding: .25rem .55rem; border-radius: 999px; }
-        .bo-chip-btn { background: none; border: none; cursor: pointer; color: inherit; display: flex; align-items: center; padding: 0; opacity: .7; }
-        .bo-chip-btn:hover { opacity: 1; }
+    .bo-modal {
+        background:var(--surface); border:1px solid var(--border);
+        border-radius:1.5rem 1.5rem 0 0; width:100%; max-height:96vh;
+        overflow:hidden; display:flex; flex-direction:column;
+        padding-bottom:var(--safe-b);
+        animation:slideUp .28s cubic-bezier(.32,.72,0,1) both;
+    }
+    @media(min-width:640px){
+        .bo-modal { border-radius:1.25rem; max-width:700px; max-height:92vh; padding-bottom:0; animation:fadeUp .22s ease both; }
+    }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:none} }
 
-        /* ── MODAL ── */
-        .bo-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
-        .bo-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; width: 100%; max-height: 92vh; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
-        .bo-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-        .bo-modal-title { font-size: 1.05rem; font-weight: 800; }
-        .bo-modal-close { background: rgba(255,255,255,.06); border: none; border-radius: .4rem; cursor: pointer; padding: .35rem; display: flex; align-items: center; justify-content: center; transition: background .15s; }
-        .bo-modal-close:hover { background: rgba(255,255,255,.1); }
-        .bo-modal-footer { display: flex; justify-content: flex-end; gap: .75rem; margin-top: .5rem; }
+    .drag-handle { width:2.5rem; height:4px; background:var(--border2); border-radius:999px; margin:.7rem auto .2rem; flex-shrink:0; }
+    @media(min-width:640px){ .drag-handle{display:none} }
 
-        /* ── EMPTY ── */
-        .bo-empty { text-align: center; padding: 3rem 1rem; }
-        .bo-empty-title { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
-        .bo-empty-desc { font-size: .8rem; color: var(--muted); }
+    .bo-modal-header { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:1rem 1.25rem .75rem; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .bo-modal-title { font-size:.95rem; font-weight:800; }
+    .bo-modal-close { background:rgba(255,255,255,.06); border:none; border-radius:.5rem; cursor:pointer; padding:.4rem; display:flex; align-items:center; justify-content:center; min-width:32px; min-height:32px; }
+    .bo-modal-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+    .bo-modal-footer { display:flex; gap:.75rem; padding:1rem 1.25rem; border-top:1px solid var(--border); flex-shrink:0; }
+    .bo-modal-footer .bo-btn-gold { flex:1; justify-content:center; padding:.8rem; font-size:.9rem; }
+    .bo-modal-footer .bo-btn-ghost { justify-content:center; padding:.8rem 1rem; }
 
-        /* ── TOAST — géré par bo-shell.js ── */
+    /* FORM TABS */
+    .form-tabs { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface); }
+    .form-tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:.2rem; padding:.8rem .4rem; font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); cursor:pointer; border:none; background:none; position:relative; touch-action:manipulation; transition:color .15s; }
+    .form-tab::after { content:''; position:absolute; bottom:0; left:20%; right:20%; height:2px; background:var(--gold); border-radius:999px; transform:scaleX(0); transition:transform .2s; }
+    .form-tab.active { color:var(--gold); }
+    .form-tab.active::after { transform:scaleX(1); }
+    .tab-badge { position:absolute; top:.45rem; right:calc(50% - .9rem); background:var(--gold); color:#000; font-size:.48rem; font-weight:800; padding:.08rem .28rem; border-radius:999px; min-width:14px; text-align:center; }
 
-        /* ── KANBAN ── */
-        .kanban-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-        @media (max-width: 900px) { .kanban-board { grid-template-columns: repeat(2,1fr); } }
-        @media (max-width: 560px) { .kanban-board { grid-template-columns: 1fr; } }
-        .kanban-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 200px; }
-        .kanban-col-header { padding: .875rem 1rem .75rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-        .kanban-col-title { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
-        .kanban-count { font-size: .65rem; font-weight: 700; padding: .1rem .45rem; border-radius: 999px; }
-        .kanban-cards { padding: .75rem; display: flex; flex-direction: column; gap: .6rem; flex: 1; }
-        .kanban-card { background: var(--surface2); border: 1px solid var(--border); border-radius: .75rem; padding: .875rem; cursor: pointer; transition: border-color .15s, transform .15s; }
-        .kanban-card:hover { border-color: rgba(212,168,67,.3); transform: translateY(-1px); }
-        .kanban-card-title { font-size: .8rem; font-weight: 700; margin-bottom: .4rem; line-height: 1.35; }
-        .kanban-card-meta { font-size: .62rem; color: var(--muted); display: flex; flex-direction: column; gap: .2rem; }
-        .kanban-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: .6rem; }
-        .kanban-empty { font-size: .72rem; color: var(--muted); text-align: center; padding: 1.5rem; }
+    .form-panel { display:none; padding:1.25rem; flex-direction:column; gap:1rem; }
+    .form-panel.active { display:flex; }
 
-        /* ── TIMELINE ── */
-        .timeline { display: flex; flex-direction: column; gap: 0; }
-        .tl-item { display: flex; gap: .875rem; padding-bottom: 1.25rem; position: relative; }
-        .tl-line { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 28px; }
-        .tl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
-        .tl-connector { width: 1px; background: var(--border); flex: 1; margin-top: 4px; }
-        .tl-item:last-child .tl-connector { display: none; }
-        .tl-content { flex: 1; padding-bottom: .25rem; }
-        .tl-action { font-size: .78rem; font-weight: 700; }
-        .tl-date { font-size: .62rem; color: var(--muted); margin-top: .15rem; }
-        .tl-note { font-size: .75rem; color: #94a3b8; margin-top: .35rem; background: rgba(0,0,0,.25); border-radius: .5rem; padding: .5rem .75rem; line-height: 1.55; }
+    /* SECTION HEADER */
+    .sec-head { display:flex; align-items:center; gap:.5rem; font-size:.58rem; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
+    .sec-head-line { flex:1; height:1px; background:var(--border); }
 
-        /* ── VIEW TOGGLE ── */
-        .view-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: .5rem; padding: 2px; }
-        .view-btn { display: flex; align-items: center; gap: .35rem; padding: .35rem .65rem; border: none; background: none; color: var(--muted); font-size: .72rem; font-weight: 600; border-radius: .35rem; cursor: pointer; transition: all .15s; }
-        .view-btn.active { background: var(--surface2); color: var(--text); }
-        .view-btn:hover:not(.active) { color: var(--text); }
+    /* CHRONO */
+    .chrono-wrap { background:var(--surface2); border:1px solid var(--border); border-radius:1rem; padding:1rem; }
+    .chrono-display { font-size:2.2rem; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em; color:var(--gold); text-align:center; margin:.3rem 0; }
+    .chrono-label { font-size:.58rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); text-align:center; }
+    .chrono-grid { display:grid; grid-template-columns:1fr 1fr; gap:.625rem; margin-top:.875rem; }
+    .chrono-stamp { background:rgba(0,0,0,.25); border-radius:.75rem; padding:.625rem; text-align:center; }
+    .chrono-stamp-lbl { font-size:.52rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:.15rem; }
+    .chrono-stamp-val { font-size:.85rem; font-weight:700; }
 
-        /* ── RAPPORT FIELD ── */
-        .rapport-block { background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2); border-radius: .75rem; padding: 1rem; }
-        .rapport-block .bo-label { color: #6ee7b7; }
+    /* MESURES */
+    .mesure-item { background:var(--surface2); border:1px solid var(--border); border-radius:.75rem; padding:.75rem 1rem; display:flex; align-items:center; gap:.75rem; }
+    .mesure-lbl { font-size:.58rem; color:var(--muted); font-weight:700; text-transform:uppercase; }
+    .mesure-val { font-size:1rem; font-weight:800; }
+    .mesure-unit { font-size:.7rem; color:var(--gold); font-weight:700; }
 
-        /* ── SECTION DIVIDER ── */
-        .bo-divider { height: 1px; background: var(--border); margin: .25rem 0; }
+    /* PHOTOS */
+    .photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(95px,1fr)); gap:.5rem; }
+    @media(min-width:480px){ .photo-grid{ grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); } }
+    .photo-thumb { position:relative; border-radius:.75rem; overflow:hidden; aspect-ratio:1; background:var(--surface3); border:1px solid var(--border); }
+    .photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .photo-del { position:absolute; top:.3rem; right:.3rem; background:rgba(0,0,0,.72); border:none; border-radius:.35rem; padding:.22rem; cursor:pointer; display:flex; }
+    .photo-legend-wrap { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.75); padding:.3rem .4rem; }
+    .photo-legend-wrap input { width:100%; background:none; border:none; color:#fff; font-size:.6rem; outline:none; font-family:inherit; }
+    .photo-add { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.35rem; border-radius:.75rem; border:1.5px dashed var(--border2); background:transparent; cursor:pointer; aspect-ratio:1; color:var(--muted); font-size:.63rem; font-weight:600; touch-action:manipulation; transition:border-color .15s,color .15s; }
+    .photo-add:active { border-color:var(--gold); color:var(--gold); }
 
-        /* ── PROGRESS BAR ── */
-        .pbar-wrap { height: 4px; background: rgba(255,255,255,.06); border-radius: 999px; overflow: hidden; }
-        .pbar-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
+    /* CHECKLIST */
+    .chk-item { display:flex; align-items:center; gap:.75rem; padding:.75rem 1rem; background:var(--surface2); border-radius:.75rem; border:1px solid var(--border); cursor:pointer; touch-action:manipulation; transition:border-color .15s,background .15s; -webkit-user-select:none; user-select:none; }
+    .chk-item.on { border-color:rgba(16,185,129,.35); background:rgba(16,185,129,.05); }
+    .chk-box { width:20px; height:20px; border-radius:.35rem; border:1.5px solid var(--border2); flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s; background:transparent; }
+    .chk-item.on .chk-box { background:var(--green); border-color:var(--green); }
+    .chk-lbl { font-size:.85rem; font-weight:600; flex:1; }
+    .chk-item.on .chk-lbl { color:var(--muted); }
 
-        /* ── COLLAPSIBLE ── */
-        .collapsible-btn { width: 100%; background: none; border: none; color: var(--muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: .5rem; cursor: pointer; padding: .5rem 0; }
-        .collapsible-btn:hover { color: var(--text); }
+    /* RAPPORT */
+    .rapport-block { background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.2); border-radius:.875rem; padding:1rem; display:flex; flex-direction:column; gap:.875rem; }
 
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    /* SIGNATURE */
+    .sig-canvas { background:rgba(0,0,0,.3); border:1px solid rgba(16,185,129,.2); border-radius:.6rem; width:100%; height:110px; touch-action:none; display:block; }
+
+    /* EMPTY */
+    .bo-empty { text-align:center; padding:2.5rem 1rem; }
+    .bo-empty-title { font-size:1rem; font-weight:700; margin-bottom:.5rem; }
+    .bo-empty-desc { font-size:.8rem; color:var(--muted); }
+
+    /* KANBAN */
+    .kanban-board { display:grid; grid-template-columns:repeat(4,1fr); gap:.875rem; }
+    @media(max-width:900px){ .kanban-board{ grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:560px){ .kanban-board{ grid-template-columns:1fr; } }
+    .kanban-col { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); display:flex; flex-direction:column; min-height:120px; }
+    .kanban-col-header { padding:.875rem 1rem .75rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .kanban-col-title { font-size:.65rem; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+    .kanban-count { font-size:.63rem; font-weight:700; padding:.1rem .45rem; border-radius:999px; }
+    .kanban-cards { padding:.625rem; display:flex; flex-direction:column; gap:.5rem; flex:1; }
+    .kanban-card { background:var(--surface2); border:1px solid var(--border); border-radius:.75rem; padding:.875rem; cursor:pointer; transition:border-color .15s,transform .15s; }
+    .kanban-card:hover { border-color:rgba(212,168,67,.3); transform:translateY(-1px); }
+    .kanban-card-title { font-size:.78rem; font-weight:700; margin-bottom:.4rem; line-height:1.35; }
+    .kanban-card-meta { font-size:.6rem; color:var(--muted); display:flex; flex-direction:column; gap:.2rem; }
+    .kanban-empty { font-size:.7rem; color:var(--muted); text-align:center; padding:1.5rem; }
+
+    /* TIMELINE */
+    .timeline { display:flex; flex-direction:column; }
+    .tl-item { display:flex; gap:.875rem; padding-bottom:1.1rem; }
+    .tl-line { display:flex; flex-direction:column; align-items:center; flex-shrink:0; width:22px; }
+    .tl-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+    .tl-connector { width:1px; background:var(--border); flex:1; margin-top:4px; }
+    .tl-item:last-child .tl-connector { display:none; }
+    .tl-action { font-size:.78rem; font-weight:700; }
+    .tl-date { font-size:.6rem; color:var(--muted); margin-top:.1rem; }
+
+    /* VIEW TOGGLE */
+    .view-toggle { display:flex; background:var(--surface); border:1px solid var(--border); border-radius:.5rem; padding:2px; }
+    .view-btn { display:flex; align-items:center; gap:.35rem; padding:.38rem .65rem; border:none; background:none; color:var(--muted); font-size:.7rem; font-weight:600; border-radius:.35rem; cursor:pointer; transition:all .15s; }
+    .view-btn.active { background:var(--surface2); color:var(--text); }
+
+    /* PROGRESS */
+    .pbar-wrap { height:4px; background:rgba(255,255,255,.06); border-radius:999px; overflow:hidden; }
+    .pbar-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#10b981,#6ee7b7); transition:width .5s ease; }
+
+    /* FAB */
+    .fab { position:fixed; bottom:calc(1.5rem + var(--safe-b)); right:1.25rem; width:54px; height:54px; border-radius:50%; background:var(--gold); border:none; cursor:pointer; display:none; align-items:center; justify-content:center; z-index:50; box-shadow:0 4px 20px rgba(212,168,67,.4); transition:transform .15s; touch-action:manipulation; }
+    .fab:active { transform:scale(.92); }
+    @media(max-width:639px){ .fab{ display:flex; } }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar{ width:5px; } ::-webkit-scrollbar-track{ background:transparent; } ::-webkit-scrollbar-thumb{ background:var(--border2); border-radius:3px; }
     </style>
 </head>
 <body>
@@ -164,481 +246,708 @@
             <div class="bo-eyebrow">Suivi terrain</div>
             <h1 class="bo-page-title">Interventions</h1>
         </div>
-        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
-            <button class="bo-btn-ghost" onclick="exportCSV()" title="Exporter CSV">
+        <div style="display:flex;gap:.625rem;align-items:center;flex-wrap:wrap;">
+            <button class="bo-btn-ghost" onclick="exportCSV()">
                 <i data-lucide="download" style="width:14px;height:14px;"></i>
                 Export CSV
             </button>
-            <button class="bo-btn-gold" onclick="openForm()">
+            <button class="bo-btn-gold" style="display:none;" id="btn-new-desktop" onclick="openForm()">
                 <i data-lucide="plus" style="width:14px;height:14px;"></i>
                 Nouvelle intervention
             </button>
         </div>
     </div>
 
-    <!-- KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;margin-bottom:2rem;" id="kpi-row"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:.75rem;margin-bottom:1.1rem;" id="kpi-row"></div>
 
-    <!-- Progression globale -->
-    <div class="bo-card" style="padding:1rem 1.25rem;margin-bottom:1.5rem;" id="progress-bar-wrap">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
-            <span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Taux de résolution</span>
+    <div class="bo-card" style="padding:.875rem 1.1rem;margin-bottom:1.1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.45rem;">
+            <span style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Taux de résolution</span>
             <span style="font-size:.85rem;font-weight:800;color:#6ee7b7;" id="pct-label">—</span>
         </div>
-        <div class="pbar-wrap">
-            <div class="pbar-fill" id="pbar" style="width:0%;background:linear-gradient(90deg,#10b981,#6ee7b7);"></div>
-        </div>
+        <div class="pbar-wrap"><div class="pbar-fill" id="pbar" style="width:0%;"></div></div>
     </div>
 
-    <!-- Filters + view toggle -->
-    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center;">
-        <div class="bo-search-wrap" style="flex:1;min-width:200px;">
+    <div style="display:flex;gap:.75rem;margin-bottom:.875rem;flex-wrap:wrap;align-items:center;">
+        <div class="bo-search-wrap" style="flex:1;min-width:150px;">
             <i data-lucide="search" class="bo-search-icon" style="width:15px;height:15px;"></i>
             <input id="search" class="bo-search" placeholder="Titre, client, technicien…" oninput="render()">
         </div>
-
         <div class="view-toggle">
-            <button class="view-btn active" id="vbtn-list" onclick="setView('list')">
-                <i data-lucide="list" style="width:13px;height:13px;"></i> Liste
-            </button>
-            <button class="view-btn" id="vbtn-kanban" onclick="setView('kanban')">
-                <i data-lucide="columns" style="width:13px;height:13px;"></i> Kanban
-            </button>
+            <button class="view-btn active" id="vbtn-list" onclick="setView('list')"><i data-lucide="list" style="width:13px;height:13px;"></i></button>
+            <button class="view-btn" id="vbtn-kanban" onclick="setView('kanban')"><i data-lucide="columns" style="width:13px;height:13px;"></i></button>
         </div>
-
-        <select class="bo-select" id="sel-tech" onchange="render()" style="width:auto;font-size:.78rem;padding:.4rem .65rem;">
-            <option value="">Tous les techniciens</option>
-        </select>
-
-        <select class="bo-select" id="sel-type" onchange="render()" style="width:auto;font-size:.78rem;padding:.4rem .65rem;">
-            <option value="">Tous les types</option>
+        <select class="bo-select" id="sel-tech" onchange="render()" style="width:auto;font-size:.78rem;padding:.45rem .6rem;padding-right:2rem;">
+            <option value="">Tous techniciens</option>
         </select>
     </div>
 
-    <!-- Pills statut + priorité -->
-    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center;">
-        <span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-right:.25rem;">Statut :</span>
-        <div id="status-pills" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
-        <div style="width:1px;height:18px;background:var(--border);margin:0 .4rem;"></div>
-        <span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-right:.25rem;">Priorité :</span>
-        <div id="prio-pills" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
-        <div style="width:1px;height:18px;background:var(--border);margin:0 .4rem;"></div>
-        <button class="bo-pill" id="pill-overdue" onclick="toggleOverdue()">⏰ En retard</button>
+    <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1.1rem;align-items:center;">
+        <div id="status-pills" style="display:flex;gap:.35rem;flex-wrap:wrap;"></div>
+        <div style="width:1px;height:14px;background:var(--border);margin:0 .25rem;"></div>
+        <div id="prio-pills" style="display:flex;gap:.35rem;flex-wrap:wrap;"></div>
+        <div style="width:1px;height:14px;background:var(--border);margin:0 .25rem;"></div>
+        <button class="bo-pill" id="pill-overdue" onclick="toggleOverdue()">⏰ Retard</button>
     </div>
 
-    <!-- Vue principale -->
-    <div id="view-list">
-        <div class="bo-card" id="table-wrap"></div>
-    </div>
-    <div id="view-kanban" style="display:none;">
-        <div class="kanban-board" id="kanban-wrap"></div>
-    </div>
+    <div id="view-list"><div class="bo-card" id="table-wrap"></div></div>
+    <div id="view-kanban" style="display:none;"><div class="kanban-board" id="kanban-wrap"></div></div>
 
 </main>
 
-<!-- ══════════════════════════════════════════
-     MODAL : FORM NOUVELLE / MODIFIER
-══════════════════════════════════════════ -->
-<div class="bo-modal-overlay" id="modal" style="display:none;">
-    <div class="bo-modal" style="max-width:660px;">
-        <div class="bo-modal-header">
-            <div class="bo-modal-title" id="modal-title">Nouvelle intervention</div>
-            <button class="bo-modal-close" onclick="closeModal()">
-                <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
+<button class="fab" onclick="openForm()" aria-label="Nouvelle intervention">
+    <i data-lucide="plus" style="width:22px;height:22px;color:#000;"></i>
+</button>
+
+<!-- ═══════════════════════════════════════
+     MODAL FORMULAIRE — 3 onglets
+═══════════════════════════════════════ -->
+<div class="bo-modal-overlay" id="modal" style="display:none;" onclick="if(event.target===this)closeModal()">
+<div class="bo-modal">
+    <div class="drag-handle"></div>
+
+    <div class="bo-modal-header">
+        <div class="bo-modal-title" id="modal-title">Nouvelle intervention</div>
+        <button class="bo-modal-close" onclick="closeModal()">
+            <i data-lucide="x" style="width:15px;height:15px;color:#94a3b8;"></i>
+        </button>
+    </div>
+
+    <div class="form-tabs">
+        <button class="form-tab active" id="tab-infos" onclick="showTab('infos')">
+            <i data-lucide="file-text" style="width:15px;height:15px;"></i>Infos
+        </button>
+        <button class="form-tab" id="tab-terrain" onclick="showTab('terrain')">
+            <i data-lucide="wrench" style="width:15px;height:15px;"></i>Terrain
+            <span class="tab-badge" id="badge-terrain" style="display:none;">0</span>
+        </button>
+        <button class="form-tab" id="tab-cloture" onclick="showTab('cloture')">
+            <i data-lucide="check-circle" style="width:15px;height:15px;"></i>Clôture
+        </button>
+    </div>
+
+    <div class="bo-modal-body">
+
+        <!-- ═══ TAB INFOS ═══ -->
+        <div class="form-panel active" id="panel-infos">
+            <div class="bo-field">
+                <label class="bo-label">Titre <span class="req">*</span></label>
+                <input id="f-titre" class="bo-input" placeholder="Ex : Remplacement écran LED lobby">
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem;">
+                <div class="bo-field">
+                    <label class="bo-label">Client <span class="req">*</span></label>
+                    <select id="f-client" class="bo-select"></select>
+                </div>
+                <div class="bo-field">
+                    <label class="bo-label">Type</label>
+                    <select id="f-type" class="bo-select">
+                        <option value="">— Type —</option>
+                        <option>Installation</option>
+                        <option>Maintenance préventive</option>
+                        <option>SAV / Dépannage</option>
+                        <option>Mise à jour contenu</option>
+                        <option>Câblage</option>
+                        <option>Audit</option>
+                    </select>
+                </div>
+                <div class="bo-field">
+                    <label class="bo-label">Technicien</label>
+                    <select id="f-tech" class="bo-select"></select>
+                </div>
+                <div class="bo-field">
+                    <label class="bo-label">Priorité</label>
+                    <select id="f-prio" class="bo-select">
+                        <option>Haute</option><option selected>Moyenne</option><option>Basse</option>
+                    </select>
+                </div>
+                <div class="bo-field">
+                    <label class="bo-label">Statut</label>
+                    <select id="f-statut" class="bo-select">
+                        <option>Ouvert</option><option>En cours</option>
+                        <option>Résolu</option><option>Annulé</option>
+                    </select>
+                </div>
+                <div class="bo-field">
+                    <label class="bo-label">Échéance</label>
+                    <input id="f-date-e" type="date" class="bo-input">
+                </div>
+            </div>
+
+            <div class="bo-field">
+                <label class="bo-label">Adresse / Site</label>
+                <input id="f-site" class="bo-input" placeholder="Ex : Hall principal – Siège Paris 8e">
+            </div>
+
+            <div class="bo-field">
+                <label class="bo-label">Description</label>
+                <textarea id="f-desc" class="bo-textarea" rows="3" placeholder="Problème constaté, mission à réaliser…"></textarea>
+            </div>
+
+            <button class="bo-btn-gold" onclick="showTab('terrain')" style="align-self:flex-end;font-size:.82rem;">
+                Terrain <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
             </button>
         </div>
 
-        <div class="bo-field">
-            <label class="bo-label">Titre <span class="req">*</span></label>
-            <input id="f-titre" class="bo-input" placeholder="Ex : Remplacement écran LED lobby">
-        </div>
+        <!-- ═══ TAB TERRAIN ═══ -->
+        <div class="form-panel" id="panel-terrain">
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-            <div class="bo-field">
-                <label class="bo-label">Client <span class="req">*</span></label>
-                <select id="f-client" class="bo-select"></select>
-            </div>
-            <div class="bo-field">
-                <label class="bo-label">Type d'intervention</label>
-                <select id="f-type" class="bo-select">
-                    <option value="">— Choisir —</option>
-                    <option>Installation</option>
-                    <option>Maintenance préventive</option>
-                    <option>SAV / Dépannage</option>
-                    <option>Mise à jour contenu</option>
-                    <option>Câblage</option>
-                    <option>Audit</option>
-                </select>
-            </div>
-            <div class="bo-field">
-                <label class="bo-label">Technicien assigné</label>
-                <select id="f-tech" class="bo-select">
-                    <option value="">— Non assigné —</option>
-                </select>
-            </div>
-            <div class="bo-field">
-                <label class="bo-label">Adresse / Site</label>
-                <input id="f-site" class="bo-input" placeholder="Ex : Siège Paris 8e">
-            </div>
-            <div class="bo-field">
-                <label class="bo-label">Statut</label>
-                <select id="f-statut" class="bo-select">
-                    <option>Ouvert</option>
-                    <option>En cours</option>
-                    <option>Résolu</option>
-                    <option>Annulé</option>
-                </select>
-            </div>
-            <div class="bo-field">
-                <label class="bo-label">Priorité</label>
-                <select id="f-prio" class="bo-select">
-                    <option>Haute</option>
-                    <option selected>Moyenne</option>
-                    <option>Basse</option>
-                </select>
-            </div>
-            <div class="bo-field">
-                <label class="bo-label">Date création</label>
-                <input id="f-date-c" type="date" class="bo-input">
-            </div>
-            <div class="bo-field">
-                <label class="bo-label">Date d'échéance</label>
-                <input id="f-date-e" type="date" class="bo-input">
-            </div>
-        </div>
-
-        <div class="bo-field">
-            <label class="bo-label">Description du problème</label>
-            <textarea id="f-desc" class="bo-textarea" rows="3" placeholder="Décrivez le problème observé ou la mission à effectuer…"></textarea>
-        </div>
-
-        <!-- Matériel -->
-        <div class="bo-field">
-            <label class="bo-label">Matériel utilisé</label>
-            <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
-                <input id="f-mat-input" class="bo-input" placeholder="Ex : Écran LED P2 55″" onkeydown="if(event.key==='Enter'){event.preventDefault();addMat();}">
-                <button class="bo-btn-gold" onclick="addMat()" style="flex-shrink:0;">
-                    <i data-lucide="plus" style="width:12px;height:12px;"></i>
-                </button>
-            </div>
-            <div id="f-mat-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
-        </div>
-
-        <!-- Rapport de clôture (visible si Résolu) -->
-        <div id="rapport-section" style="display:none;">
-            <div class="bo-divider"></div>
-            <div class="rapport-block">
-                <div class="bo-field">
-                    <label class="bo-label" style="color:#6ee7b7;">✓ Rapport de clôture</label>
-                    <textarea id="f-rapport" class="bo-textarea" rows="3" style="border-color:rgba(16,185,129,.3);" placeholder="Décrivez les actions réalisées, les pièces remplacées, les tests effectués…"></textarea>
+            <!-- CHRONO -->
+            <div>
+                <div class="sec-head"><span>⏱ Chrono</span><div class="sec-head-line"></div></div>
+                <div class="chrono-wrap" style="margin-top:.75rem;">
+                    <div class="chrono-label" id="chrono-lbl">Prêt à démarrer</div>
+                    <div class="chrono-display" id="chrono-disp">00:00:00</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.625rem;">
+                        <button class="btn-touch btn-touch-green" id="btn-start" onclick="chronoStart()">
+                            <i data-lucide="play" style="width:16px;height:16px;"></i> Démarrer
+                        </button>
+                        <button class="btn-touch btn-touch-red" id="btn-stop" onclick="chronoStop()" disabled style="opacity:.4;">
+                            <i data-lucide="square" style="width:16px;height:16px;"></i> Arrêter
+                        </button>
+                    </div>
+                    <div class="chrono-grid">
+                        <div class="chrono-stamp">
+                            <div class="chrono-stamp-lbl">Début</div>
+                            <div class="chrono-stamp-val" id="stamp-debut">—</div>
+                        </div>
+                        <div class="chrono-stamp">
+                            <div class="chrono-stamp-lbl">Fin</div>
+                            <div class="chrono-stamp-val" id="stamp-fin">—</div>
+                        </div>
+                    </div>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem;">
+            </div>
+
+            <!-- MATÉRIEL -->
+            <div>
+                <div class="sec-head"><span>📦 Matériel utilisé</span><div class="sec-head-line"></div></div>
+                <div style="display:flex;gap:.5rem;margin:.75rem 0 .5rem;">
+                    <input id="f-mat-input" class="bo-input" placeholder="Ex : Écran LED 55″ P2…" onkeydown="if(event.key==='Enter'){event.preventDefault();addMat();}">
+                    <button class="bo-btn-gold" onclick="addMat()" style="flex-shrink:0;padding:.72rem 1rem;">
+                        <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                    </button>
+                </div>
+                <div id="f-mat-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+            </div>
+
+            <!-- MESURES -->
+            <div>
+                <div class="sec-head"><span>📐 Mesures & relevés</span><div class="sec-head-line"></div></div>
+                <div style="margin-top:.75rem;display:flex;flex-direction:column;gap:.625rem;">
+                    <div style="display:grid;grid-template-columns:1fr 90px 76px;gap:.5rem;align-items:end;">
+                        <div class="bo-field" style="gap:.3rem;">
+                            <label class="bo-label">Libellé</label>
+                            <input id="m-lbl" class="bo-input" placeholder="Ex : Tension V1">
+                        </div>
+                        <div class="bo-field" style="gap:.3rem;">
+                            <label class="bo-label">Valeur</label>
+                            <input id="m-val" class="bo-input" placeholder="220" inputmode="decimal">
+                        </div>
+                        <div class="bo-field" style="gap:.3rem;">
+                            <label class="bo-label">Unité</label>
+                            <select id="m-unit" class="bo-select" style="padding-right:1.5rem;">
+                                <option>V</option><option>A</option><option>W</option>
+                                <option>cm</option><option>m</option><option>mm</option>
+                                <option>°C</option><option>dB</option><option>Mbps</option>
+                                <option>cd/m²</option><option>%</option><option>autre</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-touch btn-touch-blue" onclick="addMesure()" style="padding:.65rem;">
+                        <i data-lucide="plus" style="width:14px;height:14px;"></i> Ajouter la mesure
+                    </button>
+                    <div id="mesure-list" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+                </div>
+            </div>
+
+            <!-- PHOTOS -->
+            <div>
+                <div class="sec-head"><span>📷 Photos</span><div class="sec-head-line"></div></div>
+                <div style="margin-top:.75rem;">
+                    <input type="file" id="photo-input" accept="image/*" multiple capture="environment" style="display:none;" onchange="handlePhotos(event)">
+                    <div class="photo-grid" id="photo-grid">
+                        <button class="photo-add" onclick="document.getElementById('photo-input').click()">
+                            <i data-lucide="camera" style="width:22px;height:22px;"></i>Ajouter
+                        </button>
+                    </div>
+                    <p style="font-size:.6rem;color:var(--muted);margin-top:.4rem;">Appuyez sur une photo pour la voir en plein écran.</p>
+                </div>
+            </div>
+
+            <!-- NOTE TERRAIN -->
+            <div class="bo-field">
+                <label class="bo-label">Note terrain (interne)</label>
+                <textarea id="f-note" class="bo-textarea" rows="3" placeholder="Accès, contacts sur place, difficultés, observations…"></textarea>
+            </div>
+        </div>
+
+        <!-- ═══ TAB CLÔTURE ═══ -->
+        <div class="form-panel" id="panel-cloture">
+
+            <!-- CHECKLIST -->
+            <div>
+                <div class="sec-head"><span>✅ Points de validation</span><div class="sec-head-line"></div></div>
+                <div id="checklist-wrap" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.75rem;"></div>
+            </div>
+
+            <!-- RAPPORT -->
+            <div class="rapport-block" id="rapport-section">
+                <div style="display:flex;align-items:center;gap:.45rem;">
+                    <i data-lucide="check-circle" style="width:15px;height:15px;color:#6ee7b7;"></i>
+                    <span style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#6ee7b7;">Rapport de clôture</span>
+                </div>
+                <div class="bo-field">
+                    <label class="bo-label" style="color:#6ee7b7;">Actions réalisées</label>
+                    <textarea id="f-rapport" class="bo-textarea" rows="4" style="border-color:rgba(16,185,129,.3);" placeholder="Actions effectuées, pièces remplacées, tests réalisés, résultat final…"></textarea>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
                     <div class="bo-field">
-                        <label class="bo-label" style="color:#6ee7b7;">Durée (heures)</label>
-                        <input id="f-duree" type="number" min="0" step="0.5" class="bo-input" style="border-color:rgba(16,185,129,.3);" placeholder="Ex : 3.5">
+                        <label class="bo-label" style="color:#6ee7b7;">Durée totale (h)</label>
+                        <input id="f-duree" type="text" inputmode="decimal" class="bo-input" style="border-color:rgba(16,185,129,.3);" placeholder="Ex : 3.5">
                     </div>
                     <div class="bo-field">
-                        <label class="bo-label" style="color:#6ee7b7;">Date de résolution</label>
+                        <label class="bo-label" style="color:#6ee7b7;">Date résolution</label>
                         <input id="f-date-r" type="date" class="bo-input" style="border-color:rgba(16,185,129,.3);">
                     </div>
                 </div>
+                <div class="bo-field">
+                    <label class="bo-label" style="color:#6ee7b7;">Signature client</label>
+                    <canvas id="sig-canvas" class="sig-canvas"></canvas>
+                    <button onclick="clearSig()" style="background:none;border:none;color:var(--muted);font-size:.63rem;cursor:pointer;text-align:left;padding:.2rem 0;touch-action:manipulation;">
+                        Effacer la signature
+                    </button>
+                </div>
             </div>
+
         </div>
 
-        <!-- Note interne -->
-        <div class="bo-field">
-            <label class="bo-label">Note interne</label>
-            <textarea id="f-note" class="bo-textarea" rows="2" placeholder="Remarques internes non visibles dans le rapport…"></textarea>
-        </div>
+    </div><!-- /bo-modal-body -->
 
-        <div class="bo-modal-footer">
-            <button class="bo-btn-ghost" onclick="closeModal()">Annuler</button>
-            <button class="bo-btn-gold" onclick="saveForm()">
-                <i data-lucide="check" style="width:14px;height:14px;"></i>
-                Enregistrer
-            </button>
-        </div>
+    <div class="bo-modal-footer">
+        <button class="bo-btn-ghost" onclick="closeModal()">Annuler</button>
+        <button class="bo-btn-gold" onclick="saveForm()">
+            <i data-lucide="check" style="width:15px;height:15px;"></i> Enregistrer
+        </button>
     </div>
 </div>
+</div>
 
-<!-- ══════════════════════════════════════════
-     MODAL : DÉTAIL INTERVENTION
-══════════════════════════════════════════ -->
-<div class="bo-modal-overlay" id="detail-modal" style="display:none;">
-    <div class="bo-modal" style="max-width:620px;" id="detail-content"></div>
+<!-- ═══════════════════════════════════════
+     MODAL DÉTAIL
+═══════════════════════════════════════ -->
+<div class="bo-modal-overlay" id="detail-modal" style="display:none;" onclick="if(event.target===this)closeModal()">
+    <div class="bo-modal" style="max-width:640px;" id="detail-content"></div>
 </div>
 
 <script>
-/* ══════════════════════════════════════════
-   MODULE — bo-shell.js est chargé dans le <head>
-   BO.KEYS, BO.read, BO.write, BO.toast, BO.uid,
-   BO.today, BO.fmt sont fournis par le shell.
-══════════════════════════════════════════ */
-
-
-/* ══════════════════════════════════════════
-   STATE & CONFIG
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════ */
 const STATUS_C = {
-    'Ouvert':   { bg:'rgba(59,130,246,0.15)',  border:'#3b82f6', text:'#93c5fd' },
-    'En cours': { bg:'rgba(245,158,11,0.15)',  border:'#f59e0b', text:'#fcd34d' },
-    'Résolu':   { bg:'rgba(16,185,129,0.15)',  border:'#10b981', text:'#6ee7b7' },
-    'Annulé':   { bg:'rgba(100,116,139,0.15)', border:'#64748b', text:'#94a3b8' },
+    'Ouvert':   {bg:'rgba(59,130,246,0.15)',  border:'#3b82f6', text:'#93c5fd'},
+    'En cours': {bg:'rgba(245,158,11,0.15)',  border:'#f59e0b', text:'#fcd34d'},
+    'Résolu':   {bg:'rgba(16,185,129,0.15)',  border:'#10b981', text:'#6ee7b7'},
+    'Annulé':   {bg:'rgba(100,116,139,0.15)', border:'#64748b', text:'#94a3b8'},
 };
-const PRIO_DOT = { 'Haute':'#ef4444', 'Moyenne':'#f59e0b', 'Basse':'#10b981' };
-const PRIO_ORDER = { 'Haute': 0, 'Moyenne': 1, 'Basse': 2 };
-const TECHS = ['Marc Dubois', 'Sophie Lenoir', 'Julien Moreau', 'Clara Petit'];
+const PRIO_DOT   = {Haute:'#ef4444', Moyenne:'#f59e0b', Basse:'#10b981'};
+const PRIO_ORDER = {Haute:0, Moyenne:1, Basse:2};
+const TECHS = ['Marc Dubois','Sophie Lenoir','Julien Moreau','Clara Petit'];
+const TYPE_ICO = {
+    'Installation':'monitor-check','Maintenance préventive':'wrench',
+    'SAV / Dépannage':'alert-triangle','Mise à jour contenu':'refresh-cw',
+    'Câblage':'cable','Audit':'clipboard-list',
+};
+const CHECKLISTS = {
+    'Installation':          ['Site préparé et accessible','Alimentation secteur vérifiée','Structure / fixations posées','Câblage signal effectué','Écran(s) allumés et testés','CMS configuré et testé','Formation client réalisée','Zone nettoyée'],
+    'Maintenance préventive':['Filtres / ventilations nettoyés','Connexions vérifiées','Firmware à jour','Luminosité / contraste testés','Câbles inspectés','Aucune alarme active','Rapport transmis au client'],
+    'SAV / Dépannage':       ['Diagnostic posé','Cause identifiée','Pièce(s) remplacée(s)','Test de bon fonctionnement','Client informé du résultat',"Bon d'intervention signé"],
+    'Mise à jour contenu':   ["Backup de l'ancien contenu",'Nouveaux fichiers uploadés','Planning CMS mis à jour','Affichage vérifié sur tous les écrans','Validation visuelle client'],
+    'Câblage':               ['Plan de câblage respecté','Câbles étiquetés','Longueurs mesurées et conformes','Tests de débit / continuité','Brassage terminé','Zone rangée et propre'],
+    'Audit':                 ['Inventaire matériel complet','Firmware vérifié','Réseau et sécurité contrôlés','Rapport PDF généré','Anomalies documentées','Restitution client effectuée'],
+    'default':               ['Accès site sécurisé','Matériel testé','Client informé','Zone laissée propre'],
+};
 
-let interventions = [], clients = [];
-let filterStatus = 'Tous', filterPrio = 'Toutes', filterOverdue = false;
-let currentView = 'list';
-let editId = null;
-let formMat = [];
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let interventions=[], clients=[];
+let filterStatus='Tous', filterPrio='Toutes', filterOverdue=false;
+let currentView='list', editId=null;
+let formMat=[], formMesures=[], formPhotos=[], formChecks={};
 
-/* ══════════════════════════════════════════
+// Chrono
+let chronoIv=null, chronoTs=null, chronoElapsed=0;
+let stampDebut='', stampFin='';
+
+// Signature
+let sigCtx=null, sigDrawing=false, sigData='';
+
+/* ═══════════════════════════════════════
    INIT
-══════════════════════════════════════════ */
+═══════════════════════════════════════ */
 async function init() {
     [interventions, clients] = await Promise.all([
         BO.read(BO.KEYS.interventions, []),
         BO.read(BO.KEYS.clients, []),
     ]);
-    buildPills();
-    buildClientSelect();
-    buildTechSelect();
-    buildTypeSelect();
-    render();
-    document.getElementById('f-date-c').value = BO.today();
+    buildPills(); buildClientSelect(); buildTechSelect();
+    initSig();
+    // Bouton desktop
+    document.getElementById('btn-new-desktop').style.display = '';
     document.getElementById('f-statut').addEventListener('change', onStatutChange);
-    lucide.createIcons();
+    document.getElementById('f-type').addEventListener('change', buildChecklist);
+    render(); lucide.createIcons();
 }
 
 function buildPills() {
-    const sCont = document.getElementById('status-pills');
-    sCont.innerHTML = '';
-    ['Tous','Ouvert','En cours','Résolu','Annulé'].forEach(s => {
-        const b = document.createElement('button');
-        b.className = 'bo-pill' + (s === filterStatus ? ' active' : '');
-        b.textContent = s;
-        b.onclick = () => { filterStatus = s; buildPills(); render(); };
-        sCont.appendChild(b);
+    const sc=document.getElementById('status-pills'); sc.innerHTML='';
+    ['Tous','Ouvert','En cours','Résolu','Annulé'].forEach(s=>{
+        const b=document.createElement('button'); b.className='bo-pill'+(s===filterStatus?' active':''); b.textContent=s;
+        b.onclick=()=>{filterStatus=s;buildPills();render();}; sc.appendChild(b);
     });
-
-    const pCont = document.getElementById('prio-pills');
-    pCont.innerHTML = '';
-    ['Toutes','Haute','Moyenne','Basse'].forEach(p => {
-        const b = document.createElement('button');
-        b.className = 'bo-pill' + (p === filterPrio ? ' active' : '');
-        b.textContent = p;
-        b.onclick = () => { filterPrio = p; buildPills(); render(); };
-        pCont.appendChild(b);
+    const pc=document.getElementById('prio-pills'); pc.innerHTML='';
+    ['Toutes','Haute','Moyenne','Basse'].forEach(p=>{
+        const b=document.createElement('button'); b.className='bo-pill'+(p===filterPrio?' active':''); b.textContent=p;
+        b.onclick=()=>{filterPrio=p;buildPills();render();}; pc.appendChild(b);
     });
-
-    const od = document.getElementById('pill-overdue');
-    od.className = 'bo-pill' + (filterOverdue ? ' active' : '');
+    document.getElementById('pill-overdue').className='bo-pill'+(filterOverdue?' active':'');
+}
+function buildClientSelect(){
+    document.getElementById('f-client').innerHTML='<option value="">— Client —</option>'+clients.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+}
+function buildTechSelect(){
+    const opts=TECHS.map(t=>`<option value="${t}">${t}</option>`).join('');
+    document.getElementById('f-tech').innerHTML='<option value="">— Non assigné —</option>'+opts;
+    document.getElementById('sel-tech').innerHTML='<option value="">Tous techniciens</option>'+opts;
 }
 
-function buildClientSelect() {
-    const sel = document.getElementById('f-client');
-    sel.innerHTML = `<option value="">— Sélectionner —</option>` +
-        clients.map(c => `<option value="${c.id}">${c.nom}</option>`).join('');
-}
-
-function buildTechSelect() {
-    const sel = document.getElementById('f-tech');
-    sel.innerHTML = `<option value="">— Non assigné —</option>` +
-        TECHS.map(t => `<option value="${t}">${t}</option>`).join('');
-
-    const fsel = document.getElementById('sel-tech');
-    fsel.innerHTML = `<option value="">Tous les techniciens</option>` +
-        TECHS.map(t => `<option value="${t}">${t}</option>`).join('');
-}
-
-function buildTypeSelect() {
-    const types = ['Installation','Maintenance préventive','SAV / Dépannage','Mise à jour contenu','Câblage','Audit'];
-    const fsel = document.getElementById('sel-type');
-    fsel.innerHTML = `<option value="">Tous les types</option>` +
-        types.map(t => `<option value="${t}">${t}</option>`).join('');
-}
-
-function setView(v) {
-    currentView = v;
-    document.getElementById('view-list').style.display   = v === 'list' ? '' : 'none';
-    document.getElementById('view-kanban').style.display = v === 'kanban' ? '' : 'none';
-    document.getElementById('vbtn-list').className   = 'view-btn' + (v==='list' ? ' active' : '');
-    document.getElementById('vbtn-kanban').className = 'view-btn' + (v==='kanban' ? ' active' : '');
-    render();
+/* ═══════════════════════════════════════
+   TABS
+═══════════════════════════════════════ */
+function showTab(t){
+    ['infos','terrain','cloture'].forEach(id=>{
+        document.getElementById('panel-'+id).classList.toggle('active',id===t);
+        document.getElementById('tab-'+id).classList.toggle('active',id===t);
+    });
     lucide.createIcons();
 }
 
-function toggleOverdue() {
-    filterOverdue = !filterOverdue;
-    buildPills();
-    render();
+/* ═══════════════════════════════════════
+   CHRONO
+═══════════════════════════════════════ */
+function chronoStart(){
+    chronoTs=Date.now()-chronoElapsed;
+    stampDebut=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    stampFin='';
+    document.getElementById('stamp-debut').textContent=stampDebut;
+    document.getElementById('stamp-fin').textContent='—';
+    const bs=document.getElementById('btn-start'), be=document.getElementById('btn-stop');
+    bs.disabled=true; bs.style.opacity='.4';
+    be.disabled=false; be.style.opacity='1';
+    document.getElementById('chrono-lbl').textContent='⏱ En cours…';
+    clearInterval(chronoIv);
+    chronoIv=setInterval(tickChrono,1000);
+}
+function chronoStop(){
+    clearInterval(chronoIv);
+    chronoElapsed=Date.now()-chronoTs;
+    stampFin=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    document.getElementById('stamp-fin').textContent=stampFin;
+    const bs=document.getElementById('btn-start'), be=document.getElementById('btn-stop');
+    bs.disabled=false; bs.style.opacity='1';
+    be.disabled=true; be.style.opacity='.4';
+    document.getElementById('chrono-lbl').textContent='✓ Terminé';
+    const h=+(chronoElapsed/3600000).toFixed(2);
+    document.getElementById('f-duree').value=h;
+}
+function tickChrono(){
+    const e=Date.now()-chronoTs;
+    const h=Math.floor(e/3600000), m=Math.floor((e%3600000)/60000), s=Math.floor((e%60000)/1000);
+    document.getElementById('chrono-disp').textContent=`${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+function pad(n){return String(n).padStart(2,'0');}
+function resetChrono(){
+    clearInterval(chronoIv); chronoIv=null; chronoTs=null; chronoElapsed=0; stampDebut=''; stampFin='';
+    document.getElementById('chrono-disp').textContent='00:00:00';
+    document.getElementById('chrono-lbl').textContent='Prêt à démarrer';
+    document.getElementById('stamp-debut').textContent='—';
+    document.getElementById('stamp-fin').textContent='—';
+    const bs=document.getElementById('btn-start'), be=document.getElementById('btn-stop');
+    bs.disabled=false; bs.style.opacity='1'; be.disabled=true; be.style.opacity='.4';
 }
 
-function onStatutChange() {
-    const v = document.getElementById('f-statut').value;
-    const sec = document.getElementById('rapport-section');
-    sec.style.display = v === 'Résolu' ? '' : 'none';
-    if (v === 'Résolu' && !document.getElementById('f-date-r').value) {
-        document.getElementById('f-date-r').value = BO.today();
-    }
+/* ═══════════════════════════════════════
+   MATÉRIEL
+═══════════════════════════════════════ */
+function addMat(){
+    const inp=document.getElementById('f-mat-input'), v=inp.value.trim();
+    if(!v) return; formMat.push(v); inp.value=''; renderMatChips(); badge();
+}
+function removeMat(i){formMat.splice(i,1); renderMatChips(); badge();}
+function renderMatChips(){
+    document.getElementById('f-mat-chips').innerHTML=formMat.map((m,i)=>`
+        <span class="bo-chip">${m}
+            <button class="bo-chip-btn" onclick="removeMat(${i})"><i data-lucide="x" style="width:10px;height:10px;"></i></button>
+        </span>`).join('');
+    lucide.createIcons();
 }
 
-/* ══════════════════════════════════════════
-   FILTER + HELPERS
-══════════════════════════════════════════ */
-function isOverdue(i) {
-    return i.dateEcheance && new Date(i.dateEcheance) < new Date() && i.statut !== 'Résolu' && i.statut !== 'Annulé';
+/* ═══════════════════════════════════════
+   MESURES
+═══════════════════════════════════════ */
+function addMesure(){
+    const l=document.getElementById('m-lbl').value.trim(), v=document.getElementById('m-val').value.trim(), u=document.getElementById('m-unit').value;
+    if(!l||!v){BO.toast('Libellé et valeur requis','warn');return;}
+    formMesures.push({label:l,val:v,unit:u});
+    document.getElementById('m-lbl').value=''; document.getElementById('m-val').value='';
+    renderMesures(); badge();
 }
-
-function getFiltered() {
-    const q    = document.getElementById('search').value.toLowerCase();
-    const tech = document.getElementById('sel-tech').value;
-    const type = document.getElementById('sel-type').value;
-    return interventions
-        .filter(i => {
-            const ms  = filterStatus === 'Tous' || i.statut === filterStatus;
-            const mp  = filterPrio === 'Toutes' || i.priorite === filterPrio;
-            const mt  = !tech || i.technicien === tech;
-            const mty = !type || i.type === type;
-            const mq  = !q || i.titre.toLowerCase().includes(q)
-                           || (i.technicien||'').toLowerCase().includes(q)
-                           || (clients.find(c=>c.id===i.clientId)?.nom||'').toLowerCase().includes(q)
-                           || (i.site||'').toLowerCase().includes(q);
-            const mo  = !filterOverdue || isOverdue(i);
-            return ms && mp && mt && mty && mq && mo;
-        })
-        .sort((a,b) => PRIO_ORDER[a.priorite] - PRIO_ORDER[b.priorite]);
-}
-
-/* ══════════════════════════════════════════
-   RENDER
-══════════════════════════════════════════ */
-function render() {
-    const filtered = getFiltered();
-
-    // KPIs
-    const total   = interventions.length;
-    const resolus = interventions.filter(i=>i.statut==='Résolu').length;
-    const enCours = interventions.filter(i=>i.statut==='En cours').length;
-    const ouverts = interventions.filter(i=>i.statut==='Ouvert').length;
-    const retard  = interventions.filter(i=>isOverdue(i)).length;
-    const pct     = total ? Math.round(resolus / total * 100) : 0;
-
-    document.getElementById('kpi-row').innerHTML = [
-        { label:'Total',       val: total,   color:'var(--text)',  sub: '' },
-        { label:'Ouverts',     val: ouverts, color:'#93c5fd',     sub: '' },
-        { label:'En cours',    val: enCours, color:'#fcd34d',     sub: '' },
-        { label:'Résolus',     val: resolus, color:'#6ee7b7',     sub: `${pct}%` },
-        { label:'⏰ En retard', val: retard,  color:'#f87171',     sub: '' },
-    ].map(k => `
-        <div class="bo-stat">
-            <div class="bo-stat-label">${k.label}</div>
-            <div class="bo-stat-value" style="color:${k.color};">${k.val}</div>
-            ${k.sub ? `<div class="bo-stat-sub">${k.sub} de résolution</div>` : ''}
+function removeMesure(i){formMesures.splice(i,1); renderMesures(); badge();}
+function renderMesures(){
+    document.getElementById('mesure-list').innerHTML=formMesures.map((m,i)=>`
+        <div class="mesure-item">
+            <div style="flex:1;"><div class="mesure-lbl">${m.label}</div>
+            <div style="display:flex;align-items:baseline;gap:.35rem;margin-top:.1rem;"><span class="mesure-val">${m.val}</span><span class="mesure-unit">${m.unit}</span></div></div>
+            <button class="bo-btn-danger" onclick="removeMesure(${i})"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
         </div>`).join('');
-
-    // Progress bar
-    document.getElementById('pbar').style.width = pct + '%';
-    document.getElementById('pct-label').textContent = pct + '%';
-
-    if (currentView === 'list') renderList(filtered);
-    else renderKanban(filtered);
+    lucide.createIcons();
 }
 
-/* ── LIST ── */
-function renderList(filtered) {
-    const wrap = document.getElementById('table-wrap');
-    if (filtered.length === 0) {
-        wrap.innerHTML = `<div class="bo-empty">
-            <div style="font-size:2rem;margin-bottom:.75rem;">📋</div>
-            <div class="bo-empty-title">Aucune intervention</div>
-            <div class="bo-empty-desc">Modifiez vos filtres ou créez un nouveau ticket.</div>
-        </div>`;
+/* ═══════════════════════════════════════
+   PHOTOS
+═══════════════════════════════════════ */
+function handlePhotos(evt){
+    Array.from(evt.target.files).forEach(f=>{
+        const r=new FileReader();
+        r.onload=e=>{formPhotos.push({dataUrl:e.target.result,legend:''}); renderPhotoGrid(); badge();};
+        r.readAsDataURL(f);
+    });
+    evt.target.value='';
+}
+function removePhoto(i){formPhotos.splice(i,1); renderPhotoGrid(); badge();}
+function updateLegend(i,v){if(formPhotos[i]) formPhotos[i].legend=v;}
+function renderPhotoGrid(){
+    document.getElementById('photo-grid').innerHTML=
+        formPhotos.map((p,i)=>`
+        <div class="photo-thumb">
+            <img src="${p.dataUrl}" alt="" onclick="fullImg('${p.dataUrl}')">
+            <button class="photo-del" onclick="removePhoto(${i})"><i data-lucide="x" style="width:11px;height:11px;color:#fff;"></i></button>
+            <div class="photo-legend-wrap"><input value="${p.legend}" placeholder="Légende…" oninput="updateLegend(${i},this.value)"></div>
+        </div>`).join('')+
+        `<button class="photo-add" onclick="document.getElementById('photo-input').click()">
+            <i data-lucide="camera" style="width:20px;height:20px;"></i><span>Ajouter</span>
+        </button>`;
+    lucide.createIcons();
+}
+function fullImg(url){
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    ov.onclick=()=>ov.remove();
+    const img=document.createElement('img');
+    img.src=url; img.style.cssText='max-width:95%;max-height:95%;border-radius:.75rem;';
+    ov.appendChild(img); document.body.appendChild(ov);
+}
+
+/* ═══════════════════════════════════════
+   CHECKLIST
+═══════════════════════════════════════ */
+function buildChecklist(){
+    const type=document.getElementById('f-type').value;
+    const items=CHECKLISTS[type]||CHECKLISTS['default'];
+    const prev={...formChecks}; formChecks={};
+    items.forEach(it=>{ formChecks[it]=prev[it]||false; });
+    renderChecklist(items);
+}
+function renderChecklist(items){
+    const w=document.getElementById('checklist-wrap');
+    if(!items||!items.length){
+        w.innerHTML='<p style="font-size:.75rem;color:var(--muted);">Choisissez un type d\'intervention (onglet Infos) pour afficher la checklist.</p>';
         return;
     }
+    w.innerHTML=items.map(it=>`
+        <div class="chk-item${formChecks[it]?' on':''}" onclick="toggleChk('${it.replace(/'/g,"\\'")}',this)">
+            <div class="chk-box">${formChecks[it]?'<i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i>':''}</div>
+            <span class="chk-lbl">${it}</span>
+        </div>`).join('');
+    lucide.createIcons();
+}
+function toggleChk(item,el){
+    formChecks[item]=!formChecks[item];
+    el.classList.toggle('on',formChecks[item]);
+    el.querySelector('.chk-box').innerHTML=formChecks[item]?'<i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i>':'';
+    lucide.createIcons();
+}
 
-    const TYPE_ICON = {
-        'Installation':'monitor-check','Maintenance préventive':'wrench','SAV / Dépannage':'alert-triangle',
-        'Mise à jour contenu':'refresh-cw','Câblage':'cable','Audit':'clipboard-list',
-    };
+/* ═══════════════════════════════════════
+   BADGE TERRAIN
+═══════════════════════════════════════ */
+function badge(){
+    const n=formMat.length+formMesures.length+formPhotos.length;
+    const b=document.getElementById('badge-terrain');
+    b.style.display=n?'':'none'; b.textContent=n;
+}
 
-    wrap.innerHTML = filtered.map(i => {
-        const c   = clients.find(cl=>cl.id===i.clientId);
-        const st  = STATUS_C[i.statut] || STATUS_C['Ouvert'];
-        const ov  = isOverdue(i);
-        const ico = TYPE_ICON[i.type] || 'zap';
+/* ═══════════════════════════════════════
+   SIGNATURE
+═══════════════════════════════════════ */
+function initSig(){
+    const c=document.getElementById('sig-canvas');
+    if(!c) return;
+    sigCtx=c.getContext('2d');
+    function resize(){
+        const r=window.devicePixelRatio||1, rect=c.getBoundingClientRect();
+        c.width=rect.width*r; c.height=rect.height*r; sigCtx.scale(r,r);
+        sigCtx.strokeStyle='#d4a843'; sigCtx.lineWidth=2.5; sigCtx.lineCap='round'; sigCtx.lineJoin='round';
+    }
+    resize();
+    function pos(e){ const rect=c.getBoundingClientRect(); return{x:e.clientX-rect.left,y:e.clientY-rect.top}; }
+    c.addEventListener('touchstart',e=>{e.preventDefault();sigDrawing=true;const p=pos(e.touches[0]);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);},{passive:false});
+    c.addEventListener('touchmove', e=>{e.preventDefault();if(!sigDrawing)return;const p=pos(e.touches[0]);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();},{passive:false});
+    c.addEventListener('touchend', ()=>{sigDrawing=false;sigData=c.toDataURL();});
+    c.addEventListener('mousedown',e=>{sigDrawing=true;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);});
+    c.addEventListener('mousemove',e=>{if(!sigDrawing)return;const p=pos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();});
+    c.addEventListener('mouseup',()=>{sigDrawing=false;sigData=c.toDataURL();});
+}
+function clearSig(){
+    const c=document.getElementById('sig-canvas');
+    if(sigCtx){sigCtx.clearRect(0,0,c.width,c.height);sigData='';}
+}
+
+/* ═══════════════════════════════════════
+   STATUT CHANGE
+═══════════════════════════════════════ */
+function onStatutChange(){
+    const v=document.getElementById('f-statut').value;
+    document.getElementById('rapport-section').style.opacity=v==='Résolu'?'1':'.45';
+    if(v==='Résolu'&&!document.getElementById('f-date-r').value)
+        document.getElementById('f-date-r').value=BO.today();
+}
+
+/* ═══════════════════════════════════════
+   FILTER & HELPERS
+═══════════════════════════════════════ */
+function isOverdue(i){return i.dateEcheance&&new Date(i.dateEcheance)<new Date()&&i.statut!=='Résolu'&&i.statut!=='Annulé';}
+function getFiltered(){
+    const q=document.getElementById('search').value.toLowerCase();
+    const tech=document.getElementById('sel-tech').value;
+    return interventions.filter(i=>{
+        const ms=filterStatus==='Tous'||i.statut===filterStatus;
+        const mp=filterPrio==='Toutes'||i.priorite===filterPrio;
+        const mt=!tech||i.technicien===tech;
+        const mq=!q||i.titre.toLowerCase().includes(q)||(i.technicien||'').toLowerCase().includes(q)||(clients.find(c=>c.id===i.clientId)?.nom||'').toLowerCase().includes(q);
+        const mo=!filterOverdue||isOverdue(i);
+        return ms&&mp&&mt&&mq&&mo;
+    }).sort((a,b)=>PRIO_ORDER[a.priorite]-PRIO_ORDER[b.priorite]);
+}
+function setView(v){
+    currentView=v;
+    document.getElementById('view-list').style.display=v==='list'?'':'none';
+    document.getElementById('view-kanban').style.display=v==='kanban'?'':'none';
+    document.getElementById('vbtn-list').className='view-btn'+(v==='list'?' active':'');
+    document.getElementById('vbtn-kanban').className='view-btn'+(v==='kanban'?' active':'');
+    render(); lucide.createIcons();
+}
+function toggleOverdue(){filterOverdue=!filterOverdue;buildPills();render();}
+
+/* ═══════════════════════════════════════
+   RENDER
+═══════════════════════════════════════ */
+function render(){
+    const filtered=getFiltered();
+    const total=interventions.length, resolus=interventions.filter(i=>i.statut==='Résolu').length;
+    const enCours=interventions.filter(i=>i.statut==='En cours').length;
+    const ouverts=interventions.filter(i=>i.statut==='Ouvert').length;
+    const retard=interventions.filter(i=>isOverdue(i)).length;
+    const pct=total?Math.round(resolus/total*100):0;
+
+    document.getElementById('kpi-row').innerHTML=[
+        {l:'Total',    v:total,   c:'var(--text)',s:''},
+        {l:'Ouverts',  v:ouverts, c:'#93c5fd',   s:''},
+        {l:'En cours', v:enCours, c:'#fcd34d',   s:''},
+        {l:'Résolus',  v:resolus, c:'#6ee7b7',   s:pct+'%'},
+        {l:'⏰ Retard', v:retard,  c:'#f87171',   s:''},
+    ].map(k=>`<div class="bo-stat">
+        <div class="bo-stat-label">${k.l}</div>
+        <div class="bo-stat-value" style="color:${k.c};">${k.v}</div>
+        ${k.s?`<div class="bo-stat-sub">${k.s}</div>`:''}
+    </div>`).join('');
+
+    document.getElementById('pbar').style.width=pct+'%';
+    document.getElementById('pct-label').textContent=pct+'%';
+    currentView==='list'?renderList(filtered):renderKanban(filtered);
+}
+
+function renderList(list){
+    const w=document.getElementById('table-wrap');
+    if(!list.length){
+        w.innerHTML='<div class="bo-empty"><div style="font-size:2rem;margin-bottom:.75rem;">📋</div><div class="bo-empty-title">Aucune intervention</div><div class="bo-empty-desc">Créez un ticket ou modifiez vos filtres.</div></div>';
+        return;
+    }
+    w.innerHTML=list.map(i=>{
+        const c=clients.find(cl=>cl.id===i.clientId);
+        const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
+        const ov=isOverdue(i);
+        const ico=TYPE_ICO[i.type]||'zap';
+        const np=(i.photos||[]).length, nm=(i.mesures||[]).length;
         return `
         <div class="bo-row" onclick="openDetail('${i.id}')">
-            <div style="width:8px;height:8px;border-radius:50%;background:${PRIO_DOT[i.priorite]||'#64748b'};flex-shrink:0;box-shadow:0 0 6px ${PRIO_DOT[i.priorite]||'#64748b'}66;" title="Priorité ${i.priorite}"></div>
-            <div style="flex:0 0 2.25rem;font-size:.58rem;color:var(--muted);font-weight:700;font-family:monospace;">#${i.id.slice(-4).toUpperCase()}</div>
-            <div style="flex:0 0 22px;"><i data-lucide="${ico}" style="width:14px;height:14px;color:var(--muted);"></i></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:${PRIO_DOT[i.priorite]};box-shadow:0 0 5px ${PRIO_DOT[i.priorite]}66;flex-shrink:0;"></div>
+            <div style="flex:0 0 1.75rem;font-size:.55rem;color:var(--muted);font-weight:700;font-family:monospace;">#${i.id.slice(-4).toUpperCase()}</div>
+            <i data-lucide="${ico}" style="width:13px;height:13px;color:var(--muted);flex-shrink:0;"></i>
             <div style="flex:3;min-width:0;">
-                <div style="font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${i.titre}</div>
-                <div style="font-size:.63rem;color:var(--muted);margin-top:.1rem;">${c?.nom||'—'} ${i.site ? '· '+i.site : ''}</div>
-            </div>
-            <div style="flex:1.2;min-width:0;">
-                <div style="font-size:.72rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                    ${i.technicien ? `<i data-lucide="user" style="width:11px;height:11px;vertical-align:middle;color:var(--muted);"></i> ${i.technicien}` : '<span style="color:var(--muted);font-style:italic;">Non assigné</span>'}
+                <div style="font-size:.83rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${i.titre}</div>
+                <div style="font-size:.6rem;color:var(--muted);margin-top:.1rem;display:flex;gap:.4rem;">
+                    <span>${c?.nom||'—'}</span>
+                    ${np?`<span>📷${np}</span>`:''}
+                    ${nm?`<span>📐${nm}</span>`:''}
                 </div>
-                ${i.type ? `<div style="font-size:.6rem;color:var(--muted);margin-top:.1rem;">${i.type}</div>` : ''}
             </div>
-            <div style="flex:0 0 100px;font-size:.62rem;color:var(--muted);text-align:right;line-height:1.5;">
-                <div>${BO.fmt(i.dateCreation)}</div>
-                ${i.dateEcheance ? `<div style="color:${ov?'#f87171':'var(--muted)'};">${ov?'⏰ ':''}${BO.fmt(i.dateEcheance)}</div>` : ''}
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem;flex-shrink:0;">
+                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
+                ${ov?'<span style="font-size:.55rem;color:#f87171;">⏰ retard</span>':''}
             </div>
-            <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
-            <div style="display:flex;gap:.35rem;" onclick="event.stopPropagation()">
-                <button class="bo-btn-icon" onclick="openForm('${i.id}')" title="Modifier"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
-                <button class="bo-btn-danger" onclick="remove('${i.id}')" title="Supprimer"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+            <div style="display:flex;gap:.2rem;flex-shrink:0;" onclick="event.stopPropagation()">
+                <button class="bo-btn-icon" onclick="openForm('${i.id}')"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+                <button class="bo-btn-danger" onclick="remove('${i.id}')"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
             </div>
         </div>`;
     }).join('');
-
     lucide.createIcons();
 }
 
-/* ── KANBAN ── */
-function renderKanban(filtered) {
-    const wrap = document.getElementById('kanban-wrap');
-    const COLS = [
-        { key:'Ouvert',   label:'Ouvert',   color:'#3b82f6', bg:'rgba(59,130,246,0.1)' },
-        { key:'En cours', label:'En cours', color:'#f59e0b', bg:'rgba(245,158,11,0.1)' },
-        { key:'Résolu',   label:'Résolu',   color:'#10b981', bg:'rgba(16,185,129,0.1)' },
-        { key:'Annulé',   label:'Annulé',   color:'#64748b', bg:'rgba(100,116,139,0.1)'},
+function renderKanban(list){
+    const w=document.getElementById('kanban-wrap');
+    const COLS=[
+        {k:'Ouvert',  l:'Ouvert',  c:'#3b82f6',bg:'rgba(59,130,246,0.1)'},
+        {k:'En cours',l:'En cours',c:'#f59e0b',bg:'rgba(245,158,11,0.1)'},
+        {k:'Résolu',  l:'Résolu',  c:'#10b981',bg:'rgba(16,185,129,0.1)'},
+        {k:'Annulé',  l:'Annulé',  c:'#64748b',bg:'rgba(100,116,139,0.1)'},
     ];
-
-    wrap.innerHTML = COLS.map(col => {
-        const cards = filtered.filter(i=>i.statut===col.key);
-        return `
-        <div class="kanban-col">
+    w.innerHTML=COLS.map(col=>{
+        const cards=list.filter(i=>i.statut===col.k);
+        return `<div class="kanban-col">
             <div class="kanban-col-header">
-                <span class="kanban-col-title" style="color:${col.color};">${col.label}</span>
-                <span class="kanban-count" style="background:${col.bg};color:${col.color};">${cards.length}</span>
+                <span class="kanban-col-title" style="color:${col.c};">${col.l}</span>
+                <span class="kanban-count" style="background:${col.bg};color:${col.c};">${cards.length}</span>
             </div>
             <div class="kanban-cards">
-                ${cards.length === 0 ? `<div class="kanban-empty">Aucune</div>` : ''}
-                ${cards.map(i => {
-                    const c  = clients.find(cl=>cl.id===i.clientId);
-                    const ov = isOverdue(i);
-                    return `
-                    <div class="kanban-card" onclick="openDetail('${i.id}')">
-                        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.45rem;">
-                            <div style="width:7px;height:7px;border-radius:50%;background:${PRIO_DOT[i.priorite]};box-shadow:0 0 5px ${PRIO_DOT[i.priorite]}66;flex-shrink:0;"></div>
-                            <span style="font-size:.58rem;color:var(--muted);font-family:monospace;font-weight:700;">#${i.id.slice(-4).toUpperCase()}</span>
-                            ${ov ? `<span style="font-size:.6rem;color:#f87171;margin-left:auto;">⏰ Retard</span>` : ''}
+                ${!cards.length?'<div class="kanban-empty">Aucune</div>':''}
+                ${cards.map(i=>{
+                    const c=clients.find(cl=>cl.id===i.clientId);
+                    const ov=isOverdue(i), np=(i.photos||[]).length;
+                    return `<div class="kanban-card" onclick="openDetail('${i.id}')">
+                        <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;">
+                            <div style="width:7px;height:7px;border-radius:50%;background:${PRIO_DOT[i.priorite]};flex-shrink:0;"></div>
+                            <span style="font-size:.55rem;color:var(--muted);font-family:monospace;">#${i.id.slice(-4).toUpperCase()}</span>
+                            ${ov?'<span style="font-size:.55rem;color:#f87171;margin-left:auto;">⏰</span>':''}
                         </div>
                         <div class="kanban-card-title">${i.titre}</div>
                         <div class="kanban-card-meta">
                             <span>${c?.nom||'—'}</span>
-                            ${i.technicien ? `<span>👤 ${i.technicien}</span>` : '<span style="font-style:italic;">Non assigné</span>'}
-                            ${i.dateEcheance ? `<span>📅 ${BO.fmt(i.dateEcheance)}</span>` : ''}
-                        </div>
-                        <div class="kanban-card-foot">
-                            ${i.type ? `<span class="bo-badge" style="background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);">${i.type}</span>` : '<span></span>'}
-                            ${i.materiel?.length ? `<span style="font-size:.6rem;color:var(--muted);">📦 ${i.materiel.length}</span>` : ''}
+                            ${i.technicien?`<span>👤 ${i.technicien}</span>`:''}
+                            ${np?`<span>📷 ${np} photo(s)</span>`:''}
                         </div>
                     </div>`;
                 }).join('')}
@@ -647,274 +956,224 @@ function renderKanban(filtered) {
     }).join('');
 }
 
-/* ══════════════════════════════════════════
-   FORM
-══════════════════════════════════════════ */
-function openForm(id = null) {
-    editId = id;
-    formMat = [];
-    document.getElementById('modal-title').textContent = id ? 'Modifier l\'intervention' : 'Nouvelle intervention';
+/* ═══════════════════════════════════════
+   OPEN FORM
+═══════════════════════════════════════ */
+function openForm(id=null){
+    editId=id; formMat=[]; formMesures=[]; formPhotos=[]; formChecks={};
+    resetChrono(); clearSig();
+    document.getElementById('modal-title').textContent=id?"Modifier l'intervention":"Nouvelle intervention";
 
-    if (id) {
-        const i = interventions.find(x=>x.id===id);
-        if (!i) return;
-        document.getElementById('f-titre').value  = i.titre;
-        document.getElementById('f-client').value = i.clientId;
-        document.getElementById('f-tech').value   = i.technicien || '';
-        document.getElementById('f-type').value   = i.type || '';
-        document.getElementById('f-site').value   = i.site || '';
-        document.getElementById('f-statut').value = i.statut;
-        document.getElementById('f-prio').value   = i.priorite;
-        document.getElementById('f-date-c').value = i.dateCreation;
-        document.getElementById('f-date-e').value = i.dateEcheance || '';
-        document.getElementById('f-desc').value   = i.description || '';
-        document.getElementById('f-rapport').value = i.rapport || '';
-        document.getElementById('f-duree').value  = i.duree || '';
-        document.getElementById('f-date-r').value = i.dateResolution || '';
-        document.getElementById('f-note').value   = i.note || '';
-        formMat = [...(i.materiel || [])];
-        document.getElementById('rapport-section').style.display = i.statut === 'Résolu' ? '' : 'none';
+    if(id){
+        const i=interventions.find(x=>x.id===id); if(!i) return;
+        document.getElementById('f-titre').value  =i.titre;
+        document.getElementById('f-client').value =i.clientId;
+        document.getElementById('f-tech').value   =i.technicien||'';
+        document.getElementById('f-type').value   =i.type||'';
+        document.getElementById('f-site').value   =i.site||'';
+        document.getElementById('f-statut').value =i.statut;
+        document.getElementById('f-prio').value   =i.priorite;
+        document.getElementById('f-date-e').value =i.dateEcheance||'';
+        document.getElementById('f-desc').value   =i.description||'';
+        document.getElementById('f-rapport').value=i.rapport||'';
+        document.getElementById('f-duree').value  =i.duree||'';
+        document.getElementById('f-date-r').value =i.dateResolution||'';
+        document.getElementById('f-note').value   =i.note||'';
+        formMat=    [...(i.materiel||[])];
+        formMesures=[...(i.mesures||[])];
+        formPhotos= [...(i.photos||[])];
+        formChecks= {...(i.checks||{})};
     } else {
-        document.getElementById('f-titre').value  = '';
-        document.getElementById('f-client').value = '';
-        document.getElementById('f-tech').value   = '';
-        document.getElementById('f-type').value   = '';
-        document.getElementById('f-site').value   = '';
-        document.getElementById('f-statut').value = 'Ouvert';
-        document.getElementById('f-prio').value   = 'Moyenne';
-        document.getElementById('f-date-c').value = BO.today();
-        document.getElementById('f-date-e').value = '';
-        document.getElementById('f-desc').value   = '';
-        document.getElementById('f-rapport').value = '';
-        document.getElementById('f-duree').value  = '';
-        document.getElementById('f-date-r').value = '';
-        document.getElementById('f-note').value   = '';
-        formMat = [];
-        document.getElementById('rapport-section').style.display = 'none';
+        ['f-titre','f-site','f-desc','f-rapport','f-note','f-date-e','f-date-r','f-duree'].forEach(x=>document.getElementById(x).value='');
+        document.getElementById('f-client').value='';
+        document.getElementById('f-tech').value='';
+        document.getElementById('f-type').value='';
+        document.getElementById('f-statut').value='Ouvert';
+        document.getElementById('f-prio').value='Moyenne';
     }
-    renderMatChips();
-    document.getElementById('modal').style.display = 'flex';
+
+    document.getElementById('rapport-section').style.opacity=(document.getElementById('f-statut').value==='Résolu')?'1':'.45';
+    renderMatChips(); renderMesures(); renderPhotoGrid();
+    buildChecklist(); badge(); showTab('infos');
+    document.getElementById('modal').style.display='flex';
     lucide.createIcons();
 }
 
-function closeModal() {
-    document.getElementById('modal').style.display = 'none';
-    document.getElementById('detail-modal').style.display = 'none';
+function closeModal(){
+    document.getElementById('modal').style.display='none';
+    document.getElementById('detail-modal').style.display='none';
 }
 
-function addMat() {
-    const inp = document.getElementById('f-mat-input');
-    const val = inp.value.trim();
-    if (!val) return;
-    formMat.push(val);
-    inp.value = '';
-    renderMatChips();
-    lucide.createIcons();
-}
+/* ═══════════════════════════════════════
+   SAVE
+═══════════════════════════════════════ */
+async function saveForm(){
+    const titre=document.getElementById('f-titre').value.trim();
+    const client=document.getElementById('f-client').value;
+    if(!titre){showTab('infos');BO.toast('Titre obligatoire','warn');return;}
+    if(!client){showTab('infos');BO.toast('Sélectionnez un client','warn');return;}
 
-function removeMat(idx) {
-    formMat.splice(idx,1);
-    renderMatChips();
-    lucide.createIcons();
-}
-
-function renderMatChips() {
-    document.getElementById('f-mat-chips').innerHTML = formMat.map((m,i) => `
-        <span class="bo-chip">${m}
-            <button class="bo-chip-btn" onclick="removeMat(${i})">
-                <i data-lucide="x" style="width:10px;height:10px;"></i>
-            </button>
-        </span>`).join('');
-}
-
-async function saveForm() {
-    const titre  = document.getElementById('f-titre').value.trim();
-    const client = document.getElementById('f-client').value;
-    if (!titre)  { BO.toast('Le titre est obligatoire', 'warn'); return; }
-    if (!client) { BO.toast('Sélectionnez un client', 'warn'); return; }
-
-    const newStatut = document.getElementById('f-statut').value;
-
-    const data = {
-        titre,
-        clientId:       client,
-        technicien:     document.getElementById('f-tech').value,
-        type:           document.getElementById('f-type').value,
-        site:           document.getElementById('f-site').value.trim(),
-        statut:         newStatut,
-        priorite:       document.getElementById('f-prio').value,
-        dateCreation:   document.getElementById('f-date-c').value,
-        dateEcheance:   document.getElementById('f-date-e').value,
-        description:    document.getElementById('f-desc').value.trim(),
-        materiel:       [...formMat],
-        rapport:        document.getElementById('f-rapport').value.trim(),
-        duree:          parseFloat(document.getElementById('f-duree').value) || 0,
-        dateResolution: document.getElementById('f-date-r').value,
-        note:           document.getElementById('f-note').value.trim(),
+    const ns=document.getElementById('f-statut').value;
+    const data={
+        titre, clientId:client,
+        technicien: document.getElementById('f-tech').value,
+        type:       document.getElementById('f-type').value,
+        site:       document.getElementById('f-site').value.trim(),
+        statut:ns, priorite:document.getElementById('f-prio').value,
+        dateCreation: editId?(interventions.find(x=>x.id===editId)?.dateCreation||BO.today()):BO.today(),
+        dateEcheance: document.getElementById('f-date-e').value,
+        description:  document.getElementById('f-desc').value.trim(),
+        materiel:     [...formMat], mesures:[...formMesures], photos:[...formPhotos], checks:{...formChecks},
+        rapport:      document.getElementById('f-rapport').value.trim(),
+        duree:        parseFloat(document.getElementById('f-duree').value)||0,
+        dateResolution:document.getElementById('f-date-r').value,
+        note:         document.getElementById('f-note').value.trim(),
+        signature:    sigData||'', chronoDebut:stampDebut, chronoFin:stampFin,
     };
 
-    if (editId) {
-        const old = interventions.find(i=>i.id===editId);
-        const hist = [...(old?.historique||[])];
-        if (old && old.statut !== newStatut) {
-            hist.push({ date: BO.today(), action: `Statut → ${newStatut}`, couleur: STATUS_C[newStatut]?.border||'#64748b' });
-        }
-        data.historique = hist;
-        interventions = interventions.map(i => i.id===editId ? {...i,...data} : i);
-        BO.toast('Intervention mise à jour', 'success');
+    if(editId){
+        const old=interventions.find(i=>i.id===editId);
+        const hist=[...(old?.historique||[])];
+        if(old&&old.statut!==ns) hist.push({date:BO.today(),action:`Statut → ${ns}`,couleur:STATUS_C[ns]?.border||'#64748b'});
+        if(data.photos.length&&!(old?.photos||[]).length) hist.push({date:BO.today(),action:`${data.photos.length} photo(s) ajoutée(s)`,couleur:'#8b5cf6'});
+        data.historique=hist;
+        interventions=interventions.map(i=>i.id===editId?{...i,...data}:i);
+        BO.toast('Intervention mise à jour','success');
     } else {
-        data.historique = [{ date: BO.today(), action: 'Ticket ouvert', couleur: '#3b82f6' }];
-        interventions.unshift({ id: BO.uid(), ...data });
-        BO.toast('Intervention créée', 'success');
+        data.historique=[{date:BO.today(),action:'Ticket ouvert',couleur:'#3b82f6'}];
+        interventions.unshift({id:BO.uid(),...data});
+        BO.toast('Intervention créée','success');
     }
-
-    await BO.write(BO.KEYS.interventions, interventions);
-    closeModal();
-    render();
+    await BO.write(BO.KEYS.interventions,interventions);
+    closeModal(); render();
 }
 
-async function remove(id) {
-    if (!confirm('Supprimer cette intervention ? Cette action est irréversible.')) return;
-    interventions = interventions.filter(i=>i.id!==id);
-    await BO.write(BO.KEYS.interventions, interventions);
-    BO.toast('Intervention supprimée', 'info');
-    render();
+async function remove(id){
+    if(!confirm('Supprimer cette intervention ?')) return;
+    interventions=interventions.filter(i=>i.id!==id);
+    await BO.write(BO.KEYS.interventions,interventions);
+    BO.toast('Supprimé','info'); render();
 }
 
-/* ══════════════════════════════════════════
-   DETAIL MODAL
-══════════════════════════════════════════ */
-function openDetail(id) {
-    const i  = interventions.find(x=>x.id===id);
-    if (!i) return;
-    const c  = clients.find(cl=>cl.id===i.clientId);
-    const st = STATUS_C[i.statut] || STATUS_C['Ouvert'];
-    const ov = isOverdue(i);
+/* ═══════════════════════════════════════
+   DETAIL
+═══════════════════════════════════════ */
+function openDetail(id){
+    const i=interventions.find(x=>x.id===id); if(!i) return;
+    const c=clients.find(cl=>cl.id===i.clientId);
+    const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
+    const ov=isOverdue(i);
+    const hist=(i.historique||[]).slice().reverse();
 
-    const hist = (i.historique||[]).slice().reverse();
-
-    const timelineHTML = hist.length ? `
-        <div style="margin-bottom:1.5rem;">
-            <div style="font-size:.6rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.875rem;">
-                Historique
-            </div>
-            <div class="timeline">
-                ${hist.map(h => `
-                <div class="tl-item">
-                    <div class="tl-line">
-                        <div class="tl-dot" style="background:${h.couleur};box-shadow:0 0 6px ${h.couleur}66;"></div>
-                        <div class="tl-connector"></div>
-                    </div>
-                    <div class="tl-content">
-                        <div class="tl-action">${h.action}</div>
-                        <div class="tl-date">${BO.fmt(h.date)}</div>
-                        ${h.note ? `<div class="tl-note">${h.note}</div>` : ''}
-                    </div>
+    const photosH=(i.photos||[]).length?`
+        <div style="margin-bottom:1.1rem;">
+            <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">📷 Photos (${i.photos.length})</div>
+            <div class="photo-grid">${i.photos.map(p=>`
+                <div class="photo-thumb">
+                    <img src="${p.dataUrl}" alt="${p.legend}" onclick="fullImg('${p.dataUrl}')">
+                    ${p.legend?`<div class="photo-legend-wrap" style="pointer-events:none;"><span style="font-size:.6rem;color:#fff;">${p.legend}</span></div>`:''}
                 </div>`).join('')}
             </div>
-        </div>` : '';
+        </div>`:'' ;
 
-    const rapportHTML = i.rapport ? `
-        <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:.75rem;padding:1rem;margin-bottom:1.5rem;">
-            <div style="font-size:.6rem;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">
-                ✓ Rapport de clôture ${i.duree ? `· ${i.duree}h` : ''} ${i.dateResolution ? `· résolu le ${BO.fmt(i.dateResolution)}` : ''}
+    const mesuresH=(i.mesures||[]).length?`
+        <div style="margin-bottom:1.1rem;">
+            <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">📐 Mesures</div>
+            <div style="display:flex;flex-direction:column;gap:.4rem;">${i.mesures.map(m=>`
+                <div class="mesure-item"><div style="flex:1;"><div class="mesure-lbl">${m.label}</div>
+                <div style="display:flex;align-items:baseline;gap:.3rem;margin-top:.1rem;"><span class="mesure-val">${m.val}</span><span class="mesure-unit">${m.unit}</span></div></div>
+                </div>`).join('')}
             </div>
-            <div style="font-size:.8rem;color:#cbd5e1;line-height:1.65;">${i.rapport}</div>
-        </div>` : '';
+        </div>`:'' ;
 
-    const noteHTML = i.note ? `
-        <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:.75rem;padding:.875rem;margin-bottom:1.5rem;">
-            <div style="font-size:.6rem;color:#fcd34d;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;">Note interne</div>
-            <div style="font-size:.78rem;color:#cbd5e1;">${i.note}</div>
-        </div>` : '';
+    const checksH=Object.keys(i.checks||{}).length?`
+        <div style="margin-bottom:1.1rem;">
+            <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">✅ Checklist</div>
+            <div style="display:flex;flex-direction:column;gap:.3rem;">${Object.entries(i.checks).map(([k,v])=>`
+                <div style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;${v?'':'opacity:.45'}">
+                    <span style="color:${v?'#6ee7b7':'var(--muted)'};">${v?'✓':'○'}</span>
+                    <span style="${v?'':'text-decoration:line-through;color:var(--muted);'}">${k}</span>
+                </div>`).join('')}
+            </div>
+        </div>`:'' ;
 
-    document.getElementById('detail-content').innerHTML = `
+    const rapportH=i.rapport?`
+        <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:.75rem;padding:.875rem;margin-bottom:1.1rem;">
+            <div style="font-size:.52rem;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;">
+                ✓ Rapport${i.duree?' · '+i.duree+'h':''}${i.dateResolution?' · '+BO.fmt(i.dateResolution):''}${i.chronoDebut?' · ⏱ '+i.chronoDebut+'→'+(i.chronoFin||'…'):''}
+            </div>
+            <div style="font-size:.8rem;color:#cbd5e1;line-height:1.6;">${i.rapport}</div>
+            ${i.signature?`<div style="margin-top:.625rem;border-top:1px solid rgba(16,185,129,.15);padding-top:.5rem;"><div style="font-size:.52rem;color:#6ee7b7;font-weight:700;margin-bottom:.25rem;">SIGNATURE CLIENT</div><img src="${i.signature}" style="border-radius:.5rem;max-height:70px;opacity:.8;"></div>`:''}
+        </div>`:'' ;
+
+    const tlH=hist.length?`
+        <div style="margin-bottom:1rem;">
+            <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.625rem;">Historique</div>
+            <div class="timeline">${hist.map(h=>`
+                <div class="tl-item">
+                    <div class="tl-line"><div class="tl-dot" style="background:${h.couleur};box-shadow:0 0 5px ${h.couleur}66;"></div><div class="tl-connector"></div></div>
+                    <div><div class="tl-action">${h.action}</div><div class="tl-date">${BO.fmt(h.date)}</div></div>
+                </div>`).join('')}
+            </div>
+        </div>`:'' ;
+
+    document.getElementById('detail-content').innerHTML=`
+        <div class="drag-handle"></div>
         <div class="bo-modal-header">
             <div>
-                <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:.2rem;">#${i.id.slice(-4).toUpperCase()} · ${i.type||'Intervention'}</div>
-                <div class="bo-modal-title" style="font-size:1rem;">${i.titre}</div>
+                <div style="font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:.2rem;">#${i.id.slice(-4).toUpperCase()} · ${i.type||'Intervention'}</div>
+                <div class="bo-modal-title" style="font-size:.92rem;">${i.titre}</div>
             </div>
-            <button class="bo-modal-close" onclick="closeModal()">
-                <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
-            </button>
+            <button class="bo-modal-close" onclick="closeModal()"><i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i></button>
         </div>
-
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
-            <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
-            <span class="bo-badge" style="background:${PRIO_DOT[i.priorite]}22;color:${PRIO_DOT[i.priorite]};border:1px solid ${PRIO_DOT[i.priorite]}44;">⬤ ${i.priorite}</span>
-            ${i.materiel?.length ? `<span class="bo-badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);">📦 ${i.materiel.length} matériel(s)</span>` : ''}
-            ${ov ? `<span class="bo-badge" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);">⏰ En retard</span>` : ''}
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem;">
-            ${[
-                ['Client',      c?.nom||'—'],
-                ['Site',        i.site||'—'],
-                ['Technicien',  i.technicien||'Non assigné'],
-                ['Créé le',     BO.fmt(i.dateCreation)],
-                ['Échéance',    i.dateEcheance ? (ov?'⏰ ':'')+BO.fmt(i.dateEcheance) : '—'],
-                ['Durée',       i.duree ? i.duree+'h' : '—'],
-            ].map(([l,v]) => `
-            <div style="background:rgba(0,0,0,.25);border-radius:.75rem;padding:.875rem;">
-                <div style="font-size:.55rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.25rem;">${l}</div>
-                <div style="font-size:.82rem;font-weight:600;color:${l==='Échéance'&&ov?'#f87171':'white'};">${v}</div>
-            </div>`).join('')}
-        </div>
-
-        ${i.description ? `
-        <div style="background:rgba(0,0,0,.25);border-radius:.75rem;padding:1rem;margin-bottom:1.5rem;">
-            <div style="font-size:.55rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">Description</div>
-            <div style="font-size:.8rem;color:#cbd5e1;line-height:1.65;">${i.description}</div>
-        </div>` : ''}
-
-        ${i.materiel?.length ? `
-        <div style="margin-bottom:1.5rem;">
-            <div style="font-size:.55rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">Matériel utilisé</div>
-            <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
-                ${i.materiel.map(m => `<span class="bo-badge" style="background:rgba(139,92,246,.1);color:#a78bfa;border:1px solid rgba(139,92,246,.25);">📦 ${m}</span>`).join('')}
+        <div class="bo-modal-body" style="padding:1.1rem;">
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;">
+                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
+                <span class="bo-badge" style="background:${PRIO_DOT[i.priorite]}22;color:${PRIO_DOT[i.priorite]};border:1px solid ${PRIO_DOT[i.priorite]}44;">⬤ ${i.priorite}</span>
+                ${(i.photos||[]).length?`<span class="bo-badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);">📷 ${i.photos.length}</span>`:''}
+                ${(i.mesures||[]).length?`<span class="bo-badge" style="background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.3);">📐 ${i.mesures.length}</span>`:''}
+                ${ov?'<span class="bo-badge" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);">⏰ Retard</span>':''}
             </div>
-        </div>` : ''}
-
-        ${rapportHTML}
-        ${noteHTML}
-        ${timelineHTML}
-
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
+                ${[['Client',c?.nom||'—'],['Site',i.site||'—'],['Technicien',i.technicien||'Non assigné'],['Durée',i.duree?i.duree+'h':'—'],['Échéance',i.dateEcheance?(ov?'⏰ ':'')+BO.fmt(i.dateEcheance):'—'],['Créé le',BO.fmt(i.dateCreation)]].map(([l,v])=>`
+                <div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.625rem .75rem;">
+                    <div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.15rem;">${l}</div>
+                    <div style="font-size:.82rem;font-weight:600;">${v}</div>
+                </div>`).join('')}
+            </div>
+            ${i.description?`<div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:.35rem;">Description</div><div style="font-size:.8rem;color:#cbd5e1;line-height:1.6;">${i.description}</div></div>`:''}
+            ${photosH}${mesuresH}${checksH}${rapportH}
+            ${i.note?`<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.5rem;color:#fcd34d;font-weight:700;text-transform:uppercase;margin-bottom:.3rem;">Note interne</div><div style="font-size:.78rem;color:#cbd5e1;">${i.note}</div></div>`:''}
+            ${tlH}
+        </div>
         <div class="bo-modal-footer">
             <button class="bo-btn-ghost" onclick="closeModal()">Fermer</button>
-            <button class="bo-btn-gold" onclick="closeModal();openForm('${i.id}')">
-                <i data-lucide="pencil" style="width:13px;height:13px;"></i> Modifier
-            </button>
+            <button class="bo-btn-gold" onclick="closeModal();openForm('${i.id}')"><i data-lucide="pencil" style="width:13px;height:13px;"></i> Modifier</button>
         </div>`;
 
-    document.getElementById('detail-modal').style.display = 'flex';
+    document.getElementById('detail-modal').style.display='flex';
     lucide.createIcons();
 }
 
-/* ══════════════════════════════════════════
+/* ═══════════════════════════════════════
    EXPORT CSV
-══════════════════════════════════════════ */
-function exportCSV() {
-    const cols = ['ID','Titre','Client','Site','Type','Technicien','Statut','Priorité','Date création','Date échéance','Date résolution','Durée (h)','Matériel','Description','Rapport'];
-    const rows = interventions.map(i => {
-        const c = clients.find(cl=>cl.id===i.clientId);
-        return [
-            i.id, i.titre, c?.nom||'', i.site||'', i.type||'', i.technicien||'',
-            i.statut, i.priorite, i.dateCreation, i.dateEcheance||'', i.dateResolution||'',
-            i.duree||0, (i.materiel||[]).join(' | '),
-            (i.description||'').replace(/\n/g,' '), (i.rapport||'').replace(/\n/g,' '),
-        ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+═══════════════════════════════════════ */
+function exportCSV(){
+    const cols=['ID','Titre','Client','Site','Type','Technicien','Statut','Priorité','Créé le','Échéance','Résolu le','Durée (h)','Photos','Mesures','Matériel','Description','Rapport'];
+    const rows=interventions.map(i=>{
+        const c=clients.find(cl=>cl.id===i.clientId);
+        return [i.id,i.titre,c?.nom||'',i.site||'',i.type||'',i.technicien||'',i.statut,i.priorite,
+            i.dateCreation,i.dateEcheance||'',i.dateResolution||'',i.duree||0,
+            (i.photos||[]).length,(i.mesures||[]).map(m=>`${m.label}:${m.val}${m.unit}`).join(' | '),
+            (i.materiel||[]).join(' | '),(i.description||'').replace(/\n/g,' '),(i.rapport||'').replace(/\n/g,' '),
+        ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
     });
-    const csv = [cols.join(','), ...rows].join('\n');
-    const a = document.createElement('a');
-    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF'+csv);
-    a.download = `interventions_${BO.today()}.csv`;
-    a.click();
-    BO.toast('Export CSV téléchargé', 'success');
+    const csv=[cols.join(','),...rows].join('\n');
+    const a=document.createElement('a');
+    a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
+    a.download=`interventions_${BO.today()}.csv`;
+    a.click(); BO.toast('Export CSV téléchargé','success');
 }
-
-/* ── CLOSE on overlay click ── */
-document.getElementById('modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
-document.getElementById('detail-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
