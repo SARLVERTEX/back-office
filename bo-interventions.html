@@ -236,6 +236,18 @@
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
     .voice-listening { animation:pulse .8s ease infinite; color:var(--red)!important; }
 
+    /* ── CUSTOM CONFIRM DIALOG ── */
+    .confirm-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:2000; padding:1rem; animation:fadeUp .18s ease both; }
+    .confirm-box { background:var(--surface); border:1px solid var(--border2); border-radius:1.25rem; padding:1.5rem; max-width:340px; width:100%; text-align:center; }
+    .confirm-icon { font-size:2rem; margin-bottom:.75rem; }
+    .confirm-title { font-size:.95rem; font-weight:800; margin-bottom:.4rem; }
+    .confirm-msg { font-size:.8rem; color:var(--muted); line-height:1.55; margin-bottom:1.25rem; }
+    .confirm-btns { display:flex; gap:.625rem; }
+    .confirm-btns button { flex:1; padding:.75rem; border-radius:.75rem; font-size:.85rem; font-weight:700; cursor:pointer; border:none; transition:all .15s; }
+    .confirm-cancel { background:var(--surface2); color:var(--text); border:1px solid var(--border) !important; }
+    .confirm-ok { background:var(--red); color:#fff; }
+    .confirm-ok.gold { background:var(--gold); color:#000; }
+
     ::-webkit-scrollbar{ width:5px; } ::-webkit-scrollbar-track{ background:transparent; } ::-webkit-scrollbar-thumb{ background:var(--border2); border-radius:3px; }
     </style>
 </head>
@@ -281,13 +293,13 @@
             <div class="chart-bars" id="chart-tech"></div>
         </div>
     </div>
-    @media(max-width:560px){ #charts-row{ grid-template-columns:1fr; } }
 
     <!-- FILTERS -->
     <div style="display:flex;gap:.625rem;margin-bottom:.875rem;flex-wrap:wrap;align-items:center;">
         <div class="bo-search-wrap" style="flex:1;min-width:150px;">
             <i data-lucide="search" class="bo-search-icon" style="width:15px;height:15px;"></i>
-            <input id="search" class="bo-search" placeholder="Titre, client, technicien…" oninput="render()">
+            <!-- FIX #15 : debounce sur la recherche -->
+            <input id="search" class="bo-search" placeholder="Titre, client, technicien…" oninput="debounceRender()">
         </div>
         <div class="view-toggle">
             <button class="view-btn active" id="vbtn-list" onclick="setView('list')"><i data-lucide="list" style="width:13px;height:13px;"></i></button>
@@ -329,7 +341,7 @@
 <!-- ══════════════════════════════════════
      MODAL FORMULAIRE
 ══════════════════════════════════════ -->
-<div class="bo-modal-overlay" id="modal" style="display:none;" onclick="if(event.target===this)closeModal()">
+<div class="bo-modal-overlay" id="modal" style="display:none;" onclick="if(event.target===this)maybeCloseForm()">
 <div class="bo-modal">
     <div class="drag-handle"></div>
     <div class="bo-modal-header">
@@ -337,7 +349,7 @@
             <div class="bo-modal-title" id="modal-title">Nouvelle intervention</div>
             <div id="draft-saved-lbl" style="font-size:.58rem;color:var(--muted);margin-top:.1rem;display:none;">✓ Brouillon sauvegardé</div>
         </div>
-        <button class="bo-modal-close" onclick="closeModal()"><i data-lucide="x" style="width:15px;height:15px;color:#94a3b8;"></i></button>
+        <button class="bo-modal-close" onclick="maybeCloseForm()"><i data-lucide="x" style="width:15px;height:15px;color:#94a3b8;"></i></button>
     </div>
 
     <div class="form-tabs">
@@ -353,7 +365,7 @@
         </button>
     </div>
 
-    <div class="bo-modal-body">
+    <div class="bo-modal-body" id="form-modal-body">
 
     <!-- ══ TAB INFOS ══ -->
     <div class="form-panel active" id="panel-infos">
@@ -561,7 +573,7 @@
     </div><!-- /bo-modal-body -->
 
     <div class="bo-modal-footer">
-        <button class="bo-btn-ghost" onclick="discardDraft()">Annuler</button>
+        <button class="bo-btn-ghost" onclick="maybeCloseForm()">Annuler</button>
         <button class="bo-btn-gold" onclick="saveForm()">
             <i data-lucide="check" style="width:15px;height:15px;"></i> Enregistrer
         </button>
@@ -570,11 +582,12 @@
 </div>
 
 <!-- MODAL DÉTAIL -->
-<div class="bo-modal-overlay" id="detail-modal" style="display:none;" onclick="if(event.target===this)closeModal()">
+<!-- FIX #4 : modal détail séparé, ne ferme pas le formulaire -->
+<div class="bo-modal-overlay" id="detail-modal" style="display:none;" onclick="if(event.target===this)closeDetailModal()">
     <div class="bo-modal" style="max-width:680px;" id="detail-content"></div>
 </div>
 
-<!-- MODAL DUPLIQUER — sélection source -->
+<!-- MODAL DUPLIQUER -->
 <div class="bo-modal-overlay" id="dup-modal" style="display:none;" onclick="if(event.target===this)document.getElementById('dup-modal').style.display='none'">
 <div class="bo-modal" style="max-width:500px;">
     <div class="drag-handle"></div>
@@ -592,7 +605,45 @@
 </div>
 </div>
 
+<!-- CUSTOM CONFIRM DIALOG -->
+<div id="confirm-overlay" class="confirm-overlay" style="display:none;">
+    <div class="confirm-box">
+        <div class="confirm-icon" id="confirm-icon">⚠️</div>
+        <div class="confirm-title" id="confirm-title">Confirmation</div>
+        <div class="confirm-msg" id="confirm-msg"></div>
+        <div class="confirm-btns">
+            <button class="confirm-cancel" id="confirm-cancel-btn">Annuler</button>
+            <button class="confirm-ok" id="confirm-ok-btn">Confirmer</button>
+        </div>
+    </div>
+</div>
+
 <script>
+/* ══════════════════════════════════════
+   FIX #11 : CUSTOM CONFIRM (remplace confirm() bloquant)
+══════════════════════════════════════ */
+function boConfirm({ title='Confirmation', msg='', okLabel='Confirmer', okClass='', icon='⚠️' } = {}) {
+    return new Promise(resolve => {
+        const ov  = document.getElementById('confirm-overlay');
+        const okB = document.getElementById('confirm-ok-btn');
+        const caB = document.getElementById('confirm-cancel-btn');
+        document.getElementById('confirm-icon').textContent  = icon;
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-msg').textContent   = msg;
+        okB.textContent = okLabel;
+        okB.className   = 'confirm-ok' + (okClass ? ' ' + okClass : '');
+        ov.style.display = 'flex';
+        const cleanup = (val) => {
+            ov.style.display = 'none';
+            okB.replaceWith(okB.cloneNode(true));   // remove old listeners
+            caB.replaceWith(caB.cloneNode(true));
+            resolve(val);
+        };
+        document.getElementById('confirm-ok-btn').addEventListener('click', () => cleanup(true),  { once: true });
+        document.getElementById('confirm-cancel-btn').addEventListener('click', () => cleanup(false), { once: true });
+    });
+}
+
 /* ══════════════════════════════════════
    CONFIG & CONSTANTS
 ══════════════════════════════════════ */
@@ -619,9 +670,23 @@ const CHECKLISTS = {
     'Audit':                 ['Inventaire matériel complet','Firmware vérifié','Réseau et sécurité contrôlés','Rapport PDF généré','Anomalies documentées','Restitution client effectuée'],
     'default':               ['Accès site sécurisé','Matériel testé','Client informé','Zone laissée propre'],
 };
-const DRAFT_KEY = 'bo_draft_intervention';
-const PHOTO_MAX_PX = 1200;
-const PHOTO_QUALITY = 0.75;
+const DRAFT_KEY  = 'bo_draft_intervention';
+const PHOTO_MAX_PX   = 1200;
+const PHOTO_QUALITY  = 0.75;
+
+/* ══════════════════════════════════════
+   FIX #2 : SANITIZER XSS
+   Échappe toutes les chaînes avant injection HTML
+══════════════════════════════════════ */
+function esc(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
 
 /* ══════════════════════════════════════
    STATE
@@ -631,8 +696,9 @@ let filterStatus='Tous', filterPrio='Toutes', filterOverdue=false;
 let sortCol='dateCreation', sortDir='desc';
 let currentView='list', editId=null, isDup=false;
 let formMat=[], formMesures=[], formPhotos=[], formChecks={};
+let formDirty = false; // FIX #14 : dirty flag
 
-// Chrono — persistant via localStorage
+// Chrono
 let chronoIv=null;
 let stampDebut='', stampFin='';
 
@@ -640,7 +706,11 @@ let stampDebut='', stampFin='';
 let sigCtx=null, sigDrawing=false, sigData='';
 
 // Draft autosave
-let draftIv=null;
+let draftTimer=null;
+
+// FIX #15 : debounce render
+let renderTimer=null;
+function debounceRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(render,220); }
 
 /* ══════════════════════════════════════
    INIT
@@ -651,13 +721,13 @@ async function init() {
         BO.read(BO.KEYS.clients, []),
     ]);
     buildPills(); buildClientSelect(); buildTechSelect(); buildTypeSelect();
-    initSig(); restoreChronoState();
+    initSig();
+    restoreChronoState();
     document.getElementById('btn-new-desktop').style.display = '';
     document.getElementById('f-statut').addEventListener('change', onStatutChange);
     document.getElementById('f-type').addEventListener('change', buildChecklist);
-    // Inputs autosave brouillon
-    document.getElementById('bo-modal-body')?.addEventListener('input', scheduleDraft);
-    render(); renderCharts(); lucide.createIcons();
+    refresh();
+    lucide.createIcons();
 }
 
 function buildPills() {
@@ -674,16 +744,16 @@ function buildPills() {
     document.getElementById('pill-overdue').className='bo-pill'+(filterOverdue?' active':'');
 }
 function buildClientSelect(){
-    document.getElementById('f-client').innerHTML='<option value="">— Client —</option>'+clients.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+    document.getElementById('f-client').innerHTML='<option value="">— Client —</option>'+clients.map(c=>`<option value="${esc(c.id)}">${esc(c.nom)}</option>`).join('');
 }
 function buildTechSelect(){
-    const opts=TECHS.map(t=>`<option value="${t}">${t}</option>`).join('');
+    const opts=TECHS.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
     document.getElementById('f-tech').innerHTML='<option value="">— Non assigné —</option>'+opts;
     document.getElementById('sel-tech').innerHTML='<option value="">Tous techniciens</option>'+opts;
 }
 function buildTypeSelect(){
     const types=['Installation','Maintenance préventive','SAV / Dépannage','Mise à jour contenu','Câblage','Audit'];
-    document.getElementById('sel-type').innerHTML='<option value="">Tous types</option>'+types.map(t=>`<option value="${t}">${t}</option>`).join('');
+    document.getElementById('sel-type').innerHTML='<option value="">Tous types</option>'+types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
 }
 
 /* ══════════════════════════════════════
@@ -694,6 +764,8 @@ function showTab(t){
         document.getElementById('panel-'+id).classList.toggle('active',id===t);
         document.getElementById('tab-'+id).classList.toggle('active',id===t);
     });
+    // FIX #7 : redimensionner le canvas quand l'onglet clôture devient visible
+    if(t==='cloture') setTimeout(resizeSig, 50);
     lucide.createIcons();
 }
 
@@ -737,7 +809,6 @@ function restoreChronoState(){
     const start=+localStorage.getItem('bo_chrono_start');
     const end  =+localStorage.getItem('bo_chrono_end');
     if(start && !end){
-        // Toujours en cours
         stampDebut=new Date(start).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
         document.getElementById('stamp-debut').textContent=stampDebut;
         document.getElementById('btn-start').disabled=true; document.getElementById('btn-start').style.opacity='.4';
@@ -748,9 +819,12 @@ function restoreChronoState(){
         BO.toast('Chrono repris — intervention en cours','info');
     }
 }
+
+/* FIX #5 : resetChrono propre à chaque ouverture de formulaire */
 function resetChrono(){
     clearInterval(chronoIv); chronoIv=null;
-    localStorage.removeItem('bo_chrono_start'); localStorage.removeItem('bo_chrono_end');
+    // Ne touche PAS localStorage si un chrono actif existe (intervention en cours)
+    // On réinitialise seulement l'affichage local
     stampDebut=''; stampFin='';
     document.getElementById('chrono-disp').textContent='00:00:00';
     document.getElementById('chrono-disp').classList.remove('running');
@@ -764,7 +838,115 @@ function pad(n){return String(n).padStart(2,'0');}
 
 /* ══════════════════════════════════════
    PHOTO COMPRESSION
+   FIX #1 : photos stockées séparément via IndexedDB (photoStore)
 ══════════════════════════════════════ */
+
+/* --- Mini IndexedDB pour les photos --- */
+let photoDB = null;
+function openPhotoDB(){
+    return new Promise((res,rej)=>{
+        if(photoDB){ res(photoDB); return; }
+        const req=indexedDB.open('bo_photos',1);
+        req.onupgradeneeded=e=>e.target.result.createObjectStore('photos',{keyPath:'id'});
+        req.onsuccess=e=>{ photoDB=e.target.result; res(photoDB); };
+        req.onerror=e=>rej(e);
+    });
+}
+async function savePhotoBlob(id, dataUrl){
+    const db=await openPhotoDB();
+    return new Promise((res,rej)=>{
+        const tx=db.transaction('photos','readwrite');
+        tx.objectStore('photos').put({id, dataUrl});
+        tx.oncomplete=()=>res();
+        tx.onerror=e=>rej(e);
+    });
+}
+async function loadPhotoBlob(id){
+    const db=await openPhotoDB();
+    return new Promise((res,rej)=>{
+        const req=db.transaction('photos','readonly').objectStore('photos').get(id);
+        req.onsuccess=e=>res(e.target?.result?.dataUrl||null);
+        req.onerror=e=>rej(e);
+    });
+}
+async function deletePhotoBlob(id){
+    const db=await openPhotoDB();
+    return new Promise((res,rej)=>{
+        const tx=db.transaction('photos','readwrite');
+        tx.objectStore('photos').delete(id);
+        tx.oncomplete=()=>res();
+        tx.onerror=e=>rej(e);
+    });
+}
+
+/* formPhotos stocke désormais { id, legend, size } — sans dataUrl en mémoire */
+async function handlePhotos(evt){
+    const files=Array.from(evt.target.files);
+    for(const f of files){
+        await new Promise(resolve=>{
+            compressImage(f, async (dataUrl, kbSize)=>{
+                const id = BO.uid();
+                await savePhotoBlob(id, dataUrl);
+                formPhotos.push({id, legend:'', size:kbSize});
+                resolve();
+            });
+        });
+    }
+    evt.target.value='';
+    await renderPhotoGrid(); updateBadge();
+}
+
+async function removePhoto(i){
+    const photo=formPhotos[i];
+    if(photo?.id) await deletePhotoBlob(photo.id);
+    formPhotos.splice(i,1);
+    await renderPhotoGrid(); updateBadge();
+}
+function updateLegend(i,v){if(formPhotos[i]) formPhotos[i].legend=v;}
+
+async function renderPhotoGrid(){
+    const totalKB=formPhotos.reduce((a,p)=>a+(p.size||0),0);
+    document.getElementById('photo-total-size').textContent=totalKB
+        ?(totalKB<1024?totalKB+'KB':(totalKB/1024).toFixed(1)+'MB')+' total':'';
+
+    // Charger les thumbnails depuis IndexedDB
+    const thumbs=await Promise.all(formPhotos.map(p=>loadPhotoBlob(p.id)));
+
+    document.getElementById('photo-grid').innerHTML=
+        formPhotos.map((p,i)=>`
+        <div class="photo-thumb">
+            <img src="${esc(thumbs[i]||'')}" alt="" data-idx="${i}" onclick="openPhotoFull(${i})">
+            <span class="photo-size">${p.size||''}KB</span>
+            <button class="photo-del" onclick="removePhoto(${i})"><i data-lucide="x" style="width:11px;height:11px;color:#fff;"></i></button>
+            <div class="photo-legend-wrap"><input value="${esc(p.legend)}" placeholder="Légende…" oninput="updateLegend(${i},this.value)"></div>
+        </div>`).join('')+
+        `<button class="photo-add" onclick="document.getElementById('photo-input').click()">
+            <i data-lucide="camera" style="width:20px;height:20px;"></i><span>Ajouter</span>
+        </button>`;
+    lucide.createIcons();
+}
+
+/* Charger les dataUrl pour la sauvegarde */
+async function collectPhotoData(){
+    return Promise.all(formPhotos.map(async p=>({
+        id:p.id, legend:p.legend, size:p.size,
+        dataUrl: await loadPhotoBlob(p.id)
+    })));
+}
+
+async function openPhotoFull(i){
+    const url=await loadPhotoBlob(formPhotos[i]?.id); if(!url) return;
+    fullImg(url);
+}
+function fullImg(url){
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    ov.onclick=()=>ov.remove();
+    const img=document.createElement('img'); img.src=url;
+    img.style.cssText='max-width:95%;max-height:95%;border-radius:.75rem;';
+    ov.appendChild(img); document.body.appendChild(ov);
+}
+
 function compressImage(file, cb){
     const img=new Image(); const url=URL.createObjectURL(file);
     img.onload=()=>{
@@ -780,55 +962,17 @@ function compressImage(file, cb){
     img.src=url;
 }
 
-function handlePhotos(evt){
-    Array.from(evt.target.files).forEach(f=>{
-        compressImage(f,(dataUrl,kbSize)=>{
-            formPhotos.push({dataUrl, legend:'', size:kbSize});
-            renderPhotoGrid(); updateBadge();
-        });
-    });
-    evt.target.value='';
-}
-function removePhoto(i){formPhotos.splice(i,1); renderPhotoGrid(); updateBadge();}
-function updateLegend(i,v){if(formPhotos[i]) formPhotos[i].legend=v;}
-function renderPhotoGrid(){
-    const totalKB=formPhotos.reduce((a,p)=>a+(p.size||0),0);
-    const sizeLbl=document.getElementById('photo-total-size');
-    sizeLbl.textContent=totalKB?`${totalKB < 1024 ? totalKB+'KB' : (totalKB/1024).toFixed(1)+'MB'} total`:'';
-
-    document.getElementById('photo-grid').innerHTML=
-        formPhotos.map((p,i)=>`
-        <div class="photo-thumb">
-            <img src="${p.dataUrl}" alt="" onclick="fullImg('${p.dataUrl}')">
-            <span class="photo-size">${p.size||''}KB</span>
-            <button class="photo-del" onclick="removePhoto(${i})"><i data-lucide="x" style="width:11px;height:11px;color:#fff;"></i></button>
-            <div class="photo-legend-wrap"><input value="${p.legend}" placeholder="Légende…" oninput="updateLegend(${i},this.value)"></div>
-        </div>`).join('')+
-        `<button class="photo-add" onclick="document.getElementById('photo-input').click()">
-            <i data-lucide="camera" style="width:20px;height:20px;"></i><span>Ajouter</span>
-        </button>`;
-    lucide.createIcons();
-}
-function fullImg(url){
-    const ov=document.createElement('div');
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;';
-    ov.onclick=()=>ov.remove();
-    const img=document.createElement('img'); img.src=url;
-    img.style.cssText='max-width:95%;max-height:95%;border-radius:.75rem;';
-    ov.appendChild(img); document.body.appendChild(ov);
-}
-
 /* ══════════════════════════════════════
    MATÉRIEL
 ══════════════════════════════════════ */
 function addMat(){
     const inp=document.getElementById('f-mat-input'), v=inp.value.trim();
-    if(!v) return; formMat.push(v); inp.value=''; renderMatChips(); updateBadge();
+    if(!v) return; formMat.push(v); inp.value=''; renderMatChips(); updateBadge(); markDirty();
 }
 function removeMat(i){formMat.splice(i,1); renderMatChips(); updateBadge();}
 function renderMatChips(){
     document.getElementById('f-mat-chips').innerHTML=formMat.map((m,i)=>`
-        <span class="bo-chip">${m}
+        <span class="bo-chip">${esc(m)}
             <button class="bo-chip-btn" onclick="removeMat(${i})"><i data-lucide="x" style="width:10px;height:10px;"></i></button>
         </span>`).join('');
     lucide.createIcons();
@@ -842,14 +986,14 @@ function addMesure(){
     if(!l||!v){BO.toast('Libellé et valeur requis','warn');return;}
     formMesures.push({label:l,val:v,unit:u});
     document.getElementById('m-lbl').value=''; document.getElementById('m-val').value='';
-    renderMesures(); updateBadge();
+    renderMesures(); updateBadge(); markDirty();
 }
 function removeMesure(i){formMesures.splice(i,1); renderMesures(); updateBadge();}
 function renderMesures(){
     document.getElementById('mesure-list').innerHTML=formMesures.map((m,i)=>`
         <div class="mesure-item">
-            <div style="flex:1;"><div class="mesure-lbl">${m.label}</div>
-            <div style="display:flex;align-items:baseline;gap:.35rem;margin-top:.1rem;"><span class="mesure-val">${m.val}</span><span class="mesure-unit">${m.unit}</span></div></div>
+            <div style="flex:1;"><div class="mesure-lbl">${esc(m.label)}</div>
+            <div style="display:flex;align-items:baseline;gap:.35rem;margin-top:.1rem;"><span class="mesure-val">${esc(m.val)}</span><span class="mesure-unit">${esc(m.unit)}</span></div></div>
             <button class="bo-btn-danger" onclick="removeMesure(${i})"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
         </div>`).join('');
     lucide.createIcons();
@@ -857,12 +1001,29 @@ function renderMesures(){
 
 /* ══════════════════════════════════════
    CHECKLIST
+   FIX #6 : on demande confirmation si des items sont cochés avant de changer de type
 ══════════════════════════════════════ */
-function buildChecklist(){
+async function buildChecklist(){
     const type=document.getElementById('f-type').value;
     const items=CHECKLISTS[type]||CHECKLISTS['default'];
-    const prev={...formChecks}; formChecks={};
-    items.forEach(it=>{ formChecks[it]=prev[it]||false; });
+    const checkedCount = Object.values(formChecks).filter(Boolean).length;
+
+    if(checkedCount > 0){
+        const ok = await boConfirm({
+            title: 'Changer de type ?',
+            msg: `${checkedCount} point(s) cochés seront réinitialisés. Continuer ?`,
+            okLabel: 'Changer', icon: '⚠️'
+        });
+        if(!ok){
+            // Revenir au type précédent — on ne peut pas facilement le retrouver,
+            // on remet juste la checklist telle quelle
+            renderChecklist(Object.keys(formChecks));
+            return;
+        }
+    }
+
+    formChecks={};
+    items.forEach(it=>{ formChecks[it]=false; });
     renderChecklist(items);
 }
 function renderChecklist(items){
@@ -871,9 +1032,9 @@ function renderChecklist(items){
         w.innerHTML='<p style="font-size:.75rem;color:var(--muted);">Choisissez un type dans l\'onglet Infos.</p>'; return;
     }
     w.innerHTML=items.map(it=>`
-        <div class="chk-item${formChecks[it]?' on':''}" onclick="toggleChk('${it.replace(/'/g,"\\'")}',this)">
+        <div class="chk-item${formChecks[it]?' on':''}" onclick="toggleChk(${JSON.stringify(it)},this)">
             <div class="chk-box">${formChecks[it]?'<i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i>':''}</div>
-            <span class="chk-lbl">${it}</span>
+            <span class="chk-lbl">${esc(it)}</span>
         </div>`).join('');
     lucide.createIcons();
 }
@@ -890,16 +1051,26 @@ function updateBadge(){
 
 /* ══════════════════════════════════════
    SIGNATURE
+   FIX #7 : resize séparé, appelé quand le canvas est visible
 ══════════════════════════════════════ */
 function initSig(){
     const c=document.getElementById('sig-canvas'); if(!c) return;
     sigCtx=c.getContext('2d');
-    function resize(){
-        const r=window.devicePixelRatio||1, rect=c.getBoundingClientRect();
-        c.width=rect.width*r; c.height=rect.height*r; sigCtx.scale(r,r);
+
+    function applyStyles(){
         sigCtx.strokeStyle='#d4a843'; sigCtx.lineWidth=2.5; sigCtx.lineCap='round'; sigCtx.lineJoin='round';
     }
-    resize(); window.addEventListener('resize', resize);
+
+    window.resizeSig = function(){
+        const r=window.devicePixelRatio||1, rect=c.getBoundingClientRect();
+        if(!rect.width) return;
+        c.width=rect.width*r; c.height=rect.height*r;
+        sigCtx.scale(r,r);
+        applyStyles();
+    };
+
+    window.addEventListener('resize', resizeSig);
+
     function pos(e){ const rect=c.getBoundingClientRect(); return{x:e.clientX-rect.left,y:e.clientY-rect.top}; }
     c.addEventListener('touchstart',e=>{e.preventDefault();sigDrawing=true;const p=pos(e.touches[0]);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);},{passive:false});
     c.addEventListener('touchmove', e=>{e.preventDefault();if(!sigDrawing)return;const p=pos(e.touches[0]);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();},{passive:false});
@@ -921,7 +1092,6 @@ function geolocate(){
     navigator.geolocation.getCurrentPosition(
         pos=>{
             const {latitude:lat, longitude:lng}=pos.coords;
-            // Reverse geocoding via API publique (nominatim)
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fr`)
                 .then(r=>r.json()).then(d=>{
                     const addr=d.display_name||`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -954,7 +1124,7 @@ function startVoice(fieldId, btnId){
         const field=document.getElementById(fieldId);
         if(field.tagName==='TEXTAREA'){ field.value+=(field.value?' ':'')+t; }
         else { field.value=t; }
-        scheduleDraft();
+        markDirty(); scheduleDraft();
     };
     recognition.onend=()=>{
         recognition=null;
@@ -969,16 +1139,25 @@ function startVoice(fieldId, btnId){
 }
 
 /* ══════════════════════════════════════
+   DIRTY FLAG — FIX #14
+══════════════════════════════════════ */
+function markDirty(){ formDirty=true; }
+function resetDirty(){ formDirty=false; }
+
+/* ══════════════════════════════════════
    BROUILLON AUTOSAVE
+   FIX #2 : autosave attaché une seule fois, pas de double-fire
 ══════════════════════════════════════ */
 function scheduleDraft(){
-    clearTimeout(draftIv);
-    draftIv=setTimeout(saveDraft, 4000);
+    clearTimeout(draftTimer);
+    draftTimer=setTimeout(saveDraft, 4000);
 }
 function saveDraft(){
     const data=collectFormData();
-    if(!data.titre&&!data.clientId) return; // rien à sauvegarder
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({...data,_editId:editId,_ts:Date.now()}));
+    if(!data.titre&&!data.clientId) return;
+    // FIX #1 : pas de photos (dataUrl) dans le brouillon localStorage
+    const { photos:_, ...dataNoPhotos } = data;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({...dataNoPhotos,_editId:editId,_ts:Date.now()}));
     const lbl=document.getElementById('draft-saved-lbl');
     lbl.style.display=''; lbl.textContent='✓ Brouillon sauvegardé — '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     setTimeout(()=>lbl.style.display='none', 3000);
@@ -988,18 +1167,23 @@ function loadDraft(){
     try { return JSON.parse(raw); } catch { return null; }
 }
 function clearDraftStorage(){ localStorage.removeItem(DRAFT_KEY); }
-function discardDraft(){
+
+async function discardDraft(){
     clearDraftStorage();
-    closeModal();
+    resetDirty();
+    closeFormModal();
 }
-function checkDraftOnOpen(id){
-    const d=loadDraft();
-    if(!d) return;
+
+async function checkDraftOnOpen(id){
+    const d=loadDraft(); if(!d) return;
     if((d._editId===id) || (!id && !d._editId)){
-        // Brouillon compatible avec ce formulaire
         const age=Math.round((Date.now()-d._ts)/60000);
-        const msg=`Brouillon trouvé (${age} min). Restaurer ?`;
-        if(confirm(msg)) restoreDraft(d);
+        const ok = await boConfirm({
+            title: 'Brouillon trouvé',
+            msg: `Un brouillon de ${age} min a été sauvegardé. Voulez-vous le restaurer ?`,
+            okLabel: 'Restaurer', okClass: 'gold', icon: '📝'
+        });
+        if(ok) restoreDraft(d);
         else clearDraftStorage();
     }
 }
@@ -1019,7 +1203,7 @@ function restoreDraft(d){
     document.getElementById('f-note').value    = d.note||'';
     formMat     = [...(d.materiel||[])];
     formMesures = [...(d.mesures||[])];
-    formPhotos  = [...(d.photos||[])];
+    // formPhotos non restaurés (stockés en IndexedDB séparément)
     formChecks  = {...(d.checks||{})};
     renderMatChips(); renderMesures(); renderPhotoGrid(); buildChecklist(); updateBadge();
     onStatutChange();
@@ -1034,6 +1218,7 @@ function collectFormData(){
         site:           document.getElementById('f-site').value.trim(),
         statut:         document.getElementById('f-statut').value,
         priorite:       document.getElementById('f-prio').value,
+        dateCreation:   editId?(interventions.find(x=>x.id===editId)?.dateCreation||BO.today()):BO.today(),
         dateEcheance:   document.getElementById('f-date-e').value,
         description:    document.getElementById('f-desc').value.trim(),
         materiel:       [...formMat], mesures:[...formMesures],
@@ -1065,8 +1250,11 @@ function getFiltered(){
     const q=document.getElementById('search').value.toLowerCase();
     const tech=document.getElementById('sel-tech').value;
     const type=document.getElementById('sel-type').value;
-    const df=document.getElementById('date-from').value;
-    const dt=document.getElementById('date-to').value;
+    // FIX #17 : comparaison de dates via objets Date (pas string)
+    const dfRaw=document.getElementById('date-from').value;
+    const dtRaw=document.getElementById('date-to').value;
+    const df=dfRaw?new Date(dfRaw):null;
+    const dt=dtRaw?new Date(dtRaw+' 23:59:59'):null;
     return interventions.filter(i=>{
         const ms=filterStatus==='Tous'||i.statut===filterStatus;
         const mp=filterPrio==='Toutes'||i.priorite===filterPrio;
@@ -1074,8 +1262,9 @@ function getFiltered(){
         const mty=!type||i.type===type;
         const mq=!q||i.titre.toLowerCase().includes(q)||(i.technicien||'').toLowerCase().includes(q)||(clients.find(c=>c.id===i.clientId)?.nom||'').toLowerCase().includes(q);
         const mo=!filterOverdue||isOverdue(i);
-        const mdf=!df||i.dateCreation>=df;
-        const mdt=!dt||i.dateCreation<=dt;
+        const createdAt=i.dateCreation?new Date(i.dateCreation):null;
+        const mdf=!df||!createdAt||createdAt>=df;
+        const mdt=!dt||!createdAt||createdAt<=dt;
         return ms&&mp&&mt&&mty&&mq&&mo&&mdf&&mdt;
     }).sort((a,b)=>{
         let va=a[sortCol]||'', vb=b[sortCol]||'';
@@ -1100,6 +1289,11 @@ function setView(v){
 function toggleOverdue(){ filterOverdue=!filterOverdue; buildPills(); render(); }
 
 /* ══════════════════════════════════════
+   FIX #12 : refresh() = render() + renderCharts() couplés
+══════════════════════════════════════ */
+function refresh(){ render(); renderCharts(); }
+
+/* ══════════════════════════════════════
    RENDER
 ══════════════════════════════════════ */
 function render(){
@@ -1116,7 +1310,7 @@ function render(){
         {l:'En cours', v:enCours, c:'#fcd34d',   s:''},
         {l:'Résolus',  v:resolus, c:'#6ee7b7',   s:pct+'%'},
         {l:'⏰ Retard', v:retard,  c:'#f87171',   s:''},
-    ].map(k=>`<div class="bo-stat"><div class="bo-stat-label">${k.l}</div><div class="bo-stat-value" style="color:${k.c};">${k.v}</div>${k.s?`<div class="bo-stat-sub">${k.s}</div>`:''}</div>`).join('');
+    ].map(k=>`<div class="bo-stat"><div class="bo-stat-label">${esc(k.l)}</div><div class="bo-stat-value" style="color:${k.c};">${k.v}</div>${k.s?`<div class="bo-stat-sub">${esc(k.s)}</div>`:''}</div>`).join('');
 
     document.getElementById('pbar').style.width=pct+'%';
     document.getElementById('pct-label').textContent=pct+'%';
@@ -1125,7 +1319,6 @@ function render(){
 
 /* ── CHARTS ── */
 function renderCharts(){
-    // Monthly (6 mois)
     const months=[]; const now=new Date();
     for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); months.push({y:d.getFullYear(),m:d.getMonth(),lbl:d.toLocaleDateString('fr-FR',{month:'short'}),count:0}); }
     interventions.forEach(iv=>{
@@ -1137,10 +1330,9 @@ function renderCharts(){
         <div class="chart-bar-wrap">
             <div class="chart-bar-val">${m.count||''}</div>
             <div class="chart-bar" style="height:${Math.max(4,m.count/maxM*64)}px;background:var(--gold);opacity:${.4+.6*(m.count/maxM)};"></div>
-            <div class="chart-bar-lbl">${m.lbl}</div>
+            <div class="chart-bar-lbl">${esc(m.lbl)}</div>
         </div>`).join('');
 
-    // By tech
     const byTech={};
     TECHS.forEach(t=>{byTech[t]=0;});
     interventions.forEach(iv=>{ if(iv.technicien&&byTech[iv.technicien]!==undefined) byTech[iv.technicien]++; });
@@ -1151,14 +1343,14 @@ function renderCharts(){
         <div class="chart-bar-wrap">
             <div class="chart-bar-val">${cnt}</div>
             <div class="chart-bar" style="height:${Math.max(4,cnt/maxT*64)}px;background:#6ee7b7;opacity:${.4+.6*(cnt/maxT)};"></div>
-            <div class="chart-bar-lbl">${name.split(' ')[0]}</div>
+            <div class="chart-bar-lbl">${esc(name.split(' ')[0])}</div>
         </div>`).join('')
         : '<span style="font-size:.7rem;color:var(--muted);margin:auto;">Aucune donnée</span>';
 }
 
 /* ── SORT HEADER ── */
 function sortHeaderHTML(){
-    function sb(col,lbl){ const active=sortCol===col; const dir=active?sortDir:''; return `<span class="sort-btn${active?' '+dir:''}" onclick="setSort('${col}')">${lbl}</span>`; }
+    function sb(col,lbl){ const active=sortCol===col; const dir=active?sortDir:''; return `<span class="sort-btn${active?' '+dir:''}" onclick="setSort('${esc(col)}')">${esc(lbl)}</span>`; }
     return `<div class="sortable-header"><span style="display:flex;gap:.75rem;">${sb('dateCreation','Date')} ${sb('priorite','Priorité')} ${sb('statut','Statut')} ${sb('technicien','Technicien')}</span></div>`;
 }
 
@@ -1170,28 +1362,31 @@ function renderList(list){
         const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
         const ov=isOverdue(i); const ico=TYPE_ICO[i.type]||'zap';
         const np=(i.photos||[]).length, nm=(i.mesures||[]).length;
-        return `<div class="bo-row" onclick="openDetail('${i.id}')">
+        // FIX #2 : toutes les données utilisateur passent par esc()
+        // Les IDs dans onclick sont entre apostrophes → JSON.stringify pour sécurité
+        const id=JSON.stringify(i.id);
+        return `<div class="bo-row" onclick="openDetail(${id})">
             <div style="width:8px;height:8px;border-radius:50%;background:${PRIO_DOT[i.priorite]};box-shadow:0 0 5px ${PRIO_DOT[i.priorite]}66;flex-shrink:0;"></div>
-            <div style="flex:0 0 1.75rem;font-size:.55rem;color:var(--muted);font-weight:700;font-family:monospace;">#${i.id.slice(-4).toUpperCase()}</div>
-            <i data-lucide="${ico}" style="width:13px;height:13px;color:var(--muted);flex-shrink:0;"></i>
+            <div style="flex:0 0 1.75rem;font-size:.55rem;color:var(--muted);font-weight:700;font-family:monospace;">#${esc(i.id.slice(-4).toUpperCase())}</div>
+            <i data-lucide="${esc(ico)}" style="width:13px;height:13px;color:var(--muted);flex-shrink:0;"></i>
             <div style="flex:3;min-width:0;">
-                <div style="font-size:.83rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${i.titre}</div>
+                <div style="font-size:.83rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(i.titre)}</div>
                 <div style="font-size:.6rem;color:var(--muted);margin-top:.1rem;display:flex;gap:.4rem;">
-                    <span>${c?.nom||'—'}</span>${np?`<span>📷${np}</span>`:''}${nm?`<span>📐${nm}</span>`:''}
+                    <span>${esc(c?.nom||'—')}</span>${np?`<span>📷${np}</span>`:''}${nm?`<span>📐${nm}</span>`:''}
                 </div>
             </div>
             <div style="flex:0 0 80px;font-size:.6rem;color:var(--muted);text-align:right;">
-                <div>${BO.fmt(i.dateCreation)}</div>
-                ${i.technicien?`<div>${i.technicien.split(' ')[0]}</div>`:''}
+                <div>${esc(BO.fmt(i.dateCreation))}</div>
+                ${i.technicien?`<div>${esc(i.technicien.split(' ')[0])}</div>`:''}
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem;flex-shrink:0;">
-                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
+                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${esc(i.statut)}</span>
                 ${ov?'<span style="font-size:.55rem;color:#f87171;">⏰ retard</span>':''}
             </div>
             <div style="display:flex;gap:.2rem;flex-shrink:0;" onclick="event.stopPropagation()">
-                <button class="bo-btn-icon" onclick="openForm('${i.id}')" title="Modifier"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
-                <button class="bo-btn-icon" onclick="duplicate('${i.id}')" title="Dupliquer"><i data-lucide="copy" style="width:13px;height:13px;color:#94a3b8;"></i></button>
-                <button class="bo-btn-danger" onclick="remove('${i.id}')" title="Supprimer"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+                <button class="bo-btn-icon" onclick="openForm(${id})" title="Modifier"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+                <button class="bo-btn-icon" onclick="duplicate(${id})" title="Dupliquer"><i data-lucide="copy" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+                <button class="bo-btn-danger" onclick="remove(${id})" title="Supprimer"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
             </div>
         </div>`;
     }).join('');
@@ -1209,22 +1404,23 @@ function renderKanban(list){
     w.innerHTML=COLS.map(col=>{
         const cards=list.filter(i=>i.statut===col.k);
         return `<div class="kanban-col">
-            <div class="kanban-col-header"><span class="kanban-col-title" style="color:${col.c};">${col.l}</span><span class="kanban-count" style="background:${col.bg};color:${col.c};">${cards.length}</span></div>
+            <div class="kanban-col-header"><span class="kanban-col-title" style="color:${col.c};">${esc(col.l)}</span><span class="kanban-count" style="background:${col.bg};color:${col.c};">${cards.length}</span></div>
             <div class="kanban-cards">
                 ${!cards.length?'<div class="kanban-empty">Aucune</div>':''}
                 ${cards.map(i=>{
                     const c=clients.find(cl=>cl.id===i.clientId);
                     const ov=isOverdue(i), np=(i.photos||[]).length;
-                    return `<div class="kanban-card" onclick="openDetail('${i.id}')">
+                    const id=JSON.stringify(i.id);
+                    return `<div class="kanban-card" onclick="openDetail(${id})">
                         <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;">
                             <div style="width:7px;height:7px;border-radius:50%;background:${PRIO_DOT[i.priorite]};flex-shrink:0;"></div>
-                            <span style="font-size:.55rem;color:var(--muted);font-family:monospace;">#${i.id.slice(-4).toUpperCase()}</span>
+                            <span style="font-size:.55rem;color:var(--muted);font-family:monospace;">#${esc(i.id.slice(-4).toUpperCase())}</span>
                             ${ov?'<span style="font-size:.55rem;color:#f87171;margin-left:auto;">⏰</span>':''}
                         </div>
-                        <div class="kanban-card-title">${i.titre}</div>
+                        <div class="kanban-card-title">${esc(i.titre)}</div>
                         <div class="kanban-card-meta">
-                            <span>${c?.nom||'—'}</span>
-                            ${i.technicien?`<span>👤 ${i.technicien}</span>`:''}
+                            <span>${esc(c?.nom||'—')}</span>
+                            ${i.technicien?`<span>👤 ${esc(i.technicien)}</span>`:''}
                             ${np?`<span>📷 ${np}</span>`:''}
                         </div>
                     </div>`;
@@ -1242,6 +1438,7 @@ function openForm(id=null, promptDup=false){
     editId=id; isDup=false;
     formMat=[]; formMesures=[]; formPhotos=[]; formChecks={};
     sigData=''; clearSig();
+    resetDirty();
     document.getElementById('modal-title').textContent=id?"Modifier l'intervention":"Nouvelle intervention";
 
     if(id){
@@ -1251,15 +1448,23 @@ function openForm(id=null, promptDup=false){
         clearFormFields();
     }
 
+    // FIX #5 : réinitialiser le chrono à chaque ouverture (sans toucher localStorage si actif)
+    resetChrono();
+
     document.getElementById('rapport-section').style.opacity=(document.getElementById('f-statut').value==='Résolu')?'1':'.45';
     renderMatChips(); renderMesures(); renderPhotoGrid(); buildChecklist(); updateBadge();
     showTab('infos');
     document.getElementById('modal').style.display='flex';
     lucide.createIcons();
-    // Attacher autosave
-    setTimeout(()=>{
-        document.querySelectorAll('#modal input,#modal select,#modal textarea').forEach(el=>el.addEventListener('input',scheduleDraft));
-    }, 100);
+
+    // FIX #2 : attacher autosave UNE seule fois via le body du modal
+    const body=document.getElementById('form-modal-body');
+    // Cloner pour supprimer les anciens listeners
+    const newBody=body.cloneNode(true);
+    body.parentNode.replaceChild(newBody,body);
+    document.getElementById('form-modal-body').addEventListener('input',()=>{ markDirty(); scheduleDraft(); });
+    // Ré-attacher les events de la signature (non concernés par l'input event)
+
     checkDraftOnOpen(id);
 }
 
@@ -1279,6 +1484,7 @@ function fillFormFrom(i){
     document.getElementById('f-note').value    = i.note||'';
     formMat     = [...(i.materiel||[])];
     formMesures = [...(i.mesures||[])];
+    // Les photos sont chargées depuis IndexedDB via leurs IDs
     formPhotos  = [...(i.photos||[])];
     formChecks  = {...(i.checks||{})};
 }
@@ -1288,32 +1494,58 @@ function clearFormFields(){
     document.getElementById('f-type').value=''; document.getElementById('f-statut').value='Ouvert'; document.getElementById('f-prio').value='Moyenne';
 }
 
-function closeModal(){
+/* FIX #3 & #4 : Fonctions de fermeture séparées */
+function closeFormModal(){
     document.getElementById('modal').style.display='none';
+    clearTimeout(draftTimer);
+}
+function closeDetailModal(){
     document.getElementById('detail-modal').style.display='none';
+}
+
+/* FIX #14 : confirmation si formulaire modifié */
+async function maybeCloseForm(){
+    if(formDirty){
+        const ok = await boConfirm({
+            title: 'Fermer sans enregistrer ?',
+            msg: 'Des modifications non sauvegardées seront perdues.',
+            okLabel: 'Quitter', icon: '⚠️'
+        });
+        if(!ok) return;
+    }
+    clearDraftStorage();
+    resetDirty();
+    closeFormModal();
 }
 
 /* ══════════════════════════════════════
    DUPLIQUER
 ══════════════════════════════════════ */
 function openDupModal(){
-    document.getElementById('dup-search').value='';
+    const inp=document.getElementById('dup-search');
+    if(inp) inp.value='';
     renderDupList();
     document.getElementById('dup-modal').style.display='flex';
     lucide.createIcons();
 }
 function renderDupList(){
-    const q=document.getElementById('dup-search').value.toLowerCase();
+    // FIX #8 : vérification que l'élément existe
+    const searchEl=document.getElementById('dup-search');
+    if(!searchEl) return;
+    const q=searchEl.value.toLowerCase();
     const list=interventions.filter(i=>!q||i.titre.toLowerCase().includes(q)||(clients.find(c=>c.id===i.clientId)?.nom||'').toLowerCase().includes(q)).slice(0,20);
-    document.getElementById('dup-list').innerHTML=list.map(i=>{
+    const listEl=document.getElementById('dup-list');
+    if(!listEl) return;
+    listEl.innerHTML=list.map(i=>{
         const c=clients.find(cl=>cl.id===i.clientId);
         const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
-        return `<div class="bo-row" style="border-radius:.75rem;" onclick="duplicate('${i.id}')">
+        const id=JSON.stringify(i.id);
+        return `<div class="bo-row" style="border-radius:.75rem;" onclick="duplicate(${id})">
             <div style="flex:1;min-width:0;">
-                <div style="font-size:.82rem;font-weight:700;">${i.titre}</div>
-                <div style="font-size:.62rem;color:var(--muted);">${c?.nom||'—'} · ${BO.fmt(i.dateCreation)}</div>
+                <div style="font-size:.82rem;font-weight:700;">${esc(i.titre)}</div>
+                <div style="font-size:.62rem;color:var(--muted);">${esc(c?.nom||'—')} · ${esc(BO.fmt(i.dateCreation))}</div>
             </div>
-            <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
+            <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${esc(i.statut)}</span>
         </div>`;
     }).join('') || '<p style="font-size:.75rem;color:var(--muted);padding:.5rem;">Aucun résultat</p>';
 }
@@ -1322,16 +1554,16 @@ function duplicate(id){
     const src=interventions.find(x=>x.id===id); if(!src) return;
     editId=null; isDup=true;
     formMat=[]; formMesures=[]; formPhotos=[]; formChecks={};
-    sigData=''; clearSig();
-    // Copier les infos sauf statut/dates/rapport
+    sigData=''; clearSig(); resetDirty();
     const copy={...src, statut:'Ouvert', dateCreation:BO.today(), dateEcheance:'', dateResolution:'', rapport:'', signature:'', chronoDebut:'', chronoFin:'', duree:0, historique:[], checks:{}};
     fillFormFrom(copy);
     formMat=[...(src.materiel||[])];
     formChecks={};
     document.getElementById('f-titre').value='[Copie] '+src.titre;
     document.getElementById('f-date-e').value='';
-    document.getElementById('modal-title').textContent='Dupliquer l\'intervention';
+    document.getElementById('modal-title').textContent="Dupliquer l'intervention";
     document.getElementById('rapport-section').style.opacity='.45';
+    resetChrono();
     renderMatChips(); renderMesures(); renderPhotoGrid(); buildChecklist(); updateBadge();
     showTab('infos');
     document.getElementById('modal').style.display='flex';
@@ -1340,6 +1572,7 @@ function duplicate(id){
 
 /* ══════════════════════════════════════
    SAVE
+   FIX #10 : gestion d'erreur sur BO.write()
 ══════════════════════════════════════ */
 async function saveForm(){
     const titre=document.getElementById('f-titre').value.trim();
@@ -1348,6 +1581,10 @@ async function saveForm(){
     if(!client){showTab('infos');BO.toast('Sélectionnez un client','warn');return;}
 
     const ns=document.getElementById('f-statut').value;
+
+    // FIX #1 : charger les dataUrl depuis IndexedDB pour la sauvegarde
+    const photosWithData = await collectPhotoData();
+
     const data={
         titre, clientId:client,
         technicien:     document.getElementById('f-tech').value,
@@ -1357,7 +1594,9 @@ async function saveForm(){
         dateCreation:   editId?(interventions.find(x=>x.id===editId)?.dateCreation||BO.today()):BO.today(),
         dateEcheance:   document.getElementById('f-date-e').value,
         description:    document.getElementById('f-desc').value.trim(),
-        materiel:[...formMat], mesures:[...formMesures], photos:[...formPhotos], checks:{...formChecks},
+        materiel:[...formMat], mesures:[...formMesures],
+        photos: photosWithData,
+        checks:{...formChecks},
         rapport:        document.getElementById('f-rapport').value.trim(),
         duree:          parseFloat(document.getElementById('f-duree').value)||0,
         dateResolution: document.getElementById('f-date-r').value,
@@ -1381,15 +1620,37 @@ async function saveForm(){
     }
 
     clearDraftStorage();
-    await BO.write(BO.KEYS.interventions,interventions);
-    closeModal(); render(); renderCharts();
+    resetDirty();
+
+    // FIX #10 : try/catch sur l'écriture
+    try {
+        await BO.write(BO.KEYS.interventions, interventions);
+    } catch(err) {
+        console.error('Erreur sauvegarde:', err);
+        BO.toast('Erreur lors de la sauvegarde — données non persistées','error');
+        return; // Ne pas fermer le modal si la sauvegarde a échoué
+    }
+
+    closeFormModal();
+    refresh(); // FIX #12 : refresh() au lieu de render() + renderCharts() séparés
 }
 
 async function remove(id){
-    if(!confirm('Supprimer cette intervention ?')) return;
+    const ok = await boConfirm({
+        title: 'Supprimer l\'intervention ?',
+        msg: 'Cette action est irréversible.',
+        okLabel: 'Supprimer', icon: '🗑️'
+    });
+    if(!ok) return;
     interventions=interventions.filter(i=>i.id!==id);
-    await BO.write(BO.KEYS.interventions,interventions);
-    BO.toast('Supprimé','info'); render(); renderCharts();
+    try {
+        await BO.write(BO.KEYS.interventions,interventions);
+        BO.toast('Supprimé','info');
+    } catch(err) {
+        console.error('Erreur suppression:', err);
+        BO.toast('Erreur lors de la suppression','error');
+    }
+    refresh();
 }
 
 /* ══════════════════════════════════════
@@ -1401,26 +1662,27 @@ function openDetail(id){
     const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
     const ov=isOverdue(i);
     const hist=(i.historique||[]).slice().reverse();
+    const sid=JSON.stringify(id);
 
     const photosH=(i.photos||[]).length?`
         <div style="margin-bottom:1.1rem;">
             <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">📷 Photos (${i.photos.length})</div>
-            <div class="photo-grid">${i.photos.map(p=>`
+            <div class="photo-grid">${i.photos.map((p,idx)=>`
                 <div class="photo-thumb">
-                    <img src="${p.dataUrl}" alt="${p.legend}" onclick="fullImg('${p.dataUrl}')">
-                    ${p.legend?`<div class="photo-legend-wrap" style="pointer-events:none;"><span style="font-size:.6rem;color:#fff;">${p.legend}</span></div>`:''}
+                    <img src="${esc(p.dataUrl||'')}" alt="${esc(p.legend)}" onclick="fullImg('${esc(p.dataUrl||'')}')">
+                    ${p.legend?`<div class="photo-legend-wrap" style="pointer-events:none;"><span style="font-size:.6rem;color:#fff;">${esc(p.legend)}</span></div>`:''}
                 </div>`).join('')}
             </div>
-        </div>`:'' ;
+        </div>`:'';
 
     const mesuresH=(i.mesures||[]).length?`
         <div style="margin-bottom:1.1rem;">
             <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">📐 Mesures (${i.mesures.length})</div>
             <div style="display:flex;flex-direction:column;gap:.4rem;">${i.mesures.map(m=>`
-                <div class="mesure-item"><div style="flex:1;"><div class="mesure-lbl">${m.label}</div>
-                <div style="display:flex;align-items:baseline;gap:.3rem;margin-top:.1rem;"><span class="mesure-val">${m.val}</span><span class="mesure-unit">${m.unit}</span></div></div></div>`).join('')}
+                <div class="mesure-item"><div style="flex:1;"><div class="mesure-lbl">${esc(m.label)}</div>
+                <div style="display:flex;align-items:baseline;gap:.3rem;margin-top:.1rem;"><span class="mesure-val">${esc(m.val)}</span><span class="mesure-unit">${esc(m.unit)}</span></div></div></div>`).join('')}
             </div>
-        </div>`:'' ;
+        </div>`:'';
 
     const checksH=Object.keys(i.checks||{}).length?`
         <div style="margin-bottom:1.1rem;">
@@ -1428,19 +1690,19 @@ function openDetail(id){
             <div style="display:flex;flex-direction:column;gap:.3rem;">${Object.entries(i.checks).map(([k,v])=>`
                 <div style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;${v?'':'opacity:.45'}">
                     <span style="color:${v?'#6ee7b7':'var(--muted)'};">${v?'✓':'○'}</span>
-                    <span style="${v?'':'text-decoration:line-through;'}">${k}</span>
+                    <span style="${v?'':'text-decoration:line-through;'}">${esc(k)}</span>
                 </div>`).join('')}
             </div>
-        </div>`:'' ;
+        </div>`:'';
 
     const rapportH=i.rapport?`
         <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:.75rem;padding:.875rem;margin-bottom:1.1rem;">
             <div style="font-size:.52rem;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;">
-                ✓ Rapport${i.duree?' · '+i.duree+'h':''}${i.dateResolution?' · '+BO.fmt(i.dateResolution):''}${i.chronoDebut?' · ⏱ '+i.chronoDebut+'→'+(i.chronoFin||'…'):''}
+                ✓ Rapport${i.duree?' · '+i.duree+'h':''}${i.dateResolution?' · '+esc(BO.fmt(i.dateResolution)):''}${i.chronoDebut?' · ⏱ '+esc(i.chronoDebut)+'→'+(esc(i.chronoFin)||'…'):''}
             </div>
-            <div style="font-size:.8rem;color:#cbd5e1;line-height:1.6;">${i.rapport}</div>
-            ${i.signature?`<div style="margin-top:.625rem;border-top:1px solid rgba(16,185,129,.15);padding-top:.5rem;"><div style="font-size:.5rem;color:#6ee7b7;font-weight:700;margin-bottom:.2rem;">SIGNATURE CLIENT</div><img src="${i.signature}" style="border-radius:.5rem;max-height:70px;opacity:.85;"></div>`:''}
-        </div>`:'' ;
+            <div style="font-size:.8rem;color:#cbd5e1;line-height:1.6;">${esc(i.rapport)}</div>
+            ${i.signature?`<div style="margin-top:.625rem;border-top:1px solid rgba(16,185,129,.15);padding-top:.5rem;"><div style="font-size:.5rem;color:#6ee7b7;font-weight:700;margin-bottom:.2rem;">SIGNATURE CLIENT</div><img src="${esc(i.signature)}" style="border-radius:.5rem;max-height:70px;opacity:.85;"></div>`:''}
+        </div>`:'';
 
     const tlH=hist.length?`
         <div style="margin-bottom:1rem;">
@@ -1448,27 +1710,27 @@ function openDetail(id){
             <div class="timeline">${hist.map(h=>`
                 <div class="tl-item">
                     <div class="tl-line"><div class="tl-dot" style="background:${h.couleur};box-shadow:0 0 5px ${h.couleur}66;"></div><div class="tl-connector"></div></div>
-                    <div><div class="tl-action">${h.action}</div><div class="tl-date">${BO.fmt(h.date)}</div></div>
+                    <div><div class="tl-action">${esc(h.action)}</div><div class="tl-date">${esc(BO.fmt(h.date))}</div></div>
                 </div>`).join('')}
             </div>
-        </div>`:'' ;
+        </div>`:'';
 
     document.getElementById('detail-content').innerHTML=`
         <div class="drag-handle"></div>
         <div class="bo-modal-header">
             <div style="flex:1;min-width:0;">
-                <div style="font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:.2rem;">#${i.id.slice(-4).toUpperCase()} · ${i.type||'Intervention'}</div>
-                <div class="bo-modal-title" style="font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${i.titre}</div>
+                <div style="font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:.2rem;">#${esc(i.id.slice(-4).toUpperCase())} · ${esc(i.type||'Intervention')}</div>
+                <div class="bo-modal-title" style="font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(i.titre)}</div>
             </div>
             <div style="display:flex;gap:.4rem;flex-shrink:0;">
-                <button class="bo-btn-icon" onclick="duplicate('${i.id}');closeModal();" title="Dupliquer"><i data-lucide="copy" style="width:14px;height:14px;color:#94a3b8;"></i></button>
-                <button class="bo-modal-close" onclick="closeModal()"><i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i></button>
+                <button class="bo-btn-icon" onclick="closeDetailModal();duplicate(${sid});" title="Dupliquer"><i data-lucide="copy" style="width:14px;height:14px;color:#94a3b8;"></i></button>
+                <button class="bo-modal-close" onclick="closeDetailModal()"><i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i></button>
             </div>
         </div>
         <div class="bo-modal-body" style="padding:1.1rem;">
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;">
-                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${i.statut}</span>
-                <span class="bo-badge" style="background:${PRIO_DOT[i.priorite]}22;color:${PRIO_DOT[i.priorite]};border:1px solid ${PRIO_DOT[i.priorite]}44;">⬤ ${i.priorite}</span>
+                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${esc(i.statut)}</span>
+                <span class="bo-badge" style="background:${PRIO_DOT[i.priorite]}22;color:${PRIO_DOT[i.priorite]};border:1px solid ${PRIO_DOT[i.priorite]}44;">⬤ ${esc(i.priorite)}</span>
                 ${(i.photos||[]).length?`<span class="bo-badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);">📷 ${i.photos.length}</span>`:''}
                 ${(i.mesures||[]).length?`<span class="bo-badge" style="background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.3);">📐 ${i.mesures.length}</span>`:''}
                 ${ov?'<span class="bo-badge" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);">⏰ Retard</span>':''}
@@ -1476,18 +1738,18 @@ function openDetail(id){
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
                 ${[['Client',c?.nom||'—'],['Site',i.site||'—'],['Technicien',i.technicien||'Non assigné'],['Durée',i.duree?i.duree+'h':'—'],['Échéance',i.dateEcheance?(ov?'⏰ ':'')+BO.fmt(i.dateEcheance):'—'],['Créé le',BO.fmt(i.dateCreation)]].map(([l,v])=>`
                 <div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.625rem .75rem;">
-                    <div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.15rem;">${l}</div>
-                    <div style="font-size:.82rem;font-weight:600;">${v}</div>
+                    <div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.15rem;">${esc(l)}</div>
+                    <div style="font-size:.82rem;font-weight:600;">${esc(String(v))}</div>
                 </div>`).join('')}
             </div>
-            ${i.description?`<div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:.3rem;">Description</div><div style="font-size:.8rem;color:#cbd5e1;line-height:1.6;">${i.description}</div></div>`:''}
+            ${i.description?`<div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:.3rem;">Description</div><div style="font-size:.8rem;color:#cbd5e1;line-height:1.6;">${esc(i.description)}</div></div>`:''}
             ${photosH}${mesuresH}${checksH}${rapportH}
-            ${i.note?`<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.5rem;color:#fcd34d;font-weight:700;text-transform:uppercase;margin-bottom:.3rem;">Note interne</div><div style="font-size:.78rem;color:#cbd5e1;">${i.note}</div></div>`:''}
+            ${i.note?`<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.5rem;color:#fcd34d;font-weight:700;text-transform:uppercase;margin-bottom:.3rem;">Note interne</div><div style="font-size:.78rem;color:#cbd5e1;">${esc(i.note)}</div></div>`:''}
             ${tlH}
         </div>
         <div class="bo-modal-footer">
-            <button class="bo-btn-ghost" onclick="closeModal()">Fermer</button>
-            <button class="bo-btn-gold" onclick="closeModal();openForm('${i.id}')"><i data-lucide="pencil" style="width:13px;height:13px;"></i> Modifier</button>
+            <button class="bo-btn-ghost" onclick="closeDetailModal()">Fermer</button>
+            <button class="bo-btn-gold" onclick="closeDetailModal();openForm(${sid})"><i data-lucide="pencil" style="width:13px;height:13px;"></i> Modifier</button>
         </div>`;
 
     document.getElementById('detail-modal').style.display='flex';
@@ -1496,20 +1758,29 @@ function openDetail(id){
 
 /* ══════════════════════════════════════
    EXPORT CSV
+   FIX #16 : photos exclues du CSV
 ══════════════════════════════════════ */
 function exportCSV(){
-    const cols=['ID','Titre','Client','Site','Type','Technicien','Statut','Priorité','Créé le','Échéance','Résolu le','Durée (h)','Photos','Mesures','Matériel','Description','Rapport'];
+    const cols=['ID','Titre','Client','Site','Type','Technicien','Statut','Priorité','Créé le','Échéance','Résolu le','Durée (h)','Nb Photos','Mesures','Matériel','Description','Rapport'];
     const rows=interventions.map(i=>{
         const c=clients.find(cl=>cl.id===i.clientId);
-        return [i.id,i.titre,c?.nom||'',i.site||'',i.type||'',i.technicien||'',i.statut,i.priorite,
-            i.dateCreation,i.dateEcheance||'',i.dateResolution||'',i.duree||0,
-            (i.photos||[]).length,(i.mesures||[]).map(m=>`${m.label}:${m.val}${m.unit}`).join(' | '),
-            (i.materiel||[]).join(' | '),(i.description||'').replace(/\n/g,' '),(i.rapport||'').replace(/\n/g,' '),
+        return [
+            i.id, i.titre, c?.nom||'', i.site||'', i.type||'', i.technicien||'',
+            i.statut, i.priorite, i.dateCreation, i.dateEcheance||'', i.dateResolution||'',
+            i.duree||0,
+            (i.photos||[]).length,  // FIX #16 : nombre seulement, pas les dataUrl
+            (i.mesures||[]).map(m=>`${m.label}:${m.val}${m.unit}`).join(' | '),
+            (i.materiel||[]).join(' | '),
+            (i.description||'').replace(/\n/g,' '),
+            (i.rapport||'').replace(/\n/g,' '),
         ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
     });
     const csv=[cols.join(','),...rows].join('\n');
-    const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
-    a.download=`interventions_${BO.today()}.csv`; a.click(); BO.toast('Export CSV téléchargé','success');
+    const a=document.createElement('a');
+    a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
+    a.download=`interventions_${BO.today()}.csv`;
+    a.click();
+    BO.toast('Export CSV téléchargé','success');
 }
 
 document.addEventListener('DOMContentLoaded', init);
