@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock · Vertex Backoffice</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <span data-module-title="Stock" style="display:none"></span>
+    <script src="bo-shell.js"></script>
+    <style>
+        .stock-card {
+            background:var(--card); border:1px solid var(--border);
+            border-radius:1.25rem; padding:1.25rem;
+            transition:all 0.25s;
+        }
+        .stock-card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(0,0,0,0.3); }
+        .stock-card.alert { border-color:rgba(239,68,68,0.3); }
+        .stock-card.warn  { border-color:rgba(245,158,11,0.25); }
+    </style>
+</head>
+<body>
+
+<main class="bo-page bo-animate">
+
+    <div class="bo-page-header">
+        <div>
+            <div class="bo-eyebrow">Inventaire</div>
+            <h1 class="bo-page-title">Stock</h1>
+        </div>
+        <button class="bo-btn-gold" onclick="openForm()">
+            <i data-lucide="plus" style="width:14px;height:14px;"></i>
+            Ajouter un article
+        </button>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;" id="kpi-row"></div>
+
+    <!-- Alert banner -->
+    <div id="alert-banner" style="display:none;" class="bo-alert-banner" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);">
+        <i data-lucide="alert-triangle" style="width:18px;height:18px;color:#ef4444;flex-shrink:0;"></i>
+        <div>
+            <div style="font-size:0.75rem;font-weight:900;text-transform:uppercase;color:#f87171;margin-bottom:0.15rem;">Articles sous le seuil d'alerte</div>
+            <div id="alert-items" style="font-size:0.7rem;color:#94a3b8;"></div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center;">
+        <div class="bo-search-wrap" style="flex:1;min-width:180px;">
+            <i data-lucide="search" class="bo-search-icon" style="width:15px;height:15px;"></i>
+            <input id="search" class="bo-search" placeholder="Réf, nom…" oninput="render()">
+        </div>
+        <div id="cat-pills" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
+        <div id="view-toggle" style="display:flex;gap:0.4rem;">
+            <button class="bo-pill active" id="view-grid" onclick="setView('grid')"><i data-lucide="layout-grid" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i></button>
+            <button class="bo-pill" id="view-list" onclick="setView('list')"><i data-lucide="list" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i></button>
+        </div>
+    </div>
+
+    <!-- Stock grid/list -->
+    <div id="stock-container"></div>
+
+</main>
+
+<!-- ── FORM MODAL ── -->
+<div class="bo-modal-overlay" id="modal" style="display:none;">
+    <div class="bo-modal" style="max-width:520px;">
+        <div class="bo-modal-header">
+            <div class="bo-modal-title" id="modal-title">Nouvel article</div>
+            <button class="bo-modal-close" onclick="closeModal()">
+                <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
+            </button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="bo-field">
+                <label class="bo-label">Référence</label>
+                <input id="f-ref" class="bo-input" placeholder="Ex: VTX-55DF">
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Catégorie</label>
+                <select id="f-cat" class="bo-select">
+                    <option>Affichage</option><option>LED</option><option>Totem</option>
+                    <option>Câblage</option><option>Électronique</option><option>Logiciel</option><option>Autre</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Nom de l'article <span class="req">*</span></label>
+            <input id="f-nom" class="bo-input" placeholder="Ex: Écran VTX DoubleF 55″">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+            <div class="bo-field">
+                <label class="bo-label">Quantité</label>
+                <input id="f-qty" type="number" min="0" class="bo-input" value="0">
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Seuil alerte</label>
+                <input id="f-seuil" type="number" min="0" class="bo-input" value="2">
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Prix unit. (€)</label>
+                <input id="f-prix" type="number" min="0" class="bo-input" value="0">
+            </div>
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Emplacement</label>
+            <input id="f-empl" class="bo-input" placeholder="Ex: Entrepôt A, Stock bureau…">
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Notes</label>
+            <textarea id="f-notes" class="bo-textarea" placeholder="Fournisseur, référence externe, remarques…" rows="2"></textarea>
+        </div>
+
+        <div class="bo-modal-footer">
+            <button class="bo-btn-ghost" onclick="closeModal()">Annuler</button>
+            <button class="bo-btn-gold" onclick="saveForm()">
+                <i data-lucide="check" style="width:14px;height:14px;"></i>
+                Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MOVEMENT MODAL ── -->
+<div class="bo-modal-overlay" id="mv-modal" style="display:none;">
+    <div class="bo-modal" style="max-width:380px;">
+        <div class="bo-modal-header">
+            <div class="bo-modal-title" id="mv-title">Mouvement de stock</div>
+            <button class="bo-modal-close" onclick="closeMvModal()">
+                <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
+            </button>
+        </div>
+
+        <div id="mv-current" style="text-align:center;margin-bottom:1.5rem;"></div>
+
+        <!-- Type toggle -->
+        <div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;">
+            <button id="mv-add-btn" onclick="setMvType('add')" style="flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.15);color:#6ee7b7;cursor:pointer;font-family:inherit;transition:all 0.2s;">
+                ⬆ Entrée
+            </button>
+            <button id="mv-rem-btn" onclick="setMvType('remove')" style="flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.2s;">
+                ⬇ Sortie
+            </button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;">
+            <button onclick="mvQty=Math.max(1,mvQty-1);renderMvQty()" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid var(--border);cursor:pointer;color:white;font-size:1.1rem;flex-shrink:0;">−</button>
+            <input id="mv-qty-input" type="number" min="1" value="1" oninput="mvQty=Math.max(1,parseInt(this.value)||1)" style="flex:1;text-align:center;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:0.75rem;padding:0.75rem;font-size:1.5rem;font-weight:900;font-style:italic;color:white;font-family:inherit;outline:none;">
+            <button onclick="mvQty++;renderMvQty()" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid var(--border);cursor:pointer;color:white;font-size:1.1rem;flex-shrink:0;">+</button>
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Motif (optionnel)</label>
+            <input id="mv-reason" class="bo-input" placeholder="Ex: Pose client, retour fournisseur…">
+        </div>
+
+        <div class="bo-modal-footer">
+            <button class="bo-btn-ghost" onclick="closeMvModal()">Annuler</button>
+            <button class="bo-btn-gold" onclick="confirmMv()">
+                <i data-lucide="check" style="width:14px;height:14px;"></i>
+                Valider
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let stocks = [];
+let filterCat = 'Toutes';
+let editId = null;
+let mvId = null, mvType = 'add', mvQty = 1;
+let viewMode = 'grid';
+
+const CAT_COLORS = {
+    'Affichage':   '#3b82f6',
+    'LED':         '#FFD700',
+    'Totem':       '#8b5cf6',
+    'Câblage':     '#64748b',
+    'Électronique':'#f59e0b',
+    'Logiciel':    '#10b981',
+    'Autre':       '#94a3b8',
+};
+
+async function init() {
+    stocks = await BO.read(BO.KEYS.stocks, []);
+    buildCatPills();
+    render();
+    lucide.createIcons();
+}
+
+function setView(mode) {
+    viewMode = mode;
+    ['grid','list'].forEach(m => document.getElementById('view-'+m)?.classList.toggle('active', m===mode));
+    render();
+}
+
+function categories() {
+    return [...new Set(stocks.map(s => s.categorie))];
+}
+
+function buildCatPills() {
+    const cont = document.getElementById('cat-pills');
+    cont.innerHTML = '';
+    ['Toutes', ...categories()].forEach(cat => {
+        const b = document.createElement('button');
+        b.className = 'bo-pill' + (cat === filterCat ? ' active' : '');
+        b.textContent = cat;
+        b.onclick = () => { filterCat = cat; buildCatPills(); render(); };
+        cont.appendChild(b);
+    });
+}
+
+function render() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const filtered = stocks.filter(s => {
+        const mq = !q || s.nom.toLowerCase().includes(q) || (s.ref||'').toLowerCase().includes(q);
+        const mc = filterCat === 'Toutes' || s.categorie === filterCat;
+        return mq && mc;
+    });
+
+    // KPIs
+    const alerts = stocks.filter(s => s.quantite <= s.seuilAlerte);
+    const totalVal = stocks.reduce((a,s) => a + s.quantite * (s.prix||0), 0);
+    const totalItems = stocks.reduce((a,s) => a + s.quantite, 0);
+
+    document.getElementById('kpi-row').innerHTML = [
+        { label:'Références',   val: stocks.length, sub:'articles',           color:'#FFD700' },
+        { label:'Unités totales',val: totalItems,   sub:'en inventaire',      color:'#3b82f6' },
+        { label:'Valeur stock', val: `${Math.round(totalVal/1000*10)/10}k €`, sub:'valorisation', color:'#10b981' },
+        { label:'Alertes',      val: alerts.length, sub:'sous le seuil',      color:'#ef4444' },
+    ].map(k => `
+        <div class="bo-stat">
+            <div class="bo-stat-label">${k.label}</div>
+            <div class="bo-stat-value" style="color:${k.color};">${k.val}</div>
+            <div class="bo-stat-sub">${k.sub}</div>
+        </div>`).join('');
+
+    // Alert banner
+    const banner = document.getElementById('alert-banner');
+    if (alerts.length > 0) {
+        banner.style.cssText = 'display:flex;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:0.875rem;padding:0.875rem 1.25rem;align-items:center;gap:0.875rem;margin-bottom:1.5rem;';
+        document.getElementById('alert-items').textContent = alerts.map(s => `${s.nom} (${s.quantite}/${s.seuilAlerte})`).join(' · ');
+    } else {
+        banner.style.display = 'none';
+    }
+
+    // Container
+    const cont = document.getElementById('stock-container');
+    if (filtered.length === 0) {
+        cont.innerHTML = `<div class="bo-card bo-card-p"><div class="bo-empty"><div class="bo-empty-title">Aucun article</div><div class="bo-empty-desc">Ajoutez votre premier article au stock.</div></div></div>`;
+        lucide.createIcons(); return;
+    }
+
+    if (viewMode === 'grid') {
+        cont.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1rem;';
+        cont.innerHTML = filtered.map(s => renderCardGrid(s)).join('');
+    } else {
+        cont.style.cssText = 'display:flex;flex-direction:column;gap:0.75rem;';
+        cont.innerHTML = `<div class="bo-card" style="overflow:hidden;">${filtered.map((s,i) => renderCardList(s,i,filtered.length)).join('')}</div>`;
+    }
+
+    lucide.createIcons();
+}
+
+function stockColor(s) {
+    if (s.quantite <= s.seuilAlerte) return '#ef4444';
+    if (s.quantite <= s.seuilAlerte * 1.5) return '#f59e0b';
+    return '#10b981';
+}
+
+function renderCardGrid(s) {
+    const color = stockColor(s);
+    const pct   = Math.min(100, (s.quantite / Math.max(s.seuilAlerte * 3, 1)) * 100);
+    const alert = s.quantite <= s.seuilAlerte;
+    const warn  = s.quantite <= s.seuilAlerte * 1.5;
+    const catColor = CAT_COLORS[s.categorie] || '#64748b';
+
+    return `
+    <div class="stock-card ${alert?'alert':warn?'warn':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:${catColor};margin-bottom:0.25rem;">${s.ref||'—'}</div>
+                <div style="font-size:0.9rem;font-weight:700;line-height:1.25;margin-bottom:0.4rem;">${s.nom}</div>
+                <span class="bo-badge" style="background:${catColor}18;color:${catColor};border:1px solid ${catColor}33;">${s.categorie}</span>
+            </div>
+            <div style="text-align:right;flex-shrink:0;margin-left:0.75rem;">
+                <div style="font-size:1.75rem;font-weight:900;font-style:italic;color:${color};line-height:1;">${s.quantite}</div>
+                <div style="font-size:0.6rem;color:var(--muted);">unités</div>
+            </div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);margin-bottom:0.3rem;">
+                <span>Stock actuel</span><span>Seuil: ${s.seuilAlerte}</span>
+            </div>
+            <div class="bo-progress-track">
+                <div class="bo-progress-bar" style="width:${pct}%;background:${color};"></div>
+            </div>
+        </div>
+
+        <div style="font-size:0.65rem;color:var(--muted);margin-bottom:1rem;display:flex;justify-content:space-between;">
+            <span>📦 ${s.emplacement||'—'}</span>
+            <span>${s.prix > 0 ? s.prix.toLocaleString('fr-FR') + ' €/u.' : '—'}</span>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;">
+            <button onclick="openMv('${s.id}')" style="flex:1;padding:0.5rem;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:0.5rem;font-size:0.6rem;font-weight:800;text-transform:uppercase;color:#FFD700;cursor:pointer;font-family:inherit;">Mouvement</button>
+            <button class="bo-btn-icon" onclick="openForm('${s.id}')"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+            <button class="bo-btn-danger" onclick="removeItem('${s.id}')"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+        </div>
+    </div>`;
+}
+
+function renderCardList(s, idx, total) {
+    const color = stockColor(s);
+    const pct   = Math.min(100, (s.quantite / Math.max(s.seuilAlerte * 3, 1)) * 100);
+    const catColor = CAT_COLORS[s.categorie] || '#64748b';
+
+    return `
+    <div class="bo-row" style="${idx < total-1 ? 'border-bottom:1px solid var(--border);' : ''}">
+        <div style="font-size:0.65rem;font-weight:700;color:var(--muted);width:80px;flex-shrink:0;">${s.ref||'—'}</div>
+        <div style="flex:3;min-width:0;">
+            <div style="font-size:0.875rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.nom}</div>
+            <div style="font-size:0.65rem;color:var(--muted);">${s.categorie} · ${s.emplacement||'—'}</div>
+        </div>
+        <div style="width:120px;flex-shrink:0;">
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);margin-bottom:0.25rem;">
+                <span style="color:${color};font-weight:700;">${s.quantite} u.</span><span>/${s.seuilAlerte}</span>
+            </div>
+            <div class="bo-progress-track"><div class="bo-progress-bar" style="width:${pct}%;background:${color};"></div></div>
+        </div>
+        <div style="font-size:0.75rem;font-weight:700;width:80px;text-align:right;flex-shrink:0;">${s.prix>0?s.prix.toLocaleString('fr-FR')+' €':'—'}</div>
+        <div style="display:flex;gap:0.4rem;flex-shrink:0;">
+            <button onclick="openMv('${s.id}')" class="bo-btn-icon" title="Mouvement"><i data-lucide="arrow-up-down" style="width:13px;height:13px;color:#FFD700;"></i></button>
+            <button class="bo-btn-icon" onclick="openForm('${s.id}')"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+            <button class="bo-btn-danger" onclick="removeItem('${s.id}')"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+        </div>
+    </div>`;
+}
+
+/* ── FORM ── */
+function openForm(id = null) {
+    editId = id;
+    document.getElementById('modal-title').textContent = id ? 'Modifier l\'article' : 'Nouvel article';
+
+    if (id) {
+        const s = stocks.find(x => x.id === id);
+        if (!s) return;
+        document.getElementById('f-ref').value   = s.ref || '';
+        document.getElementById('f-cat').value   = s.categorie;
+        document.getElementById('f-nom').value   = s.nom;
+        document.getElementById('f-qty').value   = s.quantite;
+        document.getElementById('f-seuil').value = s.seuilAlerte;
+        document.getElementById('f-prix').value  = s.prix || 0;
+        document.getElementById('f-empl').value  = s.emplacement || '';
+        document.getElementById('f-notes').value = s.notes || '';
+    } else {
+        ['f-ref','f-nom','f-empl','f-notes'].forEach(i => document.getElementById(i).value = '');
+        document.getElementById('f-cat').value   = 'Affichage';
+        document.getElementById('f-qty').value   = 0;
+        document.getElementById('f-seuil').value = 2;
+        document.getElementById('f-prix').value  = 0;
+    }
+    document.getElementById('modal').style.display = 'flex';
+    lucide.createIcons();
+}
+
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+async function saveForm() {
+    const nom = document.getElementById('f-nom').value.trim();
+    if (!nom) { BO.toast('Le nom est obligatoire', 'warn'); return; }
+
+    const data = {
+        ref:        document.getElementById('f-ref').value.trim(),
+        categorie:  document.getElementById('f-cat').value,
+        nom,
+        quantite:   parseInt(document.getElementById('f-qty').value) || 0,
+        seuilAlerte:parseInt(document.getElementById('f-seuil').value) || 0,
+        prix:       parseFloat(document.getElementById('f-prix').value) || 0,
+        emplacement:document.getElementById('f-empl').value.trim(),
+        notes:      document.getElementById('f-notes').value.trim(),
+    };
+
+    if (editId) {
+        stocks = stocks.map(s => s.id === editId ? { ...s, ...data } : s);
+        BO.toast('Article mis à jour', 'success');
+    } else {
+        stocks.unshift({ id: BO.uid(), ...data });
+        BO.toast('Article ajouté', 'success');
+    }
+
+    await BO.write(BO.KEYS.stocks, stocks);
+    closeModal();
+    buildCatPills();
+    render();
+}
+
+async function removeItem(id) {
+    if (!confirm('Supprimer cet article ?')) return;
+    stocks = stocks.filter(s => s.id !== id);
+    await BO.write(BO.KEYS.stocks, stocks);
+    BO.toast('Article supprimé', 'info');
+    buildCatPills();
+    render();
+}
+
+/* ── MOVEMENT ── */
+function openMv(id) {
+    mvId = id; mvQty = 1; mvType = 'add';
+    const s = stocks.find(x => x.id === id);
+    if (!s) return;
+
+    document.getElementById('mv-title').textContent = s.nom;
+    document.getElementById('mv-reason').value = '';
+    renderMvQty();
+    setMvType('add');
+    document.getElementById('mv-modal').style.display = 'flex';
+    lucide.createIcons();
+}
+
+function closeMvModal() { document.getElementById('mv-modal').style.display = 'none'; }
+
+function setMvType(type) {
+    mvType = type;
+    const addBtn = document.getElementById('mv-add-btn');
+    const remBtn = document.getElementById('mv-rem-btn');
+    if (type === 'add') {
+        addBtn.style.cssText = 'flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.15);color:#6ee7b7;cursor:pointer;font-family:inherit;';
+        remBtn.style.cssText = 'flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;';
+    } else {
+        remBtn.style.cssText = 'flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid rgba(245,158,11,0.4);background:rgba(245,158,11,0.15);color:#fcd34d;cursor:pointer;font-family:inherit;';
+        addBtn.style.cssText = 'flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;';
+    }
+    renderMvQty();
+}
+
+function renderMvQty() {
+    const s = stocks.find(x => x.id === mvId);
+    if (!s) return;
+    const after = mvType === 'add' ? s.quantite + mvQty : Math.max(0, s.quantite - mvQty);
+    const color = after <= s.seuilAlerte ? '#ef4444' : '#10b981';
+    document.getElementById('mv-current').innerHTML = `
+        <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.5rem;">Stock actuel</div>
+        <div style="font-size:2.5rem;font-weight:900;font-style:italic;color:var(--gold);margin-bottom:0.25rem;">${s.quantite}</div>
+        <div style="font-size:0.75rem;color:var(--muted);">→ après mouvement: <strong style="color:${color};">${after}</strong></div>
+    `;
+    document.getElementById('mv-qty-input').value = mvQty;
+}
+
+async function confirmMv() {
+    const qty = parseInt(document.getElementById('mv-qty-input').value) || 0;
+    if (qty <= 0) { BO.toast('Quantité invalide', 'warn'); return; }
+
+    stocks = stocks.map(s => {
+        if (s.id !== mvId) return s;
+        const delta = mvType === 'add' ? qty : -qty;
+        return { ...s, quantite: Math.max(0, s.quantite + delta) };
+    });
+
+    await BO.write(BO.KEYS.stocks, stocks);
+    const label = mvType === 'add' ? `+${qty} unité(s) ajoutée(s)` : `−${qty} unité(s) retirée(s)`;
+    BO.toast(label, mvType === 'add' ? 'success' : 'info');
+    closeMvModal();
+    render();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
