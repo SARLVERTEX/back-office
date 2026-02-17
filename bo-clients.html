@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clients · Vertex Backoffice</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <span data-module-title="Clients" style="display:none"></span>
+    <script src="bo-shell.js"></script>
+    <style>
+        .client-row { cursor:pointer; transition:all 0.15s; border-left:3px solid transparent; }
+        .client-row:hover { background:rgba(255,255,255,0.02); }
+        .client-row.active { background:rgba(255,215,0,0.04); border-left-color:#FFD700; }
+        .detail-panel {
+            background:var(--card); border:1px solid var(--border);
+            border-radius:1.25rem; padding:1.5rem; height:fit-content;
+            position:sticky; top:80px;
+        }
+    </style>
+</head>
+<body>
+
+<main class="bo-page bo-animate">
+
+    <div class="bo-page-header">
+        <div>
+            <div class="bo-eyebrow">CRM</div>
+            <h1 class="bo-page-title">Clients</h1>
+        </div>
+        <button class="bo-btn-gold" onclick="openForm()">
+            <i data-lucide="plus" style="width:14px;height:14px;"></i>
+            Nouveau client
+        </button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:1.5rem;" id="layout">
+        <!-- Left: list -->
+        <div id="left-col">
+            <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <div class="bo-search-wrap" style="flex:1;min-width:200px;">
+                    <i data-lucide="search" class="bo-search-icon" style="width:15px;height:15px;"></i>
+                    <input id="search" class="bo-search" placeholder="Nom, contact…" oninput="render()">
+                </div>
+                <div id="tag-pills" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
+            </div>
+
+            <div class="bo-card" id="clients-list"></div>
+        </div>
+
+        <!-- Right: detail (shown when a client is selected) -->
+        <div id="right-col" style="display:none;">
+            <div class="detail-panel" id="detail-panel"></div>
+        </div>
+    </div>
+
+</main>
+
+<!-- ── MODAL ── -->
+<div class="bo-modal-overlay" id="modal" style="display:none;">
+    <div class="bo-modal" style="max-width:500px;">
+        <div class="bo-modal-header">
+            <div class="bo-modal-title" id="modal-title">Nouveau client</div>
+            <button class="bo-modal-close" onclick="closeModal()">
+                <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
+            </button>
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Nom de l'entreprise <span class="req">*</span></label>
+            <input id="f-nom" class="bo-input" placeholder="Ex: Casino de Monte-Carlo">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="bo-field">
+                <label class="bo-label">Contact principal</label>
+                <input id="f-contact" class="bo-input" placeholder="Prénom Nom">
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">Téléphone</label>
+                <input id="f-tel" class="bo-input" placeholder="+377 …">
+            </div>
+        </div>
+        <div class="bo-field">
+            <label class="bo-label">Email</label>
+            <input id="f-email" type="email" class="bo-input" placeholder="contact@domaine.mc">
+        </div>
+        <div class="bo-field">
+            <label class="bo-label">Adresse</label>
+            <textarea id="f-adresse" class="bo-textarea" placeholder="Adresse complète" rows="2"></textarea>
+        </div>
+        <div class="bo-field">
+            <label class="bo-label">Notes</label>
+            <textarea id="f-notes" class="bo-textarea" placeholder="Informations complémentaires…" rows="2"></textarea>
+        </div>
+
+        <div class="bo-field">
+            <label class="bo-label">Tags</label>
+            <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
+                <input id="f-tag-input" class="bo-input" placeholder="VIP, Hôtel, Casino…" onkeydown="if(event.key==='Enter'){event.preventDefault();addTag();}">
+                <button class="bo-btn-gold" onclick="addTag()" style="flex-shrink:0;">
+                    <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                </button>
+            </div>
+            <div id="f-tag-chips" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+        </div>
+
+        <div class="bo-modal-footer">
+            <button class="bo-btn-ghost" onclick="closeModal()">Annuler</button>
+            <button class="bo-btn-gold" onclick="saveForm()">
+                <i data-lucide="check" style="width:14px;height:14px;"></i>
+                Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let clients = [], interventions = [];
+let selectedId = null, editId = null;
+let filterTag = 'Tous';
+let formTags = [];
+
+async function init() {
+    [clients, interventions] = await Promise.all([
+        BO.read(BO.KEYS.clients, []),
+        BO.read(BO.KEYS.interventions, []),
+    ]);
+    buildTagPills();
+    render();
+    lucide.createIcons();
+}
+
+function allTags() {
+    const tags = new Set();
+    clients.forEach(c => (c.tags||[]).forEach(t => tags.add(t)));
+    return [...tags];
+}
+
+function buildTagPills() {
+    const cont = document.getElementById('tag-pills');
+    cont.innerHTML = '';
+    ['Tous', ...allTags()].forEach(t => {
+        const b = document.createElement('button');
+        b.className = 'bo-pill' + (t === filterTag ? ' active' : '');
+        b.textContent = t;
+        b.onclick = () => { filterTag = t; buildTagPills(); render(); };
+        cont.appendChild(b);
+    });
+}
+
+function render() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const filtered = clients.filter(c => {
+        const mq = !q || c.nom.toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q);
+        const mt = filterTag === 'Tous' || (c.tags||[]).includes(filterTag);
+        return mq && mt;
+    });
+
+    const list = document.getElementById('clients-list');
+    if (filtered.length === 0) {
+        list.innerHTML = `<div class="bo-empty"><div class="bo-empty-title">Aucun client</div><div class="bo-empty-desc">Créez votre premier compte client.</div></div>`;
+    } else {
+        list.innerHTML = filtered.map((c, idx) => {
+            const nb = interventions.filter(i => i.clientId === c.id).length;
+            const isActive = c.id === selectedId;
+            return `
+            <div class="bo-row client-row ${isActive?'active':''}" style="padding:1rem 1.5rem;${idx<filtered.length-1?'border-bottom:1px solid var(--border);':''}" onclick="selectClient('${c.id}')">
+                <div class="bo-avatar" style="width:40px;height:40px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);font-size:0.8rem;color:#FFD700;">${c.nom.slice(0,2).toUpperCase()}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.875rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nom}</div>
+                    <div style="font-size:0.65rem;color:var(--muted);">${c.contact||'—'}${c.tel?' · '+c.tel:''}</div>
+                    <div style="display:flex;gap:0.3rem;margin-top:0.35rem;flex-wrap:wrap;">
+                        ${(c.tags||[]).map(t => `<span class="bo-badge" style="background:rgba(255,215,0,0.1);color:#FFD700;border:1px solid rgba(255,215,0,0.2);">${t}</span>`).join('')}
+                    </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:1.1rem;font-weight:900;font-style:italic;color:#FFD700;">${nb}</div>
+                    <div style="font-size:0.6rem;color:var(--muted);">interv.</div>
+                </div>
+                <div style="display:flex;gap:0.4rem;" onclick="event.stopPropagation()">
+                    <button class="bo-btn-icon" onclick="openForm('${c.id}')"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+                    <button class="bo-btn-danger" onclick="removeClient('${c.id}')"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // Update layout if detail open
+    updateLayout();
+    if (selectedId) renderDetail();
+    lucide.createIcons();
+}
+
+function updateLayout() {
+    const layout = document.getElementById('layout');
+    const right  = document.getElementById('right-col');
+    if (selectedId) {
+        layout.style.gridTemplateColumns = '1fr 1fr';
+        right.style.display = 'block';
+    } else {
+        layout.style.gridTemplateColumns = '1fr';
+        right.style.display = 'none';
+    }
+}
+
+function selectClient(id) {
+    selectedId = selectedId === id ? null : id;
+    render();
+}
+
+function renderDetail() {
+    const c  = clients.find(x => x.id === selectedId);
+    if (!c) return;
+    const ci = interventions.filter(i => i.clientId === c.id)
+                             .sort((a,b) => b.dateCreation.localeCompare(a.dateCreation));
+
+    const STATUS_C = {
+        'Ouvert':   { bg:'rgba(59,130,246,0.15)', border:'#3b82f6', text:'#93c5fd' },
+        'En cours': { bg:'rgba(245,158,11,0.15)', border:'#f59e0b', text:'#fcd34d' },
+        'Résolu':   { bg:'rgba(16,185,129,0.15)', border:'#10b981', text:'#6ee7b7' },
+        'Annulé':   { bg:'rgba(100,116,139,0.15)',border:'#64748b', text:'#94a3b8' },
+    };
+
+    document.getElementById('detail-panel').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+            <div class="bo-avatar" style="width:52px;height:52px;background:rgba(255,215,0,0.1);border:2px solid rgba(255,215,0,0.25);font-size:1rem;color:#FFD700;">${c.nom.slice(0,2).toUpperCase()}</div>
+            <button onclick="selectClient(null)" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:0.5rem;padding:0.3rem;cursor:pointer;display:flex;"><i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i></button>
+        </div>
+        <div style="margin-bottom:1.25rem;">
+            <div style="font-size:1.1rem;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:-0.02em;margin-bottom:0.4rem;">${c.nom}</div>
+            <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+                ${(c.tags||[]).map(t => `<span class="bo-badge" style="background:rgba(255,215,0,0.1);color:#FFD700;border:1px solid rgba(255,215,0,0.2);">${t}</span>`).join('')}
+            </div>
+        </div>
+        <div style="margin-bottom:1.5rem;">
+            ${[['👤 Contact', c.contact], ['✉️ Email', c.email], ['📞 Téléphone', c.tel], ['📍 Adresse', c.adresse], ['📝 Notes', c.notes]].filter(([,v])=>v).map(([l,v]) => `
+            <div style="display:flex;gap:0.75rem;padding:0.65rem;background:rgba(0,0,0,0.25);border-radius:0.65rem;margin-bottom:0.5rem;">
+                <div style="font-size:0.65rem;color:var(--muted);font-weight:700;flex-shrink:0;padding-top:0.05rem;">${l}</div>
+                <div style="font-size:0.78rem;color:#cbd5e1;word-break:break-word;">${v}</div>
+            </div>`).join('')}
+        </div>
+        <div style="margin-bottom:0.875rem;display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:0.6rem;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);">Interventions (${ci.length})</div>
+            <a href="bo-interventions.html" style="font-size:0.55rem;color:#FFD700;text-decoration:none;font-weight:800;">+ Créer →</a>
+        </div>
+        ${ci.length === 0 ? `<div style="font-size:0.75rem;color:var(--muted);text-align:center;padding:1rem;">Aucune intervention</div>` :
+            ci.map(i => {
+                const st = STATUS_C[i.statut] || STATUS_C['Ouvert'];
+                return `
+                <div style="padding:0.75rem;background:rgba(0,0,0,0.2);border-radius:0.65rem;margin-bottom:0.5rem;border-left:2px solid ${st.border};">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+                        <div style="font-size:0.75rem;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${i.titre}</div>
+                        <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;flex-shrink:0;">${i.statut}</span>
+                    </div>
+                    <div style="font-size:0.62rem;color:var(--muted);margin-top:0.25rem;">${BO.fmt(i.dateCreation)} · ${i.technicien||'—'}</div>
+                </div>`;
+            }).join('')
+        }
+        <div style="margin-top:1.25rem;">
+            <button class="bo-btn-gold" style="width:100%;" onclick="openForm('${c.id}',true)">
+                <i data-lucide="pencil" style="width:13px;height:13px;"></i>Modifier la fiche
+            </button>
+        </div>
+    `;
+    lucide.createIcons();
+}
+
+/* ── FORM ── */
+function openForm(id = null, fromDetail = false) {
+    editId = id;
+    formTags = [];
+    document.getElementById('modal-title').textContent = id ? 'Modifier le client' : 'Nouveau client';
+
+    if (id) {
+        const c = clients.find(x => x.id === id);
+        if (!c) return;
+        document.getElementById('f-nom').value     = c.nom;
+        document.getElementById('f-contact').value = c.contact || '';
+        document.getElementById('f-tel').value     = c.tel || '';
+        document.getElementById('f-email').value   = c.email || '';
+        document.getElementById('f-adresse').value = c.adresse || '';
+        document.getElementById('f-notes').value   = c.notes || '';
+        formTags = [...(c.tags || [])];
+    } else {
+        ['f-nom','f-contact','f-tel','f-email','f-adresse','f-notes'].forEach(id => document.getElementById(id).value = '');
+        formTags = [];
+    }
+    renderTagChips();
+    document.getElementById('modal').style.display = 'flex';
+    lucide.createIcons();
+}
+
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+}
+
+function addTag() {
+    const inp = document.getElementById('f-tag-input');
+    const val = inp.value.trim();
+    if (!val || formTags.includes(val)) return;
+    formTags.push(val);
+    inp.value = '';
+    renderTagChips();
+}
+
+function removeTag(idx) {
+    formTags.splice(idx, 1);
+    renderTagChips();
+}
+
+function renderTagChips() {
+    document.getElementById('f-tag-chips').innerHTML = formTags.map((t,i) => `
+        <span class="bo-chip" style="background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.2);color:#FFD700;">
+            ${t}
+            <button class="bo-chip-btn" onclick="removeTag(${i})">
+                <i data-lucide="x" style="width:10px;height:10px;color:#FFD700;"></i>
+            </button>
+        </span>`).join('');
+    lucide.createIcons();
+}
+
+async function saveForm() {
+    const nom = document.getElementById('f-nom').value.trim();
+    if (!nom) { BO.toast('Le nom est obligatoire', 'warn'); return; }
+
+    const data = {
+        nom,
+        contact: document.getElementById('f-contact').value.trim(),
+        tel:     document.getElementById('f-tel').value.trim(),
+        email:   document.getElementById('f-email').value.trim(),
+        adresse: document.getElementById('f-adresse').value.trim(),
+        notes:   document.getElementById('f-notes').value.trim(),
+        tags:    [...formTags],
+    };
+
+    if (editId) {
+        clients = clients.map(c => c.id === editId ? { ...c, ...data } : c);
+        BO.toast('Client mis à jour', 'success');
+    } else {
+        clients.unshift({ id: BO.uid(), ...data });
+        BO.toast('Client créé', 'success');
+    }
+
+    await BO.write(BO.KEYS.clients, clients);
+    closeModal();
+    buildTagPills();
+    render();
+}
+
+async function removeClient(id) {
+    if (!confirm('Supprimer ce client ?')) return;
+    clients = clients.filter(c => c.id !== id);
+    if (selectedId === id) selectedId = null;
+    await BO.write(BO.KEYS.clients, clients);
+    BO.toast('Client supprimé', 'info');
+    buildTagPills();
+    render();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
