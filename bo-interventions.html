@@ -5,22 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Interventions · Vertex Backoffice</title>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="bo-shell.js"></script>
     <span data-module-title="Interventions" style="display:none"></span>
     <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
     :root {
-        --bg:       #0a0e1a; --surface:  #111827; --surface2: #1a2236; --surface3: #202d42;
-        --border:   rgba(255,255,255,.07); --border2: rgba(255,255,255,.12);
-        --muted:    #475569; --text: #e2e8f0;
-        --gold:     #d4a843; --gold-dark:#b8902e; --gold-glow:rgba(212,168,67,.18);
-        --green:    #10b981; --green-bg: rgba(16,185,129,.1);
-        --red:      #ef4444; --blue:#3b82f6; --amber:#f59e0b; --purple:#8b5cf6;
-        --radius:   .875rem; --safe-b: env(safe-area-inset-bottom,0px); --safe-t: env(safe-area-inset-top,0px); --nav-h: 64px;
+        --bg:#0a0e1a; --surface:#111827; --surface2:#1a2236; --surface3:#202d42;
+        --border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.12);
+        --muted:#475569; --text:#e2e8f0;
+        --gold:#d4a843; --gold-dark:#b8902e; --gold-glow:rgba(212,168,67,.18);
+        --green:#10b981; --green-bg:rgba(16,185,129,.1);
+        --red:#ef4444; --blue:#3b82f6; --amber:#f59e0b; --purple:#8b5cf6;
+        --radius:.875rem; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px); --nav-h:64px;
     }
     body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,-apple-system,sans-serif; min-height:100vh; -webkit-tap-highlight-color:transparent; }
-
-    /* ── PAGE ── */
     .bo-page { max-width:1280px; margin:0 auto; padding:.875rem .875rem calc(var(--nav-h) + var(--safe-b) + 1rem); }
     @media(min-width:640px){ .bo-page{ padding:2rem 1.5rem 4rem; } }
     .bo-animate { animation:fadeUp .3s ease both; }
@@ -29,33 +28,25 @@
     .bo-eyebrow { font-size:.58rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); margin-bottom:.3rem; }
     .bo-page-title { font-size:1.5rem; font-weight:800; letter-spacing:-.02em; }
     @media(min-width:640px){ .bo-page-title{ font-size:1.75rem; } }
-
-    /* ── STATS ── */
-    .bo-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:.875rem 1rem; }
+    .bo-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:.75rem .875rem; flex:0 0 110px; }
+    @media(min-width:640px){ .bo-stat{ flex:1 1 110px; } }
     .bo-stat-label { font-size:.58rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:.35rem; }
     .bo-stat-value { font-size:1.6rem; font-weight:800; line-height:1; }
     .bo-stat-sub { font-size:.6rem; color:var(--muted); margin-top:.25rem; }
-
-    /* ── CARD & ROW ── */
     .bo-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-    .bo-row { display:flex; align-items:center; gap:.75rem; padding:.875rem 1rem; border-bottom:1px solid var(--border); cursor:pointer; transition:background .15s; -webkit-user-select:none; user-select:none; }
-    .bo-row:last-child { border-bottom:none; }
-    .bo-row:active { background:rgba(255,255,255,.04); }
     .sortable-header { display:flex; align-items:center; gap:.3rem; font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); cursor:pointer; padding:.75rem 1rem .5rem; border-bottom:1px solid var(--border); user-select:none; }
     .sortable-header span { display:flex; gap:.75rem; }
     .sort-btn { display:inline-flex; align-items:center; gap:.25rem; padding:.2rem .5rem; border-radius:.35rem; transition:all .15s; }
     .sort-btn:hover { background:rgba(255,255,255,.06); color:var(--text); }
     .sort-btn.asc::after { content:'↑'; font-size:.65rem; color:var(--gold); }
     .sort-btn.desc::after { content:'↓'; font-size:.65rem; color:var(--gold); }
-
-    /* ── BUTTONS ── */
     .bo-btn-gold { display:inline-flex; align-items:center; gap:.4rem; background:var(--gold); color:#000; font-size:.78rem; font-weight:700; padding:.55rem 1rem; border:none; border-radius:.6rem; cursor:pointer; transition:background .15s,transform .1s; touch-action:manipulation; }
     .bo-btn-gold:active { transform:scale(.96); background:var(--gold-dark); }
     .bo-btn-ghost { display:inline-flex; align-items:center; gap:.4rem; background:transparent; color:var(--text); font-size:.78rem; font-weight:600; padding:.55rem 1rem; border:1px solid var(--border); border-radius:.6rem; cursor:pointer; touch-action:manipulation; transition:border-color .15s; }
     .bo-btn-ghost:active { border-color:var(--border2); }
-    .bo-btn-icon { background:transparent; border:none; cursor:pointer; padding:.35rem; border-radius:.4rem; display:flex; align-items:center; }
+    .bo-btn-icon { background:transparent; border:none; cursor:pointer; padding:.35rem; border-radius:.4rem; display:flex; align-items:center; min-width:36px; min-height:36px; justify-content:center; }
     .bo-btn-icon:active { background:rgba(255,255,255,.08); }
-    .bo-btn-danger { background:transparent; border:none; cursor:pointer; padding:.35rem; border-radius:.4rem; display:flex; align-items:center; }
+    .bo-btn-danger { background:transparent; border:none; cursor:pointer; padding:.35rem; border-radius:.4rem; display:flex; align-items:center; min-width:36px; min-height:36px; justify-content:center; }
     .bo-btn-danger:active { background:rgba(239,68,68,.15); }
     .btn-touch { display:flex; align-items:center; justify-content:center; gap:.5rem; width:100%; padding:1rem; border-radius:.875rem; border:1px solid transparent; font-size:.9rem; font-weight:700; cursor:pointer; transition:all .15s; touch-action:manipulation; }
     .btn-touch:active { transform:scale(.97); }
@@ -65,19 +56,14 @@
     .btn-touch-red.lit { background:var(--red); color:#fff; }
     .btn-touch-blue { background:rgba(59,130,246,.1); color:#93c5fd; border-color:rgba(59,130,246,.25); }
     .btn-touch-amber { background:rgba(245,158,11,.1); color:#fcd34d; border-color:rgba(245,158,11,.25); }
-
-    /* ── SEARCH ── */
+    .btn-touch-purple { background:rgba(139,92,246,.1); color:#a78bfa; border-color:rgba(139,92,246,.25); }
     .bo-search-wrap { position:relative; }
     .bo-search-icon { position:absolute; left:.75rem; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
     .bo-search { width:100%; background:var(--surface); border:1px solid var(--border); color:var(--text); font-size:1rem; padding:.6rem .75rem .6rem 2.25rem; border-radius:.6rem; outline:none; -webkit-appearance:none; }
     .bo-search:focus { border-color:var(--gold); }
-
-    /* ── PILLS ── */
     .bo-pill { background:transparent; border:1px solid var(--border); color:var(--muted); font-size:.7rem; font-weight:600; padding:.32rem .75rem; border-radius:999px; cursor:pointer; white-space:nowrap; touch-action:manipulation; transition:all .15s; }
     .bo-pill.active { background:var(--gold); border-color:var(--gold); color:#000; }
     .bo-badge { display:inline-flex; align-items:center; font-size:.63rem; font-weight:700; padding:.2rem .6rem; border-radius:999px; white-space:nowrap; }
-
-    /* ── FORM FIELDS ── */
     .bo-field { display:flex; flex-direction:column; gap:.4rem; }
     .bo-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
     .bo-label .req { color:var(--gold); }
@@ -87,9 +73,7 @@
         -webkit-appearance:none; appearance:none; font-family:inherit; transition:border-color .15s;
     }
     .bo-input:focus, .bo-select:focus, .bo-textarea:focus { border-color:var(--gold); }
-    @media(max-width:639px){
-        .bo-input,.bo-select,.bo-textarea { font-size:16px; }
-    }
+    @media(max-width:639px){ .bo-input,.bo-select,.bo-textarea { font-size:16px; } }
     .bo-select {
         background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23475569' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
         background-repeat:no-repeat; background-position:right .875rem center; padding-right:2.5rem;
@@ -98,6 +82,16 @@
     .bo-textarea { resize:vertical; min-height:88px; line-height:1.55; }
     .bo-chip { display:inline-flex; align-items:center; gap:.3rem; background:rgba(212,168,67,.1); border:1px solid rgba(212,168,67,.25); color:var(--gold); font-size:.72rem; font-weight:600; padding:.28rem .6rem; border-radius:999px; }
     .bo-chip-btn { background:none; border:none; cursor:pointer; color:inherit; display:flex; align-items:center; padding:0; opacity:.7; }
+
+    /* ── TECH MULTI-SELECT ── */
+    .tech-selector { background:var(--surface2); border:1px solid var(--border); border-radius:.6rem; padding:.5rem; transition:border-color .15s; }
+    .tech-selector:focus-within { border-color:var(--gold); }
+    .tech-options { display:flex; flex-wrap:wrap; gap:.35rem; }
+    .tech-option { display:flex; align-items:center; gap:.35rem; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:999px; padding:.3rem .7rem; cursor:pointer; transition:all .15s; user-select:none; touch-action:manipulation; font-size:.75rem; font-weight:600; color:var(--muted); }
+    .tech-option:active { transform:scale(.96); }
+    .tech-option.selected { background:rgba(212,168,67,.15); border-color:rgba(212,168,67,.4); color:var(--gold); }
+    .tech-option .tech-check { width:14px; height:14px; border-radius:50%; border:1.5px solid var(--border2); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s; }
+    .tech-option.selected .tech-check { background:var(--gold); border-color:var(--gold); }
 
     /* ── MODAL ── */
     .bo-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.82); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); display:flex; align-items:flex-end; justify-content:center; z-index:1000; }
@@ -111,11 +105,9 @@
     .bo-modal-title { font-size:.95rem; font-weight:800; }
     .bo-modal-close { background:rgba(255,255,255,.06); border:none; border-radius:.5rem; cursor:pointer; padding:.4rem; display:flex; align-items:center; min-width:32px; min-height:32px; justify-content:center; }
     .bo-modal-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
-    .bo-modal-footer { display:flex; gap:.75rem; padding:1rem 1.25rem; border-top:1px solid var(--border); flex-shrink:0; }
+    .bo-modal-footer { display:flex; gap:.75rem; padding:1rem 1.25rem; border-top:1px solid var(--border); flex-shrink:0; flex-wrap:wrap; }
     .bo-modal-footer .bo-btn-gold { flex:1; justify-content:center; padding:.8rem; font-size:.9rem; }
     .bo-modal-footer .bo-btn-ghost { justify-content:center; padding:.8rem 1rem; }
-
-    /* ── FORM TABS ── */
     .form-tabs { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface); }
     .form-tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:.2rem; padding:.8rem .4rem; font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); cursor:pointer; border:none; background:none; position:relative; touch-action:manipulation; transition:color .15s; }
     .form-tab::after { content:''; position:absolute; bottom:0; left:20%; right:20%; height:2px; background:var(--gold); border-radius:999px; transform:scaleX(0); transition:transform .2s; }
@@ -124,12 +116,8 @@
     .tab-badge { position:absolute; top:.45rem; right:calc(50% - .9rem); background:var(--gold); color:#000; font-size:.48rem; font-weight:800; padding:.08rem .28rem; border-radius:999px; min-width:14px; text-align:center; }
     .form-panel { display:none; padding:1.25rem; flex-direction:column; gap:1rem; }
     .form-panel.active { display:flex; }
-
-    /* ── SECTION HEAD ── */
     .sec-head { display:flex; align-items:center; gap:.5rem; font-size:.58rem; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
     .sec-head-line { flex:1; height:1px; background:var(--border); }
-
-    /* ── CHRONO ── */
     .chrono-wrap { background:var(--surface2); border:1px solid var(--border); border-radius:1rem; padding:1rem; }
     .chrono-display { font-size:2.4rem; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em; color:var(--gold); text-align:center; margin:.3rem 0; transition:color .3s; }
     .chrono-display.running { color:#6ee7b7; text-shadow:0 0 20px rgba(110,231,183,.3); }
@@ -138,14 +126,10 @@
     .chrono-stamp { background:rgba(0,0,0,.25); border-radius:.75rem; padding:.625rem; text-align:center; }
     .chrono-stamp-lbl { font-size:.52rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:.15rem; }
     .chrono-stamp-val { font-size:.85rem; font-weight:700; }
-
-    /* ── MESURES ── */
     .mesure-item { background:var(--surface2); border:1px solid var(--border); border-radius:.75rem; padding:.75rem 1rem; display:flex; align-items:center; gap:.75rem; }
     .mesure-lbl { font-size:.58rem; color:var(--muted); font-weight:700; text-transform:uppercase; }
     .mesure-val { font-size:1rem; font-weight:800; }
     .mesure-unit { font-size:.7rem; color:var(--gold); font-weight:700; }
-
-    /* ── PHOTOS ── */
     .photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(95px,1fr)); gap:.5rem; }
     @media(min-width:480px){ .photo-grid{ grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); } }
     .photo-thumb { position:relative; border-radius:.75rem; overflow:hidden; aspect-ratio:1; background:var(--surface3); border:1px solid var(--border); }
@@ -156,26 +140,27 @@
     .photo-legend-wrap input { width:100%; background:none; border:none; color:#fff; font-size:.6rem; outline:none; font-family:inherit; }
     .photo-add { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.35rem; border-radius:.75rem; border:1.5px dashed var(--border2); background:transparent; cursor:pointer; aspect-ratio:1; color:var(--muted); font-size:.63rem; font-weight:600; touch-action:manipulation; transition:all .15s; }
     .photo-add:active { border-color:var(--gold); color:var(--gold); }
-
-    /* ── CHECKLIST ── */
     .chk-item { display:flex; align-items:center; gap:.75rem; padding:.75rem 1rem; background:var(--surface2); border-radius:.75rem; border:1px solid var(--border); cursor:pointer; touch-action:manipulation; transition:all .15s; -webkit-user-select:none; user-select:none; }
     .chk-item.on { border-color:rgba(16,185,129,.35); background:rgba(16,185,129,.05); }
     .chk-box { width:20px; height:20px; border-radius:.35rem; border:1.5px solid var(--border2); flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s; }
     .chk-item.on .chk-box { background:var(--green); border-color:var(--green); }
     .chk-lbl { font-size:.85rem; font-weight:600; flex:1; }
     .chk-item.on .chk-lbl { color:var(--muted); }
-
-    /* ── RAPPORT ── */
     .rapport-block { background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.2); border-radius:.875rem; padding:1rem; display:flex; flex-direction:column; gap:.875rem; }
-
-    /* ── SIGNATURE ── */
     .sig-canvas { background:rgba(0,0,0,.3); border:1px solid rgba(16,185,129,.2); border-radius:.6rem; width:100%; height:110px; touch-action:none; display:block; }
-
-    /* ── DRAFT BANNER ── */
-    .draft-banner { display:flex; align-items:center; gap:.75rem; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25); border-radius:.75rem; padding:.75rem 1rem; font-size:.78rem; font-weight:600; color:#fcd34d; }
-    .draft-banner button { background:none; border:none; color:#fcd34d; cursor:pointer; font-size:.72rem; font-weight:700; text-decoration:underline; margin-left:auto; white-space:nowrap; touch-action:manipulation; }
-
-    /* ── CHART ── */
+    .bo-modal-overlay { z-index:1000; }
+    .confirm-overlay { z-index:2000; }
+    .bo-modal-overlay.detail-overlay { z-index:1100; }
+    .confirm-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:2000; padding:1rem; animation:fadeUp .18s ease both; }
+    .confirm-box { background:var(--surface); border:1px solid var(--border2); border-radius:1.25rem; padding:1.5rem; max-width:340px; width:100%; text-align:center; }
+    .confirm-icon { font-size:2rem; margin-bottom:.75rem; }
+    .confirm-title { font-size:.95rem; font-weight:800; margin-bottom:.4rem; }
+    .confirm-msg { font-size:.8rem; color:var(--muted); line-height:1.55; margin-bottom:1.25rem; }
+    .confirm-btns { display:flex; gap:.625rem; }
+    .confirm-btns button { flex:1; padding:.75rem; border-radius:.75rem; font-size:.85rem; font-weight:700; cursor:pointer; border:none; transition:all .15s; }
+    .confirm-cancel { background:var(--surface2); color:var(--text); border:1px solid var(--border) !important; }
+    .confirm-ok { background:var(--red); color:#fff; }
+    .confirm-ok.gold { background:var(--gold); color:#000; }
     .chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.1rem; }
     .chart-title { font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:1rem; }
     .chart-bars { display:flex; align-items:flex-end; gap:.35rem; height:80px; }
@@ -183,17 +168,9 @@
     .chart-bar { width:100%; border-radius:.25rem .25rem 0 0; transition:height .4s ease; min-height:2px; }
     .chart-bar-lbl { font-size:.52rem; color:var(--muted); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; text-align:center; }
     .chart-bar-val { font-size:.58rem; font-weight:700; color:var(--text); }
-
-    /* ── DATE FILTER ── */
     .date-filter-wrap { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
     .date-filter-wrap .bo-input { font-size:.78rem; padding:.4rem .625rem; width:auto; }
-
-    /* ── EMPTY ── */
     .bo-empty { text-align:center; padding:2.5rem 1rem; }
-    .bo-empty-title { font-size:1rem; font-weight:700; margin-bottom:.5rem; }
-    .bo-empty-desc { font-size:.8rem; color:var(--muted); }
-
-    /* ── KANBAN ── */
     .kanban-board { display:grid; grid-template-columns:repeat(4,1fr); gap:.875rem; }
     @media(max-width:900px){ .kanban-board{ grid-template-columns:repeat(2,1fr); } }
     @media(max-width:560px){ .kanban-board{ grid-template-columns:1fr; } }
@@ -207,8 +184,6 @@
     .kanban-card-title { font-size:.78rem; font-weight:700; margin-bottom:.4rem; line-height:1.35; }
     .kanban-card-meta { font-size:.6rem; color:var(--muted); display:flex; flex-direction:column; gap:.2rem; }
     .kanban-empty { font-size:.7rem; color:var(--muted); text-align:center; padding:1.5rem; }
-
-    /* ── TIMELINE ── */
     .timeline { display:flex; flex-direction:column; }
     .tl-item { display:flex; gap:.875rem; padding-bottom:1.1rem; }
     .tl-line { display:flex; flex-direction:column; align-items:center; flex-shrink:0; width:22px; }
@@ -217,60 +192,27 @@
     .tl-item:last-child .tl-connector { display:none; }
     .tl-action { font-size:.78rem; font-weight:700; }
     .tl-date { font-size:.6rem; color:var(--muted); margin-top:.1rem; }
-
-    /* ── VIEW TOGGLE ── */
     .view-toggle { display:flex; background:var(--surface); border:1px solid var(--border); border-radius:.5rem; padding:2px; }
     .view-btn { display:flex; align-items:center; gap:.35rem; padding:.38rem .65rem; border:none; background:none; color:var(--muted); font-size:.7rem; font-weight:600; border-radius:.35rem; cursor:pointer; transition:all .15s; }
     .view-btn.active { background:var(--surface2); color:var(--text); }
-
-    /* ── PROGRESS ── */
     .pbar-wrap { height:4px; background:rgba(255,255,255,.06); border-radius:999px; overflow:hidden; }
     .pbar-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#10b981,#6ee7b7); transition:width .5s ease; }
-
-    /* ── FAB ── */
     .fab { position:fixed; bottom:calc(1.5rem + var(--safe-b)); right:1.25rem; width:54px; height:54px; border-radius:50%; background:var(--gold); border:none; cursor:pointer; display:none; align-items:center; justify-content:center; z-index:50; box-shadow:0 4px 20px rgba(212,168,67,.4); touch-action:manipulation; }
     .fab:active { transform:scale(.92); }
     @media(max-width:639px){ .fab{ display:flex; } }
-
-    /* ── GEO INDICATOR ── */
     .geo-chip { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; font-weight:600; color:#6ee7b7; background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.2); border-radius:999px; padding:.2rem .6rem; }
-
-    /* ── VOICE INDICATOR ── */
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
     .voice-listening { animation:pulse .8s ease infinite; color:var(--red)!important; }
-
-    /* ── CUSTOM CONFIRM DIALOG ── */
-    .confirm-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:2000; padding:1rem; animation:fadeUp .18s ease both; }
-    .confirm-box { background:var(--surface); border:1px solid var(--border2); border-radius:1.25rem; padding:1.5rem; max-width:340px; width:100%; text-align:center; }
-    .confirm-icon { font-size:2rem; margin-bottom:.75rem; }
-    .confirm-title { font-size:.95rem; font-weight:800; margin-bottom:.4rem; }
-    .confirm-msg { font-size:.8rem; color:var(--muted); line-height:1.55; margin-bottom:1.25rem; }
-    .confirm-btns { display:flex; gap:.625rem; }
-    .confirm-btns button { flex:1; padding:.75rem; border-radius:.75rem; font-size:.85rem; font-weight:700; cursor:pointer; border:none; transition:all .15s; }
-    .confirm-cancel { background:var(--surface2); color:var(--text); border:1px solid var(--border) !important; }
-    .confirm-ok { background:var(--red); color:#fff; }
-    .confirm-ok.gold { background:var(--gold); color:#000; }
-
-    
-    /* ── BOTTOM NAV MOBILE ── */
     html{-webkit-text-size-adjust:100%;}
     .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surface);border-top:1px solid var(--border2);padding-bottom:var(--safe-b);height:calc(var(--nav-h) + var(--safe-b));}
     .mobile-nav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-decoration:none;padding:.4rem .2rem;border:none;background:none;cursor:pointer;touch-action:manipulation;transition:color .15s;}
     .mobile-nav a.active{color:var(--gold);}
     .mobile-nav a i{width:20px;height:20px;}
     @media(min-width:640px){.mobile-nav{display:none;}}
-
-    /* ── KPI SCROLL MOBILE ── */
     .kpi-scroll{display:flex;gap:.625rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:.2rem;margin-bottom:.875rem;}
     .kpi-scroll::-webkit-scrollbar{display:none;}
-    .bo-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem .875rem;flex:0 0 110px;}
-    @media(min-width:640px){.bo-stat{flex:1 1 110px;}}
-
-    /* ── PILLS SCROLL MOBILE ── */
     .pills-scroll{display:flex;gap:.35rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
     .pills-scroll::-webkit-scrollbar{display:none;}
-
-    /* ── ITV CARD (mobile-first list) ── */
     .itv-card{display:flex;flex-direction:column;gap:.4rem;padding:.875rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;-webkit-user-select:none;user-select:none;}
     .itv-card:last-child{border-bottom:none;}
     .itv-card:active{background:rgba(255,255,255,.04);}
@@ -280,53 +222,45 @@
     .itv-card-meta{font-size:.62rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:.3rem .5rem;align-items:center;}
     .itv-card-actions{display:flex;gap:.1rem;flex-shrink:0;align-items:center;}
     .itv-card-bottom{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;}
-
-    /* ── GOOGLE MAPS BTN ── */
     .maps-btn{display:inline-flex;align-items:center;gap:.35rem;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#93c5fd;font-size:.7rem;font-weight:700;padding:.38rem .75rem;border-radius:999px;cursor:pointer;text-decoration:none;touch-action:manipulation;transition:all .15s;}
     .maps-btn:active{background:rgba(59,130,246,.25);}
-
-    /* ── TEMPS MANUEL ── */
     .time-manual{background:rgba(212,168,67,.06);border:1px solid rgba(212,168,67,.2);border-radius:.75rem;padding:.875rem;display:flex;flex-direction:column;gap:.5rem;margin-top:.625rem;}
     .time-manual-title{font-size:.55rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);}
-
-    /* ── GESTION TECHNICIENS / CLIENTS ── */
     .manage-list{display:flex;flex-direction:column;gap:.4rem;}
     .manage-item{display:flex;align-items:center;gap:.625rem;background:var(--surface2);border:1px solid var(--border);border-radius:.75rem;padding:.75rem 1rem;}
     .manage-item-name{flex:1;font-size:.88rem;font-weight:600;}
     .manage-item-sub{font-size:.58rem;color:var(--muted);}
-
-    /* ── MOBILE BTN SIZES ── */
-    .bo-btn-icon{min-width:36px;min-height:36px;justify-content:center;}
-    .bo-btn-danger{min-width:36px;min-height:36px;justify-content:center;}
-
-    /* Desktop-only buttons */
     @media(max-width:639px){ #btn-csv, #btn-team, #btn-new-desktop { display:none !important; } }
+
+    /* ── PDF PREVIEW ── */
+    .pdf-preview-wrap { background:#f5f5f5; border-radius:.75rem; overflow:hidden; }
+    .pdf-actions { display:flex; gap:.5rem; padding:.75rem; background:var(--surface2); border-radius:.75rem; flex-wrap:wrap; }
+
+    /* ── SCORE COMPLETION ── */
+    .completion-ring { width:38px; height:38px; flex-shrink:0; }
+
     ::-webkit-scrollbar{ width:5px; } ::-webkit-scrollbar-track{ background:transparent; } ::-webkit-scrollbar-thumb{ background:var(--border2); border-radius:3px; }
     </style>
 </head>
 <body>
 
 <main class="bo-page bo-animate">
-
-    <!-- HEADER -->
     <div class="bo-page-header">
         <div>
             <div class="bo-eyebrow">Suivi terrain</div>
             <h1 class="bo-page-title">Interventions</h1>
         </div>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-            <button class="bo-btn-ghost" id="btn-csv" onclick="exportCSV()" style="display:none;"><i data-lucide="download" style="width:14px;height:14px;"></i> Export</button>
-            <button class="bo-btn-ghost" id="btn-team" onclick="openManageModal()" style="display:none;"><i data-lucide="users" style="width:14px;height:14px;"></i> Équipe</button>
-            <button class="bo-btn-gold" id="btn-new-desktop" onclick="openForm()" style="display:none;">
+            <button class="bo-btn-ghost" id="btn-csv" onclick="exportCSV()"><i data-lucide="download" style="width:14px;height:14px;"></i> Export</button>
+            <button class="bo-btn-ghost" id="btn-team" onclick="openManageModal()"><i data-lucide="users" style="width:14px;height:14px;"></i> Équipe</button>
+            <button class="bo-btn-gold" id="btn-new-desktop" onclick="openForm()">
                 <i data-lucide="plus" style="width:14px;height:14px;"></i> Nouvelle
             </button>
         </div>
     </div>
 
-    <!-- KPIs -->
     <div class="kpi-scroll" id="kpi-row"></div>
 
-    <!-- PROGRESS -->
     <div class="bo-card" style="padding:.875rem 1.1rem;margin-bottom:1rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.45rem;">
             <span style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Taux de résolution</span>
@@ -335,7 +269,6 @@
         <div class="pbar-wrap"><div class="pbar-fill" id="pbar" style="width:0%;"></div></div>
     </div>
 
-    <!-- CHARTS ROW -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem;margin-bottom:1rem;" id="charts-row">
         <div class="chart-wrap">
             <div class="chart-title">Interventions / mois (6 mois)</div>
@@ -347,11 +280,9 @@
         </div>
     </div>
 
-    <!-- FILTERS -->
     <div style="display:flex;gap:.625rem;margin-bottom:.875rem;flex-wrap:wrap;align-items:center;">
         <div class="bo-search-wrap" style="flex:1;min-width:150px;">
             <i data-lucide="search" class="bo-search-icon" style="width:15px;height:15px;"></i>
-            <!-- FIX #15 : debounce sur la recherche -->
             <input id="search" class="bo-search" placeholder="Titre, client, technicien…" oninput="debounceRender()">
         </div>
         <div class="view-toggle">
@@ -362,7 +293,6 @@
         <select class="bo-select" id="sel-type" onchange="render()" style="width:auto;font-size:.78rem;padding:.45rem .6rem;padding-right:2rem;"><option value="">Tous types</option></select>
     </div>
 
-    <!-- DATE FILTER -->
     <div class="date-filter-wrap" style="margin-bottom:.875rem;">
         <span style="font-size:.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Période :</span>
         <input type="date" id="date-from" class="bo-input" onchange="render()" title="Du">
@@ -371,23 +301,17 @@
         <button class="bo-pill" onclick="clearDates()" style="font-size:.65rem;">✕ Effacer</button>
     </div>
 
-    <!-- PILLS scrollables sur mobile -->
     <div class="pills-scroll" style="margin-bottom:.875rem;" id="all-pills"></div>
 
-    <!-- VIEWS -->
     <div id="view-list"><div class="bo-card" id="table-wrap"></div></div>
     <div id="view-kanban" style="display:none;"><div class="kanban-board" id="kanban-wrap"></div></div>
-
 </main>
 
-<!-- FAB -->
 <button class="fab" onclick="openForm()" aria-label="Nouvelle intervention">
     <i data-lucide="plus" style="width:22px;height:22px;color:#000;"></i>
 </button>
 
-<!-- ══════════════════════════════════════
-     MODAL FORMULAIRE
-══════════════════════════════════════ -->
+<!-- ══ MODAL FORMULAIRE ══ -->
 <div class="bo-modal-overlay" id="modal" style="display:none;" onclick="if(event.target===this)maybeCloseForm()">
 <div class="bo-modal">
     <div class="drag-handle"></div>
@@ -429,7 +353,13 @@
                 <label class="bo-label" style="display:flex;align-items:center;justify-content:space-between;">Client <span class="req" style="margin-right:auto;margin-left:.2rem;">*</span>
                     <button onclick="openManageModal('clients')" style="background:none;border:none;cursor:pointer;color:var(--gold);font-size:.58rem;font-weight:700;display:inline-flex;align-items:center;gap:.15rem;padding:0;"><i data-lucide="plus" style="width:9px;height:9px;"></i>Gérer</button>
                 </label>
-                <select id="f-client" class="bo-select"></select>
+                <!-- Champ client avec autocomplétion -->
+                <div style="position:relative;">
+                    <input id="f-client-search" class="bo-input" placeholder="Rechercher un client…" autocomplete="off" oninput="filterClientDropdown()" onfocus="filterClientDropdown()" onblur="setTimeout(()=>document.getElementById('client-dropdown').style.display='none',180)">
+                    <input type="hidden" id="f-client">
+                    <div id="client-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:.6rem;z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);margin-top:2px;"></div>
+                </div>
+                <div id="client-info-hint" style="display:none;font-size:.6rem;color:var(--muted);padding:.2rem .3rem;"></div>
             </div>
             <div class="bo-field">
                 <label class="bo-label">Type</label>
@@ -440,12 +370,21 @@
                     <option>Câblage</option><option>Audit</option>
                 </select>
             </div>
-            <div class="bo-field">
-                <label class="bo-label" style="display:flex;align-items:center;justify-content:space-between;">Technicien
-                    <button onclick="openManageModal('techs')" style="background:none;border:none;cursor:pointer;color:var(--gold);font-size:.58rem;font-weight:700;display:inline-flex;align-items:center;gap:.15rem;padding:0;"><i data-lucide="plus" style="width:9px;height:9px;"></i>Gérer</button>
-                </label>
-                <select id="f-tech" class="bo-select"></select>
+        </div>
+
+        <!-- MULTI-TECHNICIENS -->
+        <div class="bo-field">
+            <label class="bo-label" style="display:flex;align-items:center;justify-content:space-between;">
+                Technicien(s) assigné(s)
+                <button onclick="openManageModal('techs')" style="background:none;border:none;cursor:pointer;color:var(--gold);font-size:.58rem;font-weight:700;display:inline-flex;align-items:center;gap:.15rem;padding:0;"><i data-lucide="plus" style="width:9px;height:9px;"></i>Gérer</button>
+            </label>
+            <div class="tech-selector" id="tech-selector">
+                <div class="tech-options" id="tech-options-form"></div>
             </div>
+            <div style="font-size:.58rem;color:var(--muted);">Tapez pour sélectionner un ou plusieurs techniciens</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem;">
             <div class="bo-field">
                 <label class="bo-label">Priorité</label>
                 <select id="f-prio" class="bo-select">
@@ -462,6 +401,10 @@
             <div class="bo-field">
                 <label class="bo-label">Échéance</label>
                 <input id="f-date-e" type="date" class="bo-input">
+            </div>
+            <div class="bo-field">
+                <label class="bo-label">N° de référence (optionnel)</label>
+                <input id="f-ref" class="bo-input" placeholder="Ex : REF-2025-001">
             </div>
         </div>
         <div class="bo-field">
@@ -494,8 +437,6 @@
 
     <!-- ══ TAB TERRAIN ══ -->
     <div class="form-panel" id="panel-terrain">
-
-        <!-- CHRONO -->
         <div>
             <div class="sec-head"><span>⏱ Chrono d'intervention</span><div class="sec-head-line"></div></div>
             <div class="chrono-wrap" style="margin-top:.75rem;">
@@ -516,33 +457,19 @@
             </div>
         </div>
 
-        <!-- TEMPS MANUEL -->
         <div class="time-manual">
             <div class="time-manual-title">⌛ Saisie manuelle du temps (si chrono non utilisé)</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;align-items:end;">
-                <div class="bo-field" style="gap:.3rem;">
-                    <label class="bo-label">Heure début</label>
-                    <input id="m-debut" type="time" class="bo-input" oninput="calcManualDuration()">
-                </div>
-                <div class="bo-field" style="gap:.3rem;">
-                    <label class="bo-label">Heure fin</label>
-                    <input id="m-fin" type="time" class="bo-input" oninput="calcManualDuration()">
-                </div>
-                <div class="bo-field" style="gap:.3rem;">
-                    <label class="bo-label">Durée (h)</label>
-                    <input id="f-duree" type="text" inputmode="decimal" class="bo-input" placeholder="Ex : 2.5">
-                </div>
+                <div class="bo-field" style="gap:.3rem;"><label class="bo-label">Heure début</label><input id="m-debut" type="time" class="bo-input" oninput="calcManualDuration()"></div>
+                <div class="bo-field" style="gap:.3rem;"><label class="bo-label">Heure fin</label><input id="m-fin" type="time" class="bo-input" oninput="calcManualDuration()"></div>
+                <div class="bo-field" style="gap:.3rem;"><label class="bo-label">Durée (h)</label><input id="f-duree" type="text" inputmode="decimal" class="bo-input" placeholder="Ex : 2.5"></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
-                <div class="bo-field" style="gap:.3rem;">
-                    <label class="bo-label">Date intervention</label>
-                    <input id="m-date-itv" type="date" class="bo-input">
-                </div>
+                <div class="bo-field" style="gap:.3rem;"><label class="bo-label">Date intervention</label><input id="m-date-itv" type="date" class="bo-input"></div>
                 <div id="manual-calc-result" style="display:none;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:.6rem;padding:.5rem;font-size:.7rem;color:#6ee7b7;align-self:end;"></div>
             </div>
         </div>
 
-        <!-- MATÉRIEL -->
         <div>
             <div class="sec-head"><span>📦 Matériel utilisé</span><div class="sec-head-line"></div></div>
             <div style="display:flex;gap:.5rem;margin:.75rem 0 .5rem;">
@@ -552,26 +479,15 @@
             <div id="f-mat-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
         </div>
 
-        <!-- MESURES -->
         <div>
             <div class="sec-head"><span>📐 Mesures & relevés</span><div class="sec-head-line"></div></div>
             <div style="margin-top:.75rem;display:flex;flex-direction:column;gap:.625rem;">
                 <div style="display:grid;grid-template-columns:1fr 90px 76px;gap:.5rem;align-items:end;">
-                    <div class="bo-field" style="gap:.3rem;">
-                        <label class="bo-label">Libellé</label>
-                        <input id="m-lbl" class="bo-input" placeholder="Ex : Tension V1">
-                    </div>
-                    <div class="bo-field" style="gap:.3rem;">
-                        <label class="bo-label">Valeur</label>
-                        <input id="m-val" class="bo-input" placeholder="220" inputmode="decimal">
-                    </div>
-                    <div class="bo-field" style="gap:.3rem;">
-                        <label class="bo-label">Unité</label>
+                    <div class="bo-field" style="gap:.3rem;"><label class="bo-label">Libellé</label><input id="m-lbl" class="bo-input" placeholder="Ex : Tension V1"></div>
+                    <div class="bo-field" style="gap:.3rem;"><label class="bo-label">Valeur</label><input id="m-val" class="bo-input" placeholder="220" inputmode="decimal"></div>
+                    <div class="bo-field" style="gap:.3rem;"><label class="bo-label">Unité</label>
                         <select id="m-unit" class="bo-select" style="padding-right:1.5rem;">
-                            <option>V</option><option>A</option><option>W</option>
-                            <option>cm</option><option>m</option><option>mm</option>
-                            <option>°C</option><option>dB</option><option>Mbps</option>
-                            <option>cd/m²</option><option>%</option><option>Hz</option><option>autre</option>
+                            <option>V</option><option>A</option><option>W</option><option>cm</option><option>m</option><option>mm</option><option>°C</option><option>dB</option><option>Mbps</option><option>cd/m²</option><option>%</option><option>Hz</option><option>autre</option>
                         </select>
                     </div>
                 </div>
@@ -582,7 +498,6 @@
             </div>
         </div>
 
-        <!-- PHOTOS -->
         <div>
             <div class="sec-head"><span>📷 Photos</span><div class="sec-head-line"></div>
                 <span id="photo-total-size" style="font-size:.55rem;color:var(--muted);margin-left:.5rem;"></span>
@@ -594,11 +509,11 @@
                         <i data-lucide="camera" style="width:22px;height:22px;"></i>Ajouter
                     </button>
                 </div>
+                <div id="photo-lost-warn" style="display:none;font-size:.65rem;color:#f87171;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:.5rem;padding:.4rem .7rem;margin-top:.4rem;"></div>
                 <p style="font-size:.6rem;color:var(--muted);margin-top:.4rem;">Photos compressées automatiquement · tap pour plein écran</p>
             </div>
         </div>
 
-        <!-- NOTE TERRAIN + VOIX -->
         <div class="bo-field">
             <label class="bo-label">Note terrain (interne)
                 <button id="btn-voice-note" onclick="startVoice('f-note','btn-voice-note')" style="background:none;border:none;cursor:pointer;padding:0;margin-left:.35rem;display:inline-flex;align-items:center;" title="Dicter">
@@ -615,10 +530,17 @@
 
     <!-- ══ TAB CLÔTURE ══ -->
     <div class="form-panel" id="panel-cloture">
-
         <div>
             <div class="sec-head"><span>✅ Points de validation</span><div class="sec-head-line"></div></div>
             <div id="checklist-wrap" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.75rem;"></div>
+        </div>
+
+        <!-- PRÉCONISATIONS -->
+        <div class="bo-field">
+            <label class="bo-label" style="display:flex;align-items:center;gap:.4rem;">
+                <span style="color:#fcd34d;">⚡</span> Préconisations / Suites à donner
+            </label>
+            <textarea id="f-preconisations" class="bo-textarea" rows="3" style="border-color:rgba(245,158,11,.3);" placeholder="Travaux futurs recommandés, pièces à commander, points de vigilance pour le client…"></textarea>
         </div>
 
         <div class="rapport-block" id="rapport-section">
@@ -663,8 +585,7 @@
 </div>
 </div>
 
-
-<!-- BOTTOM NAV MOBILE -->
+<!-- ══ BOTTOM NAV MOBILE ══ -->
 <nav class="mobile-nav">
   <a onclick="openForm()" id="nav-new"><i data-lucide="plus-circle"></i>Nouveau</a>
   <a onclick="setMobileFilter('all')" id="nav-all" class="active"><i data-lucide="list"></i>Tous</a>
@@ -673,7 +594,7 @@
   <a onclick="exportCSV()" id="nav-export"><i data-lucide="download"></i>Export</a>
 </nav>
 
-<!-- MODAL GESTION ÉQUIPE / CLIENTS -->
+<!-- ══ MODAL GESTION ÉQUIPE / CLIENTS ══ -->
 <div class="bo-modal-overlay" id="manage-modal" style="display:none;" onclick="if(event.target===this)document.getElementById('manage-modal').style.display='none'">
 <div class="bo-modal" style="max-width:520px;">
   <div class="drag-handle"></div>
@@ -682,12 +603,9 @@
     <button class="bo-modal-close" onclick="document.getElementById('manage-modal').style.display='none'"><i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i></button>
   </div>
   <div style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;">
-    <button class="form-tab active" id="mtab-techs" onclick="showManageTab('techs')" style="flex:1;">
-      <i data-lucide="wrench" style="width:14px;height:14px;"></i>Techniciens
-    </button>
-    <button class="form-tab" id="mtab-clients" onclick="showManageTab('clients')" style="flex:1;">
-      <i data-lucide="building-2" style="width:14px;height:14px;"></i>Clients
-    </button>
+    <button class="form-tab active" id="mtab-techs" onclick="showManageTab('techs')" style="flex:1;"><i data-lucide="wrench" style="width:14px;height:14px;"></i>Techniciens</button>
+    <button class="form-tab" id="mtab-clients" onclick="showManageTab('clients')" style="flex:1;"><i data-lucide="building-2" style="width:14px;height:14px;"></i>Clients</button>
+    <button class="form-tab" id="mtab-settings" onclick="showManageTab('settings')" style="flex:1;"><i data-lucide="settings" style="width:14px;height:14px;"></i>Entreprise</button>
   </div>
   <div class="bo-modal-body" style="padding:1rem;display:flex;flex-direction:column;gap:.875rem;">
     <div id="mpanel-techs">
@@ -704,8 +622,41 @@
         <input id="new-client-name" class="bo-input" placeholder="Nom entreprise / client" style="font-size:16px;">
         <input id="new-client-contact" class="bo-input" placeholder="Contact (optionnel)" style="font-size:16px;">
         <input id="new-client-tel" class="bo-input" placeholder="Téléphone (optionnel)" inputmode="tel" style="font-size:16px;">
-        <button class="bo-btn-gold" onclick="addClient()" style="align-self:flex-start;">
-          <i data-lucide="plus" style="width:14px;height:14px;"></i> Ajouter
+        <input id="new-client-email" class="bo-input" placeholder="Email (optionnel)" inputmode="email" style="font-size:16px;">
+        <button class="bo-btn-gold" onclick="addClient()" style="align-self:flex-start;"><i data-lucide="plus" style="width:14px;height:14px;"></i> Ajouter</button>
+      </div>
+    </div>
+
+    <!-- ══ PANNEAU PARAMÈTRES ENTREPRISE ══ -->
+    <div id="mpanel-settings" style="display:none;display:flex;flex-direction:column;gap:1rem;">
+      <!-- Logo -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:.75rem;padding:.875rem;display:flex;flex-direction:column;gap:.625rem;">
+        <div style="font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Logo entreprise (PDF)</div>
+        <div style="display:flex;align-items:center;gap:.875rem;">
+          <div id="logo-preview-wrap" style="width:80px;height:50px;background:rgba(255,255,255,.04);border:1px dashed var(--border2);border-radius:.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+            <span id="logo-placeholder" style="font-size:.55rem;color:var(--muted);text-align:center;">Aucun logo</span>
+            <img id="logo-preview-img" style="display:none;max-width:100%;max-height:100%;object-fit:contain;">
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:.4rem;">
+            <input type="file" id="logo-file-input" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
+            <button class="bo-btn-gold" onclick="document.getElementById('logo-file-input').click()" style="font-size:.75rem;padding:.45rem .75rem;">
+              <i data-lucide="upload" style="width:12px;height:12px;"></i> Importer un logo
+            </button>
+            <button onclick="removeLogo()" style="background:none;border:none;color:var(--muted);font-size:.62rem;cursor:pointer;text-align:left;padding:0;">Supprimer le logo</button>
+          </div>
+        </div>
+        <div style="font-size:.57rem;color:var(--muted);">PNG ou JPG recommandé · Fond transparent idéal · Max 2MB</div>
+      </div>
+      <!-- Infos entreprise -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:.75rem;padding:.875rem;display:flex;flex-direction:column;gap:.5rem;">
+        <div style="font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Informations entreprise (pied de page PDF)</div>
+        <input id="co-nom" class="bo-input" placeholder="Nom de l'entreprise" style="font-size:15px;">
+        <input id="co-adresse" class="bo-input" placeholder="Adresse (optionnel)" style="font-size:15px;">
+        <input id="co-tel" class="bo-input" placeholder="Téléphone" inputmode="tel" style="font-size:15px;">
+        <input id="co-email" class="bo-input" placeholder="Email" inputmode="email" style="font-size:15px;">
+        <input id="co-web" class="bo-input" placeholder="Site web (optionnel)" style="font-size:15px;">
+        <button class="bo-btn-gold" onclick="saveCompanySettings()" style="align-self:flex-start;">
+          <i data-lucide="check" style="width:13px;height:13px;"></i> Enregistrer
         </button>
       </div>
     </div>
@@ -713,13 +664,12 @@
 </div>
 </div>
 
-<!-- MODAL DÉTAIL -->
-<!-- FIX #4 : modal détail séparé, ne ferme pas le formulaire -->
-<div class="bo-modal-overlay" id="detail-modal" style="display:none;" onclick="if(event.target===this)closeDetailModal()">
+<!-- ══ MODAL DÉTAIL ══ -->
+<div class="bo-modal-overlay detail-overlay" id="detail-modal" style="display:none;" onclick="if(event.target===this)closeDetailModal()">
     <div class="bo-modal" style="max-width:680px;" id="detail-content"></div>
 </div>
 
-<!-- MODAL DUPLIQUER -->
+<!-- ══ MODAL DUPLIQUER ══ -->
 <div class="bo-modal-overlay" id="dup-modal" style="display:none;" onclick="if(event.target===this)document.getElementById('dup-modal').style.display='none'">
 <div class="bo-modal" style="max-width:500px;">
     <div class="drag-handle"></div>
@@ -737,7 +687,7 @@
 </div>
 </div>
 
-<!-- CUSTOM CONFIRM DIALOG -->
+<!-- ══ CONFIRM DIALOG ══ -->
 <div id="confirm-overlay" class="confirm-overlay" style="display:none;">
     <div class="confirm-box">
         <div class="confirm-icon" id="confirm-icon">⚠️</div>
@@ -751,9 +701,7 @@
 </div>
 
 <script>
-/* ══════════════════════════════════════
-   FIX #11 : CUSTOM CONFIRM (remplace confirm() bloquant)
-══════════════════════════════════════ */
+/* ══ CUSTOM CONFIRM ══ */
 function boConfirm({ title='Confirmation', msg='', okLabel='Confirmer', okClass='', icon='⚠️' } = {}) {
     return new Promise(resolve => {
         const ov  = document.getElementById('confirm-overlay');
@@ -767,7 +715,7 @@ function boConfirm({ title='Confirmation', msg='', okLabel='Confirmer', okClass=
         ov.style.display = 'flex';
         const cleanup = (val) => {
             ov.style.display = 'none';
-            okB.replaceWith(okB.cloneNode(true));   // remove old listeners
+            okB.replaceWith(okB.cloneNode(true));
             caB.replaceWith(caB.cloneNode(true));
             resolve(val);
         };
@@ -776,9 +724,7 @@ function boConfirm({ title='Confirmation', msg='', okLabel='Confirmer', okClass=
     });
 }
 
-/* ══════════════════════════════════════
-   CONFIG & CONSTANTS
-══════════════════════════════════════ */
+/* ══ CONSTANTS ══ */
 const STATUS_C = {
     'Ouvert':   {bg:'rgba(59,130,246,0.15)',  border:'#3b82f6', text:'#93c5fd'},
     'En cours': {bg:'rgba(245,158,11,0.15)',  border:'#f59e0b', text:'#fcd34d'},
@@ -787,12 +733,6 @@ const STATUS_C = {
 };
 const PRIO_DOT   = {Haute:'#ef4444', Moyenne:'#f59e0b', Basse:'#10b981'};
 const PRIO_ORDER = {Haute:0, Moyenne:1, Basse:2};
-const TECHS = ['Marc Dubois','Sophie Lenoir','Julien Moreau','Clara Petit'];
-const TYPE_ICO = {
-    'Installation':'monitor-check','Maintenance préventive':'wrench',
-    'SAV / Dépannage':'alert-triangle','Mise à jour contenu':'refresh-cw',
-    'Câblage':'cable','Audit':'clipboard-list',
-};
 const CHECKLISTS = {
     'Installation':          ['Site préparé et accessible','Alimentation secteur vérifiée','Structure / fixations posées','Câblage signal effectué','Écran(s) allumés et testés','CMS configuré et testé','Formation client réalisée','Zone nettoyée'],
     'Maintenance préventive':['Filtres / ventilations nettoyés','Connexions vérifiées','Firmware à jour','Luminosité / contraste testés','Câbles inspectés','Aucune alarme active','Rapport transmis au client'],
@@ -802,68 +742,67 @@ const CHECKLISTS = {
     'Audit':                 ['Inventaire matériel complet','Firmware vérifié','Réseau et sécurité contrôlés','Rapport PDF généré','Anomalies documentées','Restitution client effectuée'],
     'default':               ['Accès site sécurisé','Matériel testé','Client informé','Zone laissée propre'],
 };
-const DRAFT_KEY  = 'bo_draft_intervention';
-const PHOTO_MAX_PX   = 1200;
-const PHOTO_QUALITY  = 0.75;
+const DRAFT_KEY     = 'bo_draft_intervention';
+const PHOTO_MAX_PX  = 1200;
+const PHOTO_QUALITY = 0.75;
 
-/* ══════════════════════════════════════
-   FIX #2 : SANITIZER XSS
-   Échappe toutes les chaînes avant injection HTML
-══════════════════════════════════════ */
 function esc(str) {
     if (str == null) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#x27;');
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 }
 
-/* ══════════════════════════════════════
-   STATE
-══════════════════════════════════════ */
-let interventions=[], clients=[];
+/* ══ STATE ══ */
+let interventions=[], clients=[], techs=[];
 let filterStatus='Tous', filterPrio='Toutes', filterOverdue=false;
 let sortCol='dateCreation', sortDir='desc';
 let currentView='list', editId=null, isDup=false;
 let formMat=[], formMesures=[], formPhotos=[], formChecks={};
-let formDirty = false; // FIX #14 : dirty flag
-
-// Chrono
-let chronoIv=null;
-let stampDebut='', stampFin='';
-
-// Signature
+let formTechs=[]; // Multi-techniciens
+let formDirty=false;
+let chronoIv=null, stampDebut='', stampFin='';
 let sigCtx=null, sigDrawing=false, sigData='';
+let draftTimer=null, renderTimer=null;
 
-// Draft autosave
-let draftTimer=null;
-
-// FIX #15 : debounce render
-let renderTimer=null;
 function debounceRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(render,220); }
+function markDirty(){ formDirty=true; }
+function resetDirty(){ formDirty=false; }
 
-/* ══════════════════════════════════════
-   INIT
-══════════════════════════════════════ */
+/* ══ INDEXEDDB PHOTOS ══ */
+let photoDB=null;
+function openPhotoDB(){
+    return new Promise((res,rej)=>{
+        if(photoDB){ res(photoDB); return; }
+        const req=indexedDB.open('bo_photos',1);
+        req.onupgradeneeded=e=>e.target.result.createObjectStore('photos',{keyPath:'id'});
+        req.onsuccess=e=>{ photoDB=e.target.result; res(photoDB); };
+        req.onerror=e=>rej(e);
+    });
+}
+async function savePhotoBlob(id, dataUrl){
+    const db=await openPhotoDB();
+    return new Promise((res,rej)=>{ const tx=db.transaction('photos','readwrite'); tx.objectStore('photos').put({id,dataUrl}); tx.oncomplete=()=>res(); tx.onerror=e=>rej(e); });
+}
+async function loadPhotoBlob(id){
+    const db=await openPhotoDB();
+    return new Promise((res,rej)=>{ const req=db.transaction('photos','readonly').objectStore('photos').get(id); req.onsuccess=e=>res(e.target?.result?.dataUrl||null); req.onerror=e=>rej(e); });
+}
+async function deletePhotoBlob(id){
+    const db=await openPhotoDB();
+    return new Promise((res,rej)=>{ const tx=db.transaction('photos','readwrite'); tx.objectStore('photos').delete(id); tx.oncomplete=()=>res(); tx.onerror=e=>rej(e); });
+}
+
+/* ══ INIT ══ */
 async function init() {
     [interventions, clients] = await Promise.all([
         BO.read(BO.KEYS.interventions, []),
         BO.read(BO.KEYS.clients, []),
     ]);
     await loadTechs();
+    await loadCompanySettings();
     buildAllPills();
-    buildClientSelect(); buildTechSelect(); buildTypeSelect();
+    buildClientSelect(); buildTypeSelect();
     initSig();
     restoreChronoState();
-    // Afficher boutons desktop
-    const btnNew = document.getElementById('btn-new-desktop');
-    const btnCsv = document.getElementById('btn-csv');
-    const btnTeam = document.getElementById('btn-team');
-    if(btnNew) btnNew.style.display='';
-    if(btnCsv) btnCsv.style.display='';
-    if(btnTeam) btnTeam.style.display='';
     document.getElementById('f-statut').addEventListener('change', onStatutChange);
     document.getElementById('f-type').addEventListener('change', buildChecklist);
     syncDureeFields();
@@ -871,53 +810,88 @@ async function init() {
     lucide.createIcons();
 }
 
-function buildPillsOld_UNUSED() {
-    const sc=document.getElementById('status-pills'); sc.innerHTML='';
-    ['Tous','Ouvert','En cours','Résolu','Annulé'].forEach(s=>{
-        const b=document.createElement('button'); b.className='bo-pill'+(s===filterStatus?' active':''); b.textContent=s;
-        b.onclick=()=>{filterStatus=s;buildPills();render();}; sc.appendChild(b);
-    });
-    const pc=document.getElementById('prio-pills'); pc.innerHTML='';
-    ['Toutes','Haute','Moyenne','Basse'].forEach(p=>{
-        const b=document.createElement('button'); b.className='bo-pill'+(p===filterPrio?' active':''); b.textContent=p;
-        b.onclick=()=>{filterPrio=p;buildPills();render();}; pc.appendChild(b);
-    });
-    document.getElementById('pill-overdue').className='bo-pill'+(filterOverdue?' active':'');
+async function loadTechs(){
+    techs = await BO.read('bo_techs', ['Marc Dubois','Sophie Lenoir','Julien Moreau','Clara Petit']);
+    buildTechSelectors();
 }
+
 function buildClientSelect(){
-    document.getElementById('f-client').innerHTML='<option value="">— Client —</option>'+clients.map(c=>`<option value="${esc(c.id)}">${esc(c.nom)}</option>`).join('');
+    // Reconstruire le dropdown — la valeur sélectionnée est dans #f-client (hidden)
+    const sorted=[...clients].sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+    window._sortedClients=sorted;
+    filterClientDropdown();
 }
-function buildTechSelect(){
-    const opts=TECHS.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
-    document.getElementById('f-tech').innerHTML='<option value="">— Non assigné —</option>'+opts;
-    document.getElementById('sel-tech').innerHTML='<option value="">Tous techniciens</option>'+opts;
+function filterClientDropdown(){
+    const q=(document.getElementById('f-client-search')?.value||'').toLowerCase();
+    const dd=document.getElementById('client-dropdown');
+    if(!dd)return;
+    const sorted=window._sortedClients||clients;
+    const matches=sorted.filter(c=>!q||c.nom.toLowerCase().includes(q)||((c.contact||'').toLowerCase().includes(q)));
+    if(!matches.length){dd.innerHTML='<div style="padding:.6rem 1rem;font-size:.75rem;color:var(--muted);">Aucun client trouvé</div>';dd.style.display='block';return;}
+    dd.innerHTML=matches.map(c=>`<div onclick="selectClient('${esc(c.id)}')" style="padding:.6rem 1rem;font-size:.82rem;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border);" onmouseenter="this.style.background='rgba(212,168,67,.08)'" onmouseleave="this.style.background=''">
+        <div style="font-weight:700;">${esc(c.nom)}</div>
+        ${c.email||c.tel?`<div style="font-size:.6rem;color:var(--muted);">${[c.email,c.tel].filter(Boolean).join(' · ')}</div>`:''}
+    </div>`).join('');
+    dd.style.display='block';
+}
+function selectClient(id){
+    const c=clients.find(x=>x.id===id);if(!c)return;
+    document.getElementById('f-client').value=id;
+    document.getElementById('f-client-search').value=c.nom;
+    document.getElementById('client-dropdown').style.display='none';
+    // Afficher les infos du client sous le champ
+    const hint=document.getElementById('client-info-hint');
+    const parts=[c.contact,c.email,c.tel].filter(Boolean);
+    if(parts.length){hint.textContent=parts.join(' · ');hint.style.display='';}
+    else hint.style.display='none';
+    markDirty();
 }
 function buildTypeSelect(){
     const types=['Installation','Maintenance préventive','SAV / Dépannage','Mise à jour contenu','Câblage','Audit'];
     document.getElementById('sel-type').innerHTML='<option value="">Tous types</option>'+types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
 }
 
-/* ══════════════════════════════════════
-   TABS
-══════════════════════════════════════ */
+/* ══ MULTI-TECH SELECTOR ══ */
+function buildTechSelectors(){
+    // Selector dans le formulaire
+    const formOpts = document.getElementById('tech-options-form');
+    if(formOpts){
+        formOpts.innerHTML = techs.map(t=>`
+            <div class="tech-option${formTechs.includes(t)?' selected':''}" onclick="toggleTech('${esc(t)}')">
+                <div class="tech-check">${formTechs.includes(t)?'<svg width="8" height="8" viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" stroke="#000" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>':''}</div>
+                ${esc(t.split(' ')[0])}
+            </div>`).join('');
+    }
+    // Filtre technicien dans la liste
+    const sel = document.getElementById('sel-tech');
+    if(sel) sel.innerHTML='<option value="">Tous techniciens</option>'+techs.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+}
+function toggleTech(name){
+    const idx=formTechs.indexOf(name);
+    if(idx>-1) formTechs.splice(idx,1); else formTechs.push(name);
+    buildTechSelectors(); markDirty(); scheduleDraft();
+}
+function setFormTechs(arr){
+    formTechs=[...(arr||[])];
+    buildTechSelectors();
+}
+
+/* ══ TABS ══ */
 function showTab(t){
     ['infos','terrain','cloture'].forEach(id=>{
         document.getElementById('panel-'+id).classList.toggle('active',id===t);
         document.getElementById('tab-'+id).classList.toggle('active',id===t);
     });
-    // FIX #7 : redimensionner le canvas quand l'onglet clôture devient visible
-    if(t==='cloture') setTimeout(resizeSig, 50);
+    if(t==='cloture') setTimeout(resizeSig,50);
     lucide.createIcons();
 }
 
-/* ══════════════════════════════════════
-   CHRONO — résistant mise en veille
-══════════════════════════════════════ */
+/* ══ CHRONO ══ */
 function chronoStart(){
     const now=Date.now();
-    localStorage.setItem('bo_chrono_start', now);
+    localStorage.setItem('bo_chrono_start',now);
     localStorage.removeItem('bo_chrono_end');
-    stampDebut = new Date(now).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    stampDebut=new Date(now).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     stampFin='';
     document.getElementById('stamp-debut').textContent=stampDebut;
     document.getElementById('stamp-fin').textContent='—';
@@ -930,7 +904,7 @@ function chronoStart(){
 function chronoStop(){
     const start=+localStorage.getItem('bo_chrono_start')||Date.now();
     const elapsed=Date.now()-start;
-    localStorage.setItem('bo_chrono_end', Date.now());
+    localStorage.setItem('bo_chrono_end',Date.now());
     clearInterval(chronoIv);
     stampFin=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     document.getElementById('stamp-fin').textContent=stampFin;
@@ -941,15 +915,13 @@ function chronoStop(){
     document.getElementById('f-duree').value=+(elapsed/3600000).toFixed(2);
 }
 function tickChrono(){
-    const start=+localStorage.getItem('bo_chrono_start');
-    if(!start) return;
+    const start=+localStorage.getItem('bo_chrono_start'); if(!start) return;
     const e=Date.now()-start;
     document.getElementById('chrono-disp').textContent=`${pad(Math.floor(e/3600000))}:${pad(Math.floor((e%3600000)/60000))}:${pad(Math.floor((e%60000)/1000))}`;
 }
 function restoreChronoState(){
-    const start=+localStorage.getItem('bo_chrono_start');
-    const end  =+localStorage.getItem('bo_chrono_end');
-    if(start && !end){
+    const start=+localStorage.getItem('bo_chrono_start'), end=+localStorage.getItem('bo_chrono_end');
+    if(start&&!end){
         stampDebut=new Date(start).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
         document.getElementById('stamp-debut').textContent=stampDebut;
         document.getElementById('btn-start').disabled=true; document.getElementById('btn-start').style.opacity='.4';
@@ -960,12 +932,8 @@ function restoreChronoState(){
         BO.toast('Chrono repris — intervention en cours','info');
     }
 }
-
-/* FIX #5 : resetChrono propre à chaque ouverture de formulaire */
 function resetChrono(){
     clearInterval(chronoIv); chronoIv=null;
-    // Ne touche PAS localStorage si un chrono actif existe (intervention en cours)
-    // On réinitialise seulement l'affichage local
     stampDebut=''; stampFin='';
     document.getElementById('chrono-disp').textContent='00:00:00';
     document.getElementById('chrono-disp').classList.remove('running');
@@ -977,58 +945,15 @@ function resetChrono(){
 }
 function pad(n){return String(n).padStart(2,'0');}
 
-/* ══════════════════════════════════════
-   PHOTO COMPRESSION
-   FIX #1 : photos stockées séparément via IndexedDB (photoStore)
-══════════════════════════════════════ */
-
-/* --- Mini IndexedDB pour les photos --- */
-let photoDB = null;
-function openPhotoDB(){
-    return new Promise((res,rej)=>{
-        if(photoDB){ res(photoDB); return; }
-        const req=indexedDB.open('bo_photos',1);
-        req.onupgradeneeded=e=>e.target.result.createObjectStore('photos',{keyPath:'id'});
-        req.onsuccess=e=>{ photoDB=e.target.result; res(photoDB); };
-        req.onerror=e=>rej(e);
-    });
-}
-async function savePhotoBlob(id, dataUrl){
-    const db=await openPhotoDB();
-    return new Promise((res,rej)=>{
-        const tx=db.transaction('photos','readwrite');
-        tx.objectStore('photos').put({id, dataUrl});
-        tx.oncomplete=()=>res();
-        tx.onerror=e=>rej(e);
-    });
-}
-async function loadPhotoBlob(id){
-    const db=await openPhotoDB();
-    return new Promise((res,rej)=>{
-        const req=db.transaction('photos','readonly').objectStore('photos').get(id);
-        req.onsuccess=e=>res(e.target?.result?.dataUrl||null);
-        req.onerror=e=>rej(e);
-    });
-}
-async function deletePhotoBlob(id){
-    const db=await openPhotoDB();
-    return new Promise((res,rej)=>{
-        const tx=db.transaction('photos','readwrite');
-        tx.objectStore('photos').delete(id);
-        tx.oncomplete=()=>res();
-        tx.onerror=e=>rej(e);
-    });
-}
-
-/* formPhotos stocke désormais { id, legend, size } — sans dataUrl en mémoire */
+/* ══ PHOTOS ══ */
 async function handlePhotos(evt){
     const files=Array.from(evt.target.files);
     for(const f of files){
         await new Promise(resolve=>{
-            compressImage(f, async (dataUrl, kbSize)=>{
-                const id = BO.uid();
-                await savePhotoBlob(id, dataUrl);
-                formPhotos.push({id, legend:'', size:kbSize});
+            compressImage(f,async(dataUrl,kbSize)=>{
+                const id=BO.uid();
+                await savePhotoBlob(id,dataUrl);
+                formPhotos.push({id,legend:'',size:kbSize});
                 resolve();
             });
         });
@@ -1036,7 +961,6 @@ async function handlePhotos(evt){
     evt.target.value='';
     await renderPhotoGrid(); updateBadge();
 }
-
 async function removePhoto(i){
     const photo=formPhotos[i];
     if(photo?.id) await deletePhotoBlob(photo.id);
@@ -1044,19 +968,24 @@ async function removePhoto(i){
     await renderPhotoGrid(); updateBadge();
 }
 function updateLegend(i,v){if(formPhotos[i]) formPhotos[i].legend=v;}
-
 async function renderPhotoGrid(){
     const totalKB=formPhotos.reduce((a,p)=>a+(p.size||0),0);
-    document.getElementById('photo-total-size').textContent=totalKB
-        ?(totalKB<1024?totalKB+'KB':(totalKB/1024).toFixed(1)+'MB')+' total':'';
-
-    // Charger les thumbnails depuis IndexedDB
+    document.getElementById('photo-total-size').textContent=totalKB?(totalKB<1024?totalKB+'KB':(totalKB/1024).toFixed(1)+'MB')+' total':'';
     const thumbs=await Promise.all(formPhotos.map(p=>loadPhotoBlob(p.id)));
-
+    // Détecter les photos dont l'image est perdue (cache IndexedDB vidé)
+    const lostCount=thumbs.filter((t,i)=>!t&&formPhotos[i]).length;
+    if(lostCount>0){
+        const warn=document.getElementById('photo-lost-warn');
+        if(warn){warn.style.display='';warn.textContent=`⚠️ ${lostCount} photo(s) non retrouvée(s) — le cache a peut-être été vidé.`;}
+    } else {
+        const warn=document.getElementById('photo-lost-warn');if(warn)warn.style.display='none';
+    }
     document.getElementById('photo-grid').innerHTML=
         formPhotos.map((p,i)=>`
         <div class="photo-thumb">
-            <img src="${esc(thumbs[i]||'')}" alt="" data-idx="${i}" onclick="openPhotoFull(${i})">
+            ${thumbs[i]
+                ?`<img src="${esc(thumbs[i])}" alt="" data-idx="${i}" onclick="openPhotoFull(${i})">`
+                :`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:.5rem;display:flex;align-items:center;justify-content:center;width:100%;height:80px;font-size:.6rem;color:#f87171;">Image perdue</div>`}
             <span class="photo-size">${p.size||''}KB</span>
             <button class="photo-del" onclick="removePhoto(${i})"><i data-lucide="x" style="width:11px;height:11px;color:#fff;"></i></button>
             <div class="photo-legend-wrap"><input value="${esc(p.legend)}" placeholder="Légende…" oninput="updateLegend(${i},this.value)"></div>
@@ -1066,15 +995,12 @@ async function renderPhotoGrid(){
         </button>`;
     lucide.createIcons();
 }
-
-/* Charger les dataUrl pour la sauvegarde */
 async function collectPhotoData(){
-    return Promise.all(formPhotos.map(async p=>({
-        id:p.id, legend:p.legend, size:p.size,
-        dataUrl: await loadPhotoBlob(p.id)
-    })));
+    const results=await Promise.all(formPhotos.map(async p=>({id:p.id,legend:p.legend,size:p.size,dataUrl:await loadPhotoBlob(p.id)})));
+    const lost=results.filter(r=>!r.dataUrl).length;
+    if(lost>0) BO.toast(`⚠️ ${lost} photo(s) non retrouvée(s) et exclues du rapport`,'warn');
+    return results.filter(r=>r.dataUrl); // on n'enregistre pas de dataUrl null
 }
-
 async function openPhotoFull(i){
     const url=await loadPhotoBlob(formPhotos[i]?.id); if(!url) return;
     fullImg(url);
@@ -1087,49 +1013,37 @@ function fullImg(url){
     img.style.cssText='max-width:95%;max-height:95%;border-radius:.75rem;';
     ov.appendChild(img); document.body.appendChild(ov);
 }
-
-function compressImage(file, cb){
-    const img=new Image(); const url=URL.createObjectURL(file);
+function compressImage(file,cb){
+    const img=new Image(), url=URL.createObjectURL(file);
     img.onload=()=>{
-        let {naturalWidth:w, naturalHeight:h}=img;
-        if(w>PHOTO_MAX_PX||h>PHOTO_MAX_PX){
-            const r=Math.min(PHOTO_MAX_PX/w, PHOTO_MAX_PX/h); w=Math.round(w*r); h=Math.round(h*r);
-        }
+        let {naturalWidth:w,naturalHeight:h}=img;
+        if(w>PHOTO_MAX_PX||h>PHOTO_MAX_PX){const r=Math.min(PHOTO_MAX_PX/w,PHOTO_MAX_PX/h);w=Math.round(w*r);h=Math.round(h*r);}
         const c=document.createElement('canvas'); c.width=w; c.height=h;
         c.getContext('2d').drawImage(img,0,0,w,h);
         URL.revokeObjectURL(url);
-        cb(c.toDataURL('image/jpeg',PHOTO_QUALITY), Math.round(c.toDataURL('image/jpeg',PHOTO_QUALITY).length*0.75/1024));
+        cb(c.toDataURL('image/jpeg',PHOTO_QUALITY),Math.round(c.toDataURL('image/jpeg',PHOTO_QUALITY).length*0.75/1024));
     };
     img.src=url;
 }
 
-/* ══════════════════════════════════════
-   MATÉRIEL
-══════════════════════════════════════ */
-function addMat(){
-    const inp=document.getElementById('f-mat-input'), v=inp.value.trim();
-    if(!v) return; formMat.push(v); inp.value=''; renderMatChips(); updateBadge(); markDirty();
-}
-function removeMat(i){formMat.splice(i,1); renderMatChips(); updateBadge();}
+/* ══ MATÉRIEL ══ */
+function addMat(){const inp=document.getElementById('f-mat-input'),v=inp.value.trim();if(!v)return;formMat.push(v);inp.value='';renderMatChips();updateBadge();markDirty();}
+function removeMat(i){formMat.splice(i,1);renderMatChips();updateBadge();}
 function renderMatChips(){
     document.getElementById('f-mat-chips').innerHTML=formMat.map((m,i)=>`
-        <span class="bo-chip">${esc(m)}
-            <button class="bo-chip-btn" onclick="removeMat(${i})"><i data-lucide="x" style="width:10px;height:10px;"></i></button>
-        </span>`).join('');
+        <span class="bo-chip">${esc(m)}<button class="bo-chip-btn" onclick="removeMat(${i})"><i data-lucide="x" style="width:10px;height:10px;"></i></button></span>`).join('');
     lucide.createIcons();
 }
 
-/* ══════════════════════════════════════
-   MESURES
-══════════════════════════════════════ */
+/* ══ MESURES ══ */
 function addMesure(){
-    const l=document.getElementById('m-lbl').value.trim(), v=document.getElementById('m-val').value.trim(), u=document.getElementById('m-unit').value;
+    const l=document.getElementById('m-lbl').value.trim(),v=document.getElementById('m-val').value.trim(),u=document.getElementById('m-unit').value;
     if(!l||!v){BO.toast('Libellé et valeur requis','warn');return;}
     formMesures.push({label:l,val:v,unit:u});
-    document.getElementById('m-lbl').value=''; document.getElementById('m-val').value='';
-    renderMesures(); updateBadge(); markDirty();
+    document.getElementById('m-lbl').value='';document.getElementById('m-val').value='';
+    renderMesures();updateBadge();markDirty();
 }
-function removeMesure(i){formMesures.splice(i,1); renderMesures(); updateBadge();}
+function removeMesure(i){formMesures.splice(i,1);renderMesures();updateBadge();}
 function renderMesures(){
     document.getElementById('mesure-list').innerHTML=formMesures.map((m,i)=>`
         <div class="mesure-item">
@@ -1140,38 +1054,26 @@ function renderMesures(){
     lucide.createIcons();
 }
 
-/* ══════════════════════════════════════
-   CHECKLIST
-   FIX #6 : on demande confirmation si des items sont cochés avant de changer de type
-══════════════════════════════════════ */
+/* ══ CHECKLIST ══ */
+let _lastChecklistType='';
 async function buildChecklist(){
     const type=document.getElementById('f-type').value;
+    // Ne pas redemander si le type n'a pas changé (ex: changement d'onglet)
+    if(type===_lastChecklistType&&Object.keys(formChecks).length>0){renderChecklist(Object.keys(formChecks));return;}
     const items=CHECKLISTS[type]||CHECKLISTS['default'];
-    const checkedCount = Object.values(formChecks).filter(Boolean).length;
-
-    if(checkedCount > 0){
-        const ok = await boConfirm({
-            title: 'Changer de type ?',
-            msg: `${checkedCount} point(s) cochés seront réinitialisés. Continuer ?`,
-            okLabel: 'Changer', icon: '⚠️'
-        });
-        if(!ok){
-            // Revenir au type précédent — on ne peut pas facilement le retrouver,
-            // on remet juste la checklist telle quelle
-            renderChecklist(Object.keys(formChecks));
-            return;
-        }
+    const checkedCount=Object.values(formChecks).filter(Boolean).length;
+    if(checkedCount>0&&type!==_lastChecklistType){
+        const ok=await boConfirm({title:'Changer de type ?',msg:`${checkedCount} point(s) cochés seront réinitialisés. Continuer ?`,okLabel:'Changer',icon:'⚠️'});
+        if(!ok){renderChecklist(Object.keys(formChecks));return;}
     }
-
+    _lastChecklistType=type;
     formChecks={};
-    items.forEach(it=>{ formChecks[it]=false; });
+    items.forEach(it=>{formChecks[it]=false;});
     renderChecklist(items);
 }
 function renderChecklist(items){
     const w=document.getElementById('checklist-wrap');
-    if(!items||!items.length){
-        w.innerHTML='<p style="font-size:.75rem;color:var(--muted);">Choisissez un type dans l\'onglet Infos.</p>'; return;
-    }
+    if(!items||!items.length){w.innerHTML='<p style="font-size:.75rem;color:var(--muted);">Choisissez un type dans l\'onglet Infos.</p>';return;}
     w.innerHTML=items.map(it=>`
         <div class="chk-item${formChecks[it]?' on':''}" onclick="toggleChk(${JSON.stringify(it)},this)">
             <div class="chk-box">${formChecks[it]?'<i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i>':''}</div>
@@ -1187,322 +1089,259 @@ function toggleChk(item,el){
 }
 function updateBadge(){
     const n=formMat.length+formMesures.length+formPhotos.length;
-    const b=document.getElementById('badge-terrain'); b.style.display=n?'':'none'; b.textContent=n;
+    const b=document.getElementById('badge-terrain');b.style.display=n?'':'none';b.textContent=n;
 }
 
-/* ══════════════════════════════════════
-   SIGNATURE
-   FIX #7 : resize séparé, appelé quand le canvas est visible
-══════════════════════════════════════ */
+/* ══ SIGNATURE ══ */
 function initSig(){
-    const c=document.getElementById('sig-canvas'); if(!c) return;
+    const c=document.getElementById('sig-canvas');if(!c)return;
     sigCtx=c.getContext('2d');
-
-    function applyStyles(){
-        sigCtx.strokeStyle='#d4a843'; sigCtx.lineWidth=2.5; sigCtx.lineCap='round'; sigCtx.lineJoin='round';
-    }
-
-    window.resizeSig = function(){
-        const r=window.devicePixelRatio||1, rect=c.getBoundingClientRect();
-        if(!rect.width) return;
-        c.width=rect.width*r; c.height=rect.height*r;
-        sigCtx.scale(r,r);
-        applyStyles();
+    function applyStyles(){sigCtx.strokeStyle='#d4a843';sigCtx.lineWidth=2.5;sigCtx.lineCap='round';sigCtx.lineJoin='round';}
+    window.resizeSig=function(){
+        const r=window.devicePixelRatio||1,rect=c.getBoundingClientRect();
+        if(!rect.width)return;
+        c.width=rect.width*r;c.height=rect.height*r;
+        sigCtx.scale(r,r);applyStyles();
     };
-
-    window.addEventListener('resize', resizeSig);
-
-    function pos(e){ const rect=c.getBoundingClientRect(); return{x:e.clientX-rect.left,y:e.clientY-rect.top}; }
+    window.addEventListener('resize',resizeSig);
+    function pos(e){const rect=c.getBoundingClientRect();return{x:e.clientX-rect.left,y:e.clientY-rect.top};}
     c.addEventListener('touchstart',e=>{e.preventDefault();sigDrawing=true;const p=pos(e.touches[0]);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);},{passive:false});
-    c.addEventListener('touchmove', e=>{e.preventDefault();if(!sigDrawing)return;const p=pos(e.touches[0]);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();},{passive:false});
-    c.addEventListener('touchend', ()=>{sigDrawing=false;sigData=c.toDataURL();});
+    c.addEventListener('touchmove',e=>{e.preventDefault();if(!sigDrawing)return;const p=pos(e.touches[0]);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();},{passive:false});
+    c.addEventListener('touchend',()=>{sigDrawing=false;sigData=c.toDataURL();});
     c.addEventListener('mousedown',e=>{sigDrawing=true;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);});
     c.addEventListener('mousemove',e=>{if(!sigDrawing)return;const p=pos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();});
     c.addEventListener('mouseup',()=>{sigDrawing=false;sigData=c.toDataURL();});
 }
-function clearSig(){ if(sigCtx){const c=document.getElementById('sig-canvas');sigCtx.clearRect(0,0,c.width,c.height);sigData='';} }
+function clearSig(){if(sigCtx){const c=document.getElementById('sig-canvas');sigCtx.clearRect(0,0,c.width,c.height);sigData='';}}
 
-/* ══════════════════════════════════════
-   GÉOLOCALISATION
-══════════════════════════════════════ */
+/* ══ GÉO ══ */
 function geolocate(){
-    if(!navigator.geolocation){ BO.toast("Géolocalisation non supportée",'warn'); return; }
-    const st=document.getElementById('geo-status');
-    st.style.display='inline';
+    if(!navigator.geolocation){BO.toast("Géolocalisation non supportée",'warn');return;}
+    const st=document.getElementById('geo-status');st.style.display='inline';
     st.innerHTML='<span class="geo-chip">📍 Localisation…</span>';
     navigator.geolocation.getCurrentPosition(
         pos=>{
-            const {latitude:lat, longitude:lng}=pos.coords;
+            const {latitude:lat,longitude:lng}=pos.coords;
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fr`)
                 .then(r=>r.json()).then(d=>{
                     const addr=d.display_name||`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                    document.getElementById('f-site').value=addr; updateMapsBtn();
+                    document.getElementById('f-site').value=addr;updateMapsBtn();
                     st.innerHTML=`<span class="geo-chip">✓ Localisé</span>`;
                     setTimeout(()=>st.style.display='none',2500);
-                }).catch(()=>{
-                    document.getElementById('f-site').value=`${lat.toFixed(5)}, ${lng.toFixed(5)}`; updateMapsBtn();
-                    st.style.display='none';
-                });
+                }).catch(()=>{document.getElementById('f-site').value=`${lat.toFixed(5)}, ${lng.toFixed(5)}`;updateMapsBtn();st.style.display='none';});
         },
-        ()=>{ st.style.display='none'; BO.toast("Accès position refusé",'warn'); }
+        ()=>{st.style.display='none';BO.toast("Accès position refusé",'warn');}
     );
 }
 
-/* ══════════════════════════════════════
-   RECHERCHE VOCALE
-══════════════════════════════════════ */
+/* ══ VOIX ══ */
 let recognition=null;
-function startVoice(fieldId, btnId){
+function startVoice(fieldId,btnId){
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR){ BO.toast("Reconnaissance vocale non supportée sur ce navigateur",'warn'); return; }
-    if(recognition){ recognition.abort(); recognition=null; return; }
-    recognition=new SR(); recognition.lang='fr-FR'; recognition.interimResults=false; recognition.continuous=false;
-    const btn=document.getElementById(btnId);
-    const ico=btn?.querySelector('[data-lucide]');
-    if(ico){ ico.style.color='var(--red)'; ico.classList.add('voice-listening'); }
+    if(!SR){BO.toast("Reconnaissance vocale non supportée",'warn');return;}
+    if(recognition){recognition.abort();recognition=null;return;}
+    recognition=new SR();recognition.lang='fr-FR';recognition.interimResults=false;recognition.continuous=false;
+    const btn=document.getElementById(btnId);const ico=btn?.querySelector('[data-lucide]');
+    if(ico){ico.style.color='var(--red)';ico.classList.add('voice-listening');}
     recognition.onresult=e=>{
         const t=e.results[0][0].transcript;
         const field=document.getElementById(fieldId);
-        if(field.tagName==='TEXTAREA'){ field.value+=(field.value?' ':'')+t; }
-        else { field.value=t; }
-        markDirty(); scheduleDraft();
+        if(field.tagName==='TEXTAREA'){field.value+=(field.value?' ':'')+t;}else{field.value=t;}
+        markDirty();scheduleDraft();
     };
-    recognition.onend=()=>{
-        recognition=null;
-        if(ico){ ico.style.color=''; ico.classList.remove('voice-listening'); }
-    };
-    recognition.onerror=()=>{
-        recognition=null;
-        if(ico){ ico.style.color=''; ico.classList.remove('voice-listening'); }
-        BO.toast("Dictée annulée",'info');
-    };
+    recognition.onend=()=>{recognition=null;if(ico){ico.style.color='';ico.classList.remove('voice-listening');}};
+    recognition.onerror=()=>{recognition=null;if(ico){ico.style.color='';ico.classList.remove('voice-listening');}BO.toast("Dictée annulée",'info');};
     recognition.start();
 }
 
-/* ══════════════════════════════════════
-   DIRTY FLAG — FIX #14
-══════════════════════════════════════ */
-function markDirty(){ formDirty=true; }
-function resetDirty(){ formDirty=false; }
-
-/* ══════════════════════════════════════
-   BROUILLON AUTOSAVE
-   FIX #2 : autosave attaché une seule fois, pas de double-fire
-══════════════════════════════════════ */
-function scheduleDraft(){
-    clearTimeout(draftTimer);
-    draftTimer=setTimeout(saveDraft, 4000);
-}
+/* ══ BROUILLON ══ */
+function scheduleDraft(){clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,4000);}
 function saveDraft(){
     const data=collectFormData();
-    if(!data.titre&&!data.clientId) return;
-    // FIX #1 : pas de photos (dataUrl) dans le brouillon localStorage
-    const { photos:_, ...dataNoPhotos } = data;
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({...dataNoPhotos,_editId:editId,_ts:Date.now()}));
+    if(!data.titre&&!data.clientId)return;
+    const{photos:_,...dataNoPhotos}=data;
+    // Inclure la signature dans le brouillon (base64, taille raisonnable)
+    const draftPayload={...dataNoPhotos,_editId:editId,_ts:Date.now(),_sig:sigData||''};
+    try{localStorage.setItem(DRAFT_KEY,JSON.stringify(draftPayload));}catch(e){
+        // Quota dépassé à cause de la signature — on sauvegarde sans
+        try{localStorage.setItem(DRAFT_KEY,JSON.stringify({...dataNoPhotos,_editId:editId,_ts:Date.now()}));}catch{}
+    }
     const lbl=document.getElementById('draft-saved-lbl');
-    lbl.style.display=''; lbl.textContent='✓ Brouillon sauvegardé — '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    setTimeout(()=>lbl.style.display='none', 3000);
+    lbl.style.display='';lbl.textContent='✓ Brouillon sauvegardé — '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    setTimeout(()=>lbl.style.display='none',3000);
 }
-function loadDraft(){
-    const raw=localStorage.getItem(DRAFT_KEY); if(!raw) return null;
-    try { return JSON.parse(raw); } catch { return null; }
-}
-function clearDraftStorage(){ localStorage.removeItem(DRAFT_KEY); }
-
-async function discardDraft(){
-    clearDraftStorage();
-    resetDirty();
-    closeFormModal();
-}
-
+function loadDraft(){const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return null;try{return JSON.parse(raw);}catch{return null;}}
+function clearDraftStorage(){localStorage.removeItem(DRAFT_KEY);}
 async function checkDraftOnOpen(id){
-    const d=loadDraft(); if(!d) return;
-    if((d._editId===id) || (!id && !d._editId)){
+    const d=loadDraft();if(!d)return;
+    if((d._editId===id)||(!id&&!d._editId)){
         const age=Math.round((Date.now()-d._ts)/60000);
-        const ok = await boConfirm({
-            title: 'Brouillon trouvé',
-            msg: `Un brouillon de ${age} min a été sauvegardé. Voulez-vous le restaurer ?`,
-            okLabel: 'Restaurer', okClass: 'gold', icon: '📝'
-        });
-        if(ok) restoreDraft(d);
-        else clearDraftStorage();
+        const ok=await boConfirm({title:'Brouillon trouvé',msg:`Un brouillon de ${age} min a été sauvegardé. Voulez-vous le restaurer ?`,okLabel:'Restaurer',okClass:'gold',icon:'📝'});
+        if(ok)restoreDraft(d);else clearDraftStorage();
     }
 }
 function restoreDraft(d){
-    document.getElementById('f-titre').value   = d.titre||'';
-    document.getElementById('f-client').value  = d.clientId||'';
-    document.getElementById('f-tech').value    = d.technicien||'';
-    document.getElementById('f-type').value    = d.type||'';
-    document.getElementById('f-site').value    = d.site||'';
-    document.getElementById('f-statut').value  = d.statut||'Ouvert';
-    document.getElementById('f-prio').value    = d.priorite||'Moyenne';
-    document.getElementById('f-date-e').value  = d.dateEcheance||'';
-    document.getElementById('f-desc').value    = d.description||'';
-    document.getElementById('f-rapport').value = d.rapport||'';
-    document.getElementById('f-duree').value   = d.duree||'';
-    document.getElementById('f-date-r').value  = d.dateResolution||'';
-    document.getElementById('f-note').value    = d.note||'';
-    formMat     = [...(d.materiel||[])];
-    formMesures = [...(d.mesures||[])];
-    // formPhotos non restaurés (stockés en IndexedDB séparément)
-    formChecks  = {...(d.checks||{})};
-    renderMatChips(); renderMesures(); renderPhotoGrid(); buildChecklist(); updateBadge();
-    onStatutChange();
+    document.getElementById('f-titre').value=d.titre||'';
+    // Restaurer client (hidden + search visuel)
+    document.getElementById('f-client').value=d.clientId||'';
+    const cli=clients.find(c=>c.id===d.clientId);
+    document.getElementById('f-client-search').value=cli?.nom||'';
+    if(cli){
+        const hint=document.getElementById('client-info-hint');
+        const parts=[cli.contact,cli.email,cli.tel].filter(Boolean);
+        if(parts.length){hint.textContent=parts.join(' · ');hint.style.display='';}else hint.style.display='none';
+    }
+    document.getElementById('f-type').value=d.type||'';
+    document.getElementById('f-site').value=d.site||'';
+    document.getElementById('f-statut').value=d.statut||'Ouvert';
+    document.getElementById('f-prio').value=d.priorite||'Moyenne';
+    document.getElementById('f-date-e').value=d.dateEcheance||'';
+    document.getElementById('f-ref').value=d.ref||'';
+    document.getElementById('f-desc').value=d.description||'';
+    document.getElementById('f-rapport').value=d.rapport||'';
+    document.getElementById('f-duree').value=d.duree||'';
+    document.getElementById('f-date-r').value=d.dateResolution||'';
+    document.getElementById('f-note').value=d.note||'';
+    const precEl=document.getElementById('f-preconisations');if(precEl)precEl.value=d.preconisations||'';
+    formMat=[...(d.materiel||[])];formMesures=[...(d.mesures||[])];
+    formChecks={...(d.checks||{})};
+    setFormTechs(d.techniciens||[]);
+    // Restaurer la signature si présente dans le brouillon
+    if(d._sig&&sigCtx){
+        const img=new Image();img.onload=()=>{resizeSig();sigCtx.drawImage(img,0,0,document.getElementById('sig-canvas').width/window.devicePixelRatio,document.getElementById('sig-canvas').height/window.devicePixelRatio);sigData=d._sig;};img.src=d._sig;
+    }
+    renderMatChips();renderMesures();renderPhotoGrid();buildChecklist();updateBadge();onStatutChange();
     BO.toast('Brouillon restauré','success');
 }
 function collectFormData(){
     return {
-        titre:          document.getElementById('f-titre').value.trim(),
-        clientId:       document.getElementById('f-client').value,
-        technicien:     document.getElementById('f-tech').value,
-        type:           document.getElementById('f-type').value,
-        site:           document.getElementById('f-site').value.trim(),
-        statut:         document.getElementById('f-statut').value,
-        priorite:       document.getElementById('f-prio').value,
-        dateCreation:   editId?(interventions.find(x=>x.id===editId)?.dateCreation||BO.today()):BO.today(),
-        dateEcheance:   document.getElementById('f-date-e').value,
-        description:    document.getElementById('f-desc').value.trim(),
-        materiel:       [...formMat], mesures:[...formMesures],
-        photos:         [...formPhotos], checks:{...formChecks},
-        rapport:        document.getElementById('f-rapport').value.trim(),
-        duree:          parseFloat(document.getElementById('f-duree').value)||0,
-        dateResolution: document.getElementById('f-date-r').value,
-        note:           document.getElementById('f-note').value.trim(),
+        titre:document.getElementById('f-titre').value.trim(),
+        clientId:document.getElementById('f-client').value,
+        techniciens:[...formTechs],
+        type:document.getElementById('f-type').value,
+        site:document.getElementById('f-site').value.trim(),
+        ref:document.getElementById('f-ref').value.trim(),
+        statut:document.getElementById('f-statut').value,
+        priorite:document.getElementById('f-prio').value,
+        dateCreation:editId?(interventions.find(x=>x.id===editId)?.dateCreation||BO.today()):BO.today(),
+        dateEcheance:document.getElementById('f-date-e').value,
+        description:document.getElementById('f-desc').value.trim(),
+        materiel:[...formMat],mesures:[...formMesures],
+        photos:[...formPhotos],checks:{...formChecks},
+        rapport:document.getElementById('f-rapport').value.trim(),
+        preconisations:document.getElementById('f-preconisations').value.trim(),
+        duree:parseFloat(document.getElementById('f-duree').value)||0,
+        dateResolution:document.getElementById('f-date-r').value,
+        note:document.getElementById('f-note').value.trim(),
     };
 }
 
-/* ══════════════════════════════════════
-   STATUT CHANGE
-══════════════════════════════════════ */
+/* ══ STATUT ══ */
 function onStatutChange(){
     const v=document.getElementById('f-statut').value;
     document.getElementById('rapport-section').style.opacity=v==='Résolu'?'1':'.45';
-    if(v==='Résolu'&&!document.getElementById('f-date-r').value)
-        document.getElementById('f-date-r').value=BO.today();
+    if(v==='Résolu'&&!document.getElementById('f-date-r').value)document.getElementById('f-date-r').value=BO.today();
 }
 
-/* ══════════════════════════════════════
-   FILTER & SORT
-══════════════════════════════════════ */
-function isOverdue(i){ return i.dateEcheance&&new Date(i.dateEcheance)<new Date()&&i.statut!=='Résolu'&&i.statut!=='Annulé'; }
-function clearDates(){ document.getElementById('date-from').value=''; document.getElementById('date-to').value=''; render(); }
-
+/* ══ FILTER ══ */
+function isOverdue(i){return i.dateEcheance&&new Date(i.dateEcheance)<new Date()&&i.statut!=='Résolu'&&i.statut!=='Annulé';}
+function clearDates(){document.getElementById('date-from').value='';document.getElementById('date-to').value='';render();}
 function getFiltered(){
     const q=document.getElementById('search').value.toLowerCase();
     const tech=document.getElementById('sel-tech').value;
     const type=document.getElementById('sel-type').value;
-    // FIX #17 : comparaison de dates via objets Date (pas string)
-    const dfRaw=document.getElementById('date-from').value;
-    const dtRaw=document.getElementById('date-to').value;
-    const df=dfRaw?new Date(dfRaw):null;
-    const dt=dtRaw?new Date(dtRaw+' 23:59:59'):null;
+    const dfRaw=document.getElementById('date-from').value, dtRaw=document.getElementById('date-to').value;
+    const df=dfRaw?new Date(dfRaw):null, dt=dtRaw?new Date(dtRaw+' 23:59:59'):null;
     return interventions.filter(i=>{
         const ms=filterStatus==='Tous'||i.statut===filterStatus;
         const mp=filterPrio==='Toutes'||i.priorite===filterPrio;
-        const mt=!tech||i.technicien===tech;
+        // Multi-tech : filtrer si au moins un des techniciens correspond
+        const mt=!tech||(i.techniciens||[i.technicien]).includes(tech);
         const mty=!type||i.type===type;
-        const mq=!q||i.titre.toLowerCase().includes(q)||(i.technicien||'').toLowerCase().includes(q)||(clients.find(c=>c.id===i.clientId)?.nom||'').toLowerCase().includes(q);
+        const techStr=(i.techniciens||[i.technicien]||[]).join(' ');
+        const mq=!q||i.titre.toLowerCase().includes(q)||techStr.toLowerCase().includes(q)||(clients.find(c=>c.id===i.clientId)?.nom||'').toLowerCase().includes(q)||(i.site||'').toLowerCase().includes(q)||(i.ref||'').toLowerCase().includes(q)||(i.description||'').toLowerCase().includes(q);
         const mo=!filterOverdue||isOverdue(i);
         const createdAt=i.dateCreation?new Date(i.dateCreation):null;
-        const mdf=!df||!createdAt||createdAt>=df;
-        const mdt=!dt||!createdAt||createdAt<=dt;
-        return ms&&mp&&mt&&mty&&mq&&mo&&mdf&&mdt;
+        return ms&&mp&&mt&&mty&&mq&&mo&&(!df||!createdAt||createdAt>=df)&&(!dt||!createdAt||createdAt<=dt);
     }).sort((a,b)=>{
-        let va=a[sortCol]||'', vb=b[sortCol]||'';
-        if(sortCol==='priorite'){ va=PRIO_ORDER[a.priorite]??1; vb=PRIO_ORDER[b.priorite]??1; }
-        if(va<vb) return sortDir==='asc'?-1:1;
-        if(va>vb) return sortDir==='asc'?1:-1;
-        return 0;
+        let va=a[sortCol]||'',vb=b[sortCol]||'';
+        if(sortCol==='priorite'){va=PRIO_ORDER[a.priorite]??1;vb=PRIO_ORDER[b.priorite]??1;}
+        if(sortCol==='rapportNum'){va=a.rapportNum||0;vb=b.rapportNum||0;}
+        if(va<vb)return sortDir==='asc'?-1:1;if(va>vb)return sortDir==='asc'?1:-1;return 0;
     });
 }
-function setSort(col){
-    if(sortCol===col) sortDir=sortDir==='asc'?'desc':'asc'; else{sortCol=col;sortDir='asc';}
-    render();
-}
+function setSort(col){if(sortCol===col)sortDir=sortDir==='asc'?'desc':'asc';else{sortCol=col;sortDir='asc';}render();}
 function setView(v){
     currentView=v;
     document.getElementById('view-list').style.display=v==='list'?'':'none';
     document.getElementById('view-kanban').style.display=v==='kanban'?'':'none';
     document.getElementById('vbtn-list').className='view-btn'+(v==='list'?' active':'');
     document.getElementById('vbtn-kanban').className='view-btn'+(v==='kanban'?' active':'');
-    render(); lucide.createIcons();
+    render();lucide.createIcons();
 }
-// toggleOverdue now integrated in buildAllPills
 
-/* ══════════════════════════════════════
-   FIX #12 : refresh() = render() + renderCharts() couplés
-══════════════════════════════════════ */
-function refresh(){ render(); renderCharts(); }
+/* ══ REFRESH ══ */
+function refresh(){render();renderCharts();}
 
-/* ══════════════════════════════════════
-   RENDER
-══════════════════════════════════════ */
+/* ══ RENDER ══ */
 function render(){
     const filtered=getFiltered();
-    const total=interventions.length, resolus=interventions.filter(i=>i.statut==='Résolu').length;
+    const total=interventions.length,resolus=interventions.filter(i=>i.statut==='Résolu').length;
     const enCours=interventions.filter(i=>i.statut==='En cours').length;
     const ouverts=interventions.filter(i=>i.statut==='Ouvert').length;
     const retard=interventions.filter(i=>isOverdue(i)).length;
     const pct=total?Math.round(resolus/total*100):0;
-
     document.getElementById('kpi-row').innerHTML=[
-        {l:'Total',    v:total,   c:'var(--text)',s:''},
-        {l:'Ouverts',  v:ouverts, c:'#93c5fd',   s:''},
-        {l:'En cours', v:enCours, c:'#fcd34d',   s:''},
-        {l:'Résolus',  v:resolus, c:'#6ee7b7',   s:pct+'%'},
-        {l:'⏰ Retard', v:retard,  c:'#f87171',   s:''},
+        {l:'Total',v:total,c:'var(--text)',s:''},
+        {l:'Ouverts',v:ouverts,c:'#93c5fd',s:''},
+        {l:'En cours',v:enCours,c:'#fcd34d',s:''},
+        {l:'Résolus',v:resolus,c:'#6ee7b7',s:pct+'%'},
+        {l:'⏰ Retard',v:retard,c:'#f87171',s:''},
     ].map(k=>`<div class="bo-stat"><div class="bo-stat-label">${esc(k.l)}</div><div class="bo-stat-value" style="color:${k.c};">${k.v}</div>${k.s?`<div class="bo-stat-sub">${esc(k.s)}</div>`:''}</div>`).join('');
-
     document.getElementById('pbar').style.width=pct+'%';
     document.getElementById('pct-label').textContent=pct+'%';
     currentView==='list'?renderList(filtered):renderKanban(filtered);
 }
 
-/* ── CHARTS ── */
+/* ══ CHARTS ══ */
 function renderCharts(){
-    const months=[]; const now=new Date();
-    for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); months.push({y:d.getFullYear(),m:d.getMonth(),lbl:d.toLocaleDateString('fr-FR',{month:'short'}),count:0}); }
-    interventions.forEach(iv=>{
-        const d=new Date(iv.dateCreation); const m=months.find(x=>x.y===d.getFullYear()&&x.m===d.getMonth());
-        if(m) m.count++;
-    });
+    const months=[];const now=new Date();
+    for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({y:d.getFullYear(),m:d.getMonth(),lbl:d.toLocaleDateString('fr-FR',{month:'short'}),count:0});}
+    interventions.forEach(iv=>{const d=new Date(iv.dateCreation);const m=months.find(x=>x.y===d.getFullYear()&&x.m===d.getMonth());if(m)m.count++;});
     const maxM=Math.max(1,...months.map(m=>m.count));
     document.getElementById('chart-monthly').innerHTML=months.map(m=>`
-        <div class="chart-bar-wrap">
-            <div class="chart-bar-val">${m.count||''}</div>
-            <div class="chart-bar" style="height:${Math.max(4,m.count/maxM*64)}px;background:var(--gold);opacity:${.4+.6*(m.count/maxM)};"></div>
-            <div class="chart-bar-lbl">${esc(m.lbl)}</div>
-        </div>`).join('');
-
-    const byTech={};
-    TECHS.forEach(t=>{byTech[t]=0;});
-    interventions.forEach(iv=>{ if(iv.technicien&&byTech[iv.technicien]!==undefined) byTech[iv.technicien]++; });
+        <div class="chart-bar-wrap"><div class="chart-bar-val">${m.count||''}</div>
+        <div class="chart-bar" style="height:${Math.max(4,m.count/maxM*64)}px;background:var(--gold);opacity:${.4+.6*(m.count/maxM)};"></div>
+        <div class="chart-bar-lbl">${esc(m.lbl)}</div></div>`).join('');
+    const byTech={};techs.forEach(t=>{byTech[t]=0;});
+    interventions.forEach(iv=>{
+        (iv.techniciens||[iv.technicien]).filter(Boolean).forEach(t=>{if(byTech[t]!==undefined)byTech[t]++;});
+    });
     const techData=Object.entries(byTech).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const maxT=Math.max(1,...techData.map(([,v])=>v));
     document.getElementById('chart-tech').innerHTML=techData.length
-        ? techData.map(([name,cnt])=>`
-        <div class="chart-bar-wrap">
-            <div class="chart-bar-val">${cnt}</div>
-            <div class="chart-bar" style="height:${Math.max(4,cnt/maxT*64)}px;background:#6ee7b7;opacity:${.4+.6*(cnt/maxT)};"></div>
-            <div class="chart-bar-lbl">${esc(name.split(' ')[0])}</div>
-        </div>`).join('')
-        : '<span style="font-size:.7rem;color:var(--muted);margin:auto;">Aucune donnée</span>';
+        ?techData.map(([name,cnt])=>`
+        <div class="chart-bar-wrap"><div class="chart-bar-val">${cnt}</div>
+        <div class="chart-bar" style="height:${Math.max(4,cnt/maxT*64)}px;background:#6ee7b7;opacity:${.4+.6*(cnt/maxT)};"></div>
+        <div class="chart-bar-lbl">${esc(name.split(' ')[0])}</div></div>`).join('')
+        :'<span style="font-size:.7rem;color:var(--muted);margin:auto;">Aucune donnée</span>';
 }
 
-/* ── SORT HEADER ── */
 function sortHeaderHTML(){
-    function sb(col,lbl){ const active=sortCol===col; const dir=active?sortDir:''; return `<span class="sort-btn${active?' '+dir:''}" onclick="setSort('${esc(col)}')">${esc(lbl)}</span>`; }
-    return `<div class="sortable-header"><span style="display:flex;gap:.75rem;">${sb('dateCreation','Date')} ${sb('priorite','Priorité')} ${sb('statut','Statut')} ${sb('technicien','Technicien')}</span></div>`;
+    function sb(col,lbl){const active=sortCol===col;const dir=active?sortDir:'';return `<span class="sort-btn${active?' '+dir:''}" onclick="setSort('${esc(col)}')">${esc(lbl)}</span>`;}
+    return `<div class="sortable-header"><span style="display:flex;gap:.75rem;">${sb('rapportNum','N°')} ${sb('dateCreation','Date')} ${sb('priorite','Priorité')} ${sb('statut','Statut')} ${sb('techniciens','Technicien')}</span></div>`;
 }
 
 function renderList(list){
     const w=document.getElementById('table-wrap');
-    if(!list.length){ w.innerHTML='<div class="bo-empty"><div style="font-size:2rem;margin-bottom:.75rem;">📋</div><div class="bo-empty-title">Aucune intervention</div><div class="bo-empty-desc">Créez un ticket ou ajustez vos filtres.</div></div>'; return; }
+    if(!list.length){w.innerHTML='<div class="bo-empty"><div style="font-size:2rem;margin-bottom:.75rem;">📋</div><div style="font-size:1rem;font-weight:700;margin-bottom:.5rem;">Aucune intervention</div><div style="font-size:.8rem;color:var(--muted);">Créez un ticket ou ajustez vos filtres.</div></div>';return;}
     w.innerHTML=sortHeaderHTML()+list.map(i=>{
         const c=clients.find(cl=>cl.id===i.clientId);
         const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
         const ov=isOverdue(i);
-        const np=(i.photos||[]).length, nm=(i.mesures||[]).length;
+        const np=(i.photos||[]).length,nm=(i.mesures||[]).length;
+        // Compatibilité ancien format (technicien string) + nouveau (techniciens array)
+        const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
         const id=JSON.stringify(i.id);
         return `<div class="itv-card" onclick="openDetail(${id})">
             <div class="itv-card-top">
@@ -1510,14 +1349,16 @@ function renderList(list){
                 <div class="itv-card-body">
                     <div class="itv-card-title">${esc(i.titre)}</div>
                     <div class="itv-card-meta">
-                        <span style="font-family:monospace;font-size:.54rem;">#${esc(i.id.slice(-4).toUpperCase())}</span>
+                        ${i.rapportNum?`<span style="font-family:monospace;font-size:.54rem;color:var(--gold);font-weight:700;">N°${String(i.rapportNum).padStart(4,'0')}</span>`:`<span style="font-family:monospace;font-size:.54rem;">#${esc(i.id.slice(-4).toUpperCase())}</span>`}
+                        ${i.ref?`<span style="font-size:.54rem;color:var(--gold);">${esc(i.ref)}</span>`:''}
                         <span>${esc(c?.nom||'—')}</span>
-                        ${i.technicien?`<span>👤 ${esc(i.technicien.split(' ')[0])}</span>`:''}
+                        ${itvTechs.length?`<span>👥 ${esc(itvTechs.map(t=>t.split(' ')[0]).join(', '))}</span>`:''}
                         ${np?`<span>📷${np}</span>`:''}${nm?`<span>📐${nm}</span>`:''}
                         ${ov?'<span style="color:#f87171;">⏰ retard</span>':''}
                     </div>
                 </div>
                 <div class="itv-card-actions" onclick="event.stopPropagation()">
+                    <button class="bo-btn-icon" onclick="generatePDF(${id})" title="PDF"><i data-lucide="file-text" style="width:14px;height:14px;color:#a78bfa;"></i></button>
                     <button class="bo-btn-icon" onclick="openForm(${id})" title="Modifier"><i data-lucide="pencil" style="width:14px;height:14px;color:#94a3b8;"></i></button>
                     <button class="bo-btn-icon" onclick="duplicate(${id})" title="Dupliquer"><i data-lucide="copy" style="width:14px;height:14px;color:#94a3b8;"></i></button>
                     <button class="bo-btn-danger" onclick="remove(${id})" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px;color:#f87171;"></i></button>
@@ -1527,6 +1368,7 @@ function renderList(list){
                 <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${esc(i.statut)}</span>
                 ${i.type?`<span class="bo-badge" style="background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);">${esc(i.type)}</span>`:''}
                 <span style="font-size:.58rem;color:var(--muted);margin-left:auto;">${esc(BO.fmt(i.dateCreation))}</span>
+                ${i.lastModified?`<span style="font-size:.54rem;color:var(--muted);" title="Dernière modification">✎ ${new Date(i.lastModified).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>`:''}
                 ${i.duree?`<span style="font-size:.58rem;color:var(--gold);">⏱ ${i.duree}h</span>`:''}
             </div>
         </div>`;
@@ -1537,10 +1379,10 @@ function renderList(list){
 function renderKanban(list){
     const w=document.getElementById('kanban-wrap');
     const COLS=[
-        {k:'Ouvert',  l:'Ouvert',  c:'#3b82f6',bg:'rgba(59,130,246,0.1)'},
+        {k:'Ouvert',l:'Ouvert',c:'#3b82f6',bg:'rgba(59,130,246,0.1)'},
         {k:'En cours',l:'En cours',c:'#f59e0b',bg:'rgba(245,158,11,0.1)'},
-        {k:'Résolu',  l:'Résolu',  c:'#10b981',bg:'rgba(16,185,129,0.1)'},
-        {k:'Annulé',  l:'Annulé',  c:'#64748b',bg:'rgba(100,116,139,0.1)'},
+        {k:'Résolu',l:'Résolu',c:'#10b981',bg:'rgba(16,185,129,0.1)'},
+        {k:'Annulé',l:'Annulé',c:'#64748b',bg:'rgba(100,116,139,0.1)'},
     ];
     w.innerHTML=COLS.map(col=>{
         const cards=list.filter(i=>i.statut===col.k);
@@ -1549,8 +1391,8 @@ function renderKanban(list){
             <div class="kanban-cards">
                 ${!cards.length?'<div class="kanban-empty">Aucune</div>':''}
                 ${cards.map(i=>{
-                    const c=clients.find(cl=>cl.id===i.clientId);
-                    const ov=isOverdue(i), np=(i.photos||[]).length;
+                    const c=clients.find(cl=>cl.id===i.clientId);const ov=isOverdue(i);const np=(i.photos||[]).length;
+                    const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
                     const id=JSON.stringify(i.id);
                     return `<div class="kanban-card" onclick="openDetail(${id})">
                         <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;">
@@ -1559,11 +1401,7 @@ function renderKanban(list){
                             ${ov?'<span style="font-size:.55rem;color:#f87171;margin-left:auto;">⏰</span>':''}
                         </div>
                         <div class="kanban-card-title">${esc(i.titre)}</div>
-                        <div class="kanban-card-meta">
-                            <span>${esc(c?.nom||'—')}</span>
-                            ${i.technicien?`<span>👤 ${esc(i.technicien)}</span>`:''}
-                            ${np?`<span>📷 ${np}</span>`:''}
-                        </div>
+                        <div class="kanban-card-meta"><span>${esc(c?.nom||'—')}</span>${itvTechs.length?`<span>👥 ${esc(itvTechs.map(t=>t.split(' ')[0]).join(', '))}</span>`:''}${np?`<span>📷 ${np}</span>`:''}</div>
                     </div>`;
                 }).join('')}
             </div>
@@ -1571,274 +1409,272 @@ function renderKanban(list){
     }).join('');
 }
 
-/* ══════════════════════════════════════
-   OPEN FORM
-══════════════════════════════════════ */
-function openForm(id=null, promptDup=false){
-    if(promptDup){ openDupModal(); return; }
-    editId=id; isDup=false;
-    formMat=[]; formMesures=[]; formPhotos=[]; formChecks={};
-    sigData=''; clearSig();
-    resetDirty();
+/* ══ OPEN FORM ══ */
+function openForm(id=null, tabOverride=null){
+    editId=id;isDup=false;
+    formMat=[];formMesures=[];formPhotos=[];formChecks={};formTechs=[];
+    sigData='';clearSig();resetDirty();
+    _lastChecklistType='';
     document.getElementById('modal-title').textContent=id?"Modifier l'intervention":"Nouvelle intervention";
-
+    let smartTab='infos';
     if(id){
-        const i=interventions.find(x=>x.id===id); if(!i) return;
+        const i=interventions.find(x=>x.id===id);if(!i)return;
         fillFormFrom(i);
+        // Onglet forcé (ex: bouton Clôturer) sinon intelligent selon statut
+        if(tabOverride) {
+            smartTab=tabOverride;
+            // Si on clôture, pré-remplir le statut et la date
+            if(tabOverride==='cloture'&&i.statut!=='Résolu'){
+                document.getElementById('f-statut').value='Résolu';
+                if(!document.getElementById('f-date-r').value) document.getElementById('f-date-r').value=BO.today();
+                document.getElementById('rapport-section').style.opacity='1';
+            }
+        }
+        else if(i.statut==='En cours') smartTab='terrain';
+        else if(i.statut==='Résolu') smartTab='cloture';
     } else {
         clearFormFields();
     }
-
-    // FIX #5 : réinitialiser le chrono à chaque ouverture (sans toucher localStorage si actif)
     resetChrono();
-
     document.getElementById('rapport-section').style.opacity=(document.getElementById('f-statut').value==='Résolu')?'1':'.45';
-    renderMatChips(); renderMesures(); renderPhotoGrid(); buildChecklist(); updateBadge();
-    showTab('infos');
+    renderMatChips();renderMesures();renderPhotoGrid();buildChecklist();updateBadge();
+    buildTechSelectors();
+    showTab(smartTab);
     document.getElementById('modal').style.display='flex';
     lucide.createIcons();
-
-    // FIX #2 : attacher autosave UNE seule fois via le body du modal
     const body=document.getElementById('form-modal-body');
-    // Cloner pour supprimer les anciens listeners
-    const newBody=body.cloneNode(true);
-    body.parentNode.replaceChild(newBody,body);
-    document.getElementById('form-modal-body').addEventListener('input',()=>{ markDirty(); scheduleDraft(); });
-    // Ré-attacher les events de la signature (non concernés par l'input event)
-
+    const newBody=body.cloneNode(true);body.parentNode.replaceChild(newBody,body);
+    document.getElementById('form-modal-body').addEventListener('input',()=>{markDirty();scheduleDraft();});
     checkDraftOnOpen(id);
 }
-
 function fillFormFrom(i){
-    document.getElementById('f-titre').value   = i.titre;
-    document.getElementById('f-client').value  = i.clientId;
-    document.getElementById('f-tech').value    = i.technicien||'';
-    document.getElementById('f-type').value    = i.type||'';
-    document.getElementById('f-site').value    = i.site||'';
-    document.getElementById('f-statut').value  = i.statut;
-    document.getElementById('f-prio').value    = i.priorite;
-    document.getElementById('f-date-e').value  = i.dateEcheance||'';
-    document.getElementById('f-desc').value    = i.description||'';
-    document.getElementById('f-rapport').value = i.rapport||'';
-    document.getElementById('f-duree').value   = i.duree||'';
-    const recapEl=document.getElementById('f-duree-recap');
-    if(recapEl) recapEl.value=i.duree||'';
-    document.getElementById('f-date-r').value  = i.dateResolution||'';
-    document.getElementById('f-note').value    = i.note||'';
-    formMat     = [...(i.materiel||[])];
-    formMesures = [...(i.mesures||[])];
-    // Les photos sont chargées depuis IndexedDB via leurs IDs
-    formPhotos  = [...(i.photos||[])];
-    formChecks  = {...(i.checks||{})};
+    document.getElementById('f-titre').value=i.titre;
+    // Client : hidden field + search visuel
+    document.getElementById('f-client').value=i.clientId||'';
+    const cli=clients.find(c=>c.id===i.clientId);
+    document.getElementById('f-client-search').value=cli?.nom||'';
+    if(cli){
+        const hint=document.getElementById('client-info-hint');
+        const parts=[cli.contact,cli.email,cli.tel].filter(Boolean);
+        if(parts.length){hint.textContent=parts.join(' · ');hint.style.display='';}else hint.style.display='none';
+    }
+    document.getElementById('f-type').value=i.type||'';
+    document.getElementById('f-site').value=i.site||'';
+    document.getElementById('f-ref').value=i.ref||'';
+    document.getElementById('f-statut').value=i.statut;
+    document.getElementById('f-prio').value=i.priorite;
+    document.getElementById('f-date-e').value=i.dateEcheance||'';
+    document.getElementById('f-desc').value=i.description||'';
+    document.getElementById('f-rapport').value=i.rapport||'';
+    document.getElementById('f-duree').value=i.duree||'';
+    const recapEl=document.getElementById('f-duree-recap');if(recapEl)recapEl.value=i.duree||'';
+    document.getElementById('f-date-r').value=i.dateResolution||'';
+    document.getElementById('f-note').value=i.note||'';
+    document.getElementById('f-preconisations').value=i.preconisations||'';
+    formMat=[...(i.materiel||[])];formMesures=[...(i.mesures||[])];
+    formPhotos=[...(i.photos||[])];formChecks={...(i.checks||{})};
+    // Compatibilité : ancien champ technicien (string) → techniciens (array)
+    const ts=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
+    setFormTechs(ts);
 }
 function clearFormFields(){
-    ['f-titre','f-site','f-desc','f-rapport','f-note','f-date-e','f-date-r','f-duree'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
-    const recap=document.getElementById('f-duree-recap'); if(recap) recap.value='';
-    document.getElementById('f-client').value=''; document.getElementById('f-tech').value='';
-    document.getElementById('f-type').value=''; document.getElementById('f-statut').value='Ouvert'; document.getElementById('f-prio').value='Moyenne';
+    ['f-titre','f-site','f-ref','f-desc','f-rapport','f-note','f-preconisations','f-date-e','f-date-r','f-duree'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
+    const recap=document.getElementById('f-duree-recap');if(recap)recap.value='';
+    document.getElementById('f-client').value='';
+    document.getElementById('f-client-search').value='';
+    const hint=document.getElementById('client-info-hint');if(hint)hint.style.display='none';
+    document.getElementById('f-type').value='';
+    document.getElementById('f-statut').value='Ouvert';document.getElementById('f-prio').value='Moyenne';
+    setFormTechs([]);
 }
+function closeFormModal(){document.getElementById('modal').style.display='none';clearTimeout(draftTimer);}
+function closeDetailModal(){document.getElementById('detail-modal').style.display='none';}
 
-/* FIX #3 & #4 : Fonctions de fermeture séparées */
-function closeFormModal(){
-    document.getElementById('modal').style.display='none';
-    clearTimeout(draftTimer);
-}
-function closeDetailModal(){
-    document.getElementById('detail-modal').style.display='none';
-}
-
-/* FIX #14 : confirmation si formulaire modifié */
-async function maybeCloseForm(){
-    if(formDirty){
-        const ok = await boConfirm({
-            title: 'Fermer sans enregistrer ?',
-            msg: 'Des modifications non sauvegardées seront perdues.',
-            okLabel: 'Quitter', icon: '⚠️'
-        });
-        if(!ok) return;
+/* ══ CHANGEMENT DE STATUT RAPIDE ══ */
+async function quickStatus(id, newStatut){
+    const idx=interventions.findIndex(x=>x.id===id);if(idx<0)return;
+    const i=interventions[idx];
+    if(i.statut===newStatut)return;
+    const old={...i};
+    const hist=[...(i.historique||[])];
+    hist.push({date:BO.today(),action:`Statut → ${newStatut}`,couleur:STATUS_C[newStatut]?.border||'#64748b'});
+    const updates={statut:newStatut,historique:hist,lastModified:new Date().toISOString()};
+    if(newStatut==='Résolu'&&!i.dateResolution) updates.dateResolution=BO.today();
+    interventions[idx]={...i,...updates};
+    try{
+        await BO.write(BO.KEYS.interventions,interventions);
+        BO.toast(`Statut → ${newStatut}`,'success');
+        // Mettre à jour la liste en arrière-plan sans scroll jump
+        const filtered=getFiltered();
+        currentView==='list'?renderList(filtered):renderKanban(filtered);
+        // Rafraîchir les KPIs et charts discrètement
+        const total=interventions.length,resolus=interventions.filter(x=>x.statut==='Résolu').length;
+        const enCours=interventions.filter(x=>x.statut==='En cours').length;
+        const ouverts=interventions.filter(x=>x.statut==='Ouvert').length;
+        const retard=interventions.filter(x=>isOverdue(x)).length;
+        const pct=total?Math.round(resolus/total*100):0;
+        document.getElementById('kpi-row').innerHTML=[
+            {l:'Total',v:total,c:'var(--text)',s:''},
+            {l:'Ouverts',v:ouverts,c:'#93c5fd',s:''},
+            {l:'En cours',v:enCours,c:'#fcd34d',s:''},
+            {l:'Résolus',v:resolus,c:'#6ee7b7',s:pct+'%'},
+            {l:'⏰ Retard',v:retard,c:'#f87171',s:''},
+        ].map(k=>`<div class="bo-stat"><div class="bo-stat-label">${esc(k.l)}</div><div class="bo-stat-value" style="color:${k.c};">${k.v}</div>${k.s?`<div class="bo-stat-sub">${esc(k.s)}</div>`:''}</div>`).join('');
+        document.getElementById('pbar').style.width=pct+'%';
+        document.getElementById('pct-label').textContent=pct+'%';
+        // Rouvrir la fiche détail à jour sans fermer/rouvrir l'overlay
+        openDetail(id);
+    }catch(e){
+        interventions[idx]=old;
+        BO.toast('Erreur lors de la mise à jour','error');
     }
-    clearDraftStorage();
-    resetDirty();
-    closeFormModal();
+}
+async function maybeCloseForm(){
+    if(formDirty){const ok=await boConfirm({title:'Fermer sans enregistrer ?',msg:'Des modifications non sauvegardées seront perdues.',okLabel:'Quitter',icon:'⚠️'});if(!ok)return;}
+    clearDraftStorage();resetDirty();closeFormModal();
 }
 
-/* ══════════════════════════════════════
-   DUPLIQUER
-══════════════════════════════════════ */
-function openDupModal(){
-    const inp=document.getElementById('dup-search');
-    if(inp) inp.value='';
-    renderDupList();
-    document.getElementById('dup-modal').style.display='flex';
-    lucide.createIcons();
-}
+/* ══ DUPLIQUER ══ */
+function openDupModal(){const inp=document.getElementById('dup-search');if(inp)inp.value='';renderDupList();document.getElementById('dup-modal').style.display='flex';lucide.createIcons();}
 function renderDupList(){
-    // FIX #8 : vérification que l'élément existe
-    const searchEl=document.getElementById('dup-search');
-    if(!searchEl) return;
+    const searchEl=document.getElementById('dup-search');if(!searchEl)return;
     const q=searchEl.value.toLowerCase();
     const list=interventions.filter(i=>!q||i.titre.toLowerCase().includes(q)||(clients.find(c=>c.id===i.clientId)?.nom||'').toLowerCase().includes(q)).slice(0,20);
-    const listEl=document.getElementById('dup-list');
-    if(!listEl) return;
+    const listEl=document.getElementById('dup-list');if(!listEl)return;
     listEl.innerHTML=list.map(i=>{
-        const c=clients.find(cl=>cl.id===i.clientId);
-        const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
-        const id=JSON.stringify(i.id);
-        return `<div class="bo-row" style="border-radius:.75rem;" onclick="duplicate(${id})">
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:.82rem;font-weight:700;">${esc(i.titre)}</div>
-                <div style="font-size:.62rem;color:var(--muted);">${esc(c?.nom||'—')} · ${esc(BO.fmt(i.dateCreation))}</div>
-            </div>
+        const c=clients.find(cl=>cl.id===i.clientId);const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];const id=JSON.stringify(i.id);
+        return `<div class="bo-row" style="border-radius:.75rem;display:flex;align-items:center;gap:.75rem;padding:.875rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;" onclick="duplicate(${id})">
+            <div style="flex:1;min-width:0;"><div style="font-size:.82rem;font-weight:700;">${esc(i.titre)}</div>
+            <div style="font-size:.62rem;color:var(--muted);">${esc(c?.nom||'—')} · ${esc(BO.fmt(i.dateCreation))}</div></div>
             <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${esc(i.statut)}</span>
         </div>`;
-    }).join('') || '<p style="font-size:.75rem;color:var(--muted);padding:.5rem;">Aucun résultat</p>';
+    }).join('')||'<p style="font-size:.75rem;color:var(--muted);padding:.5rem;">Aucun résultat</p>';
 }
 function duplicate(id){
     document.getElementById('dup-modal').style.display='none';
-    const src=interventions.find(x=>x.id===id); if(!src) return;
-    editId=null; isDup=true;
-    formMat=[]; formMesures=[]; formPhotos=[]; formChecks={};
-    sigData=''; clearSig(); resetDirty();
-    const copy={...src, statut:'Ouvert', dateCreation:BO.today(), dateEcheance:'', dateResolution:'', rapport:'', signature:'', chronoDebut:'', chronoFin:'', duree:0, historique:[], checks:{}};
+    const src=interventions.find(x=>x.id===id);if(!src)return;
+    editId=null;isDup=true;
+    formMat=[];formMesures=[];formPhotos=[];formChecks={};sigData='';clearSig();resetDirty();
+    // Réinitialiser rapportNum pour qu'un nouveau numéro soit attribué à la sauvegarde
+    const copy={...src,statut:'Ouvert',dateCreation:BO.today(),dateEcheance:'',dateResolution:'',rapport:'',preconisations:'',signature:'',chronoDebut:'',chronoFin:'',duree:0,historique:[],checks:{},rapportNum:undefined};
     fillFormFrom(copy);
-    formMat=[...(src.materiel||[])];
-    formChecks={};
+    formMat=[...(src.materiel||[])];formChecks={};
     document.getElementById('f-titre').value='[Copie] '+src.titre;
     document.getElementById('f-date-e').value='';
     document.getElementById('modal-title').textContent="Dupliquer l'intervention";
     document.getElementById('rapport-section').style.opacity='.45';
-    resetChrono();
-    renderMatChips(); renderMesures(); renderPhotoGrid(); buildChecklist(); updateBadge();
-    showTab('infos');
-    document.getElementById('modal').style.display='flex';
-    lucide.createIcons();
+    resetChrono();renderMatChips();renderMesures();renderPhotoGrid();buildChecklist();updateBadge();buildTechSelectors();
+    showTab('infos');document.getElementById('modal').style.display='flex';lucide.createIcons();
 }
 
-/* ══════════════════════════════════════
-   SAVE
-   FIX #10 : gestion d'erreur sur BO.write()
-══════════════════════════════════════ */
+/* ══ SAVE ══ */
 async function saveForm(){
     const titre=document.getElementById('f-titre').value.trim();
     const client=document.getElementById('f-client').value;
     if(!titre){showTab('infos');BO.toast('Titre obligatoire','warn');return;}
-    if(!client){showTab('infos');BO.toast('Sélectionnez un client','warn');return;}
-
+    if(!client){showTab('infos');document.getElementById('f-client-search').focus();BO.toast('Sélectionnez un client','warn');return;}
+    // Arrêter le chrono automatiquement s'il tourne encore
+    const start=+localStorage.getItem('bo_chrono_start'), end=+localStorage.getItem('bo_chrono_end');
+    if(start&&!end){ chronoStop(); BO.toast('Chrono arrêté automatiquement','info'); }
     const ns=document.getElementById('f-statut').value;
-
-    // FIX #1 : charger les dataUrl depuis IndexedDB pour la sauvegarde
-    const photosWithData = await collectPhotoData();
-
+    const photosWithData=await collectPhotoData();
+    // Durée : prendre f-duree en priorité, sinon f-duree-recap (onglet Clôture)
+    const dureeVal=parseFloat(document.getElementById('f-duree').value)||parseFloat(document.getElementById('f-duree-recap')?.value)||0;
     const data={
-        titre, clientId:client,
-        technicien:     document.getElementById('f-tech').value,
-        type:           document.getElementById('f-type').value,
-        site:           document.getElementById('f-site').value.trim(),
-        statut:ns, priorite:document.getElementById('f-prio').value,
-        dateCreation:   editId?(interventions.find(x=>x.id===editId)?.dateCreation||BO.today()):BO.today(),
-        dateEcheance:   document.getElementById('f-date-e').value,
-        description:    document.getElementById('f-desc').value.trim(),
-        materiel:[...formMat], mesures:[...formMesures],
-        photos: photosWithData,
-        checks:{...formChecks},
-        rapport:        document.getElementById('f-rapport').value.trim(),
-        duree:          parseFloat(document.getElementById('f-duree').value)||0,
-        dateResolution: document.getElementById('f-date-r').value,
-        note:           document.getElementById('f-note').value.trim(),
-        signature:      sigData||'', chronoDebut:stampDebut, chronoFin:stampFin,
+        titre,clientId:client,
+        techniciens:[...formTechs],
+        type:document.getElementById('f-type').value,
+        site:document.getElementById('f-site').value.trim(),
+        ref:document.getElementById('f-ref').value.trim(),
+        statut:ns,priorite:document.getElementById('f-prio').value,
+        dateCreation:editId?(interventions.find(x=>x.id===editId)?.dateCreation||BO.today()):BO.today(),
+        dateEcheance:document.getElementById('f-date-e').value,
+        description:document.getElementById('f-desc').value.trim(),
+        materiel:[...formMat],mesures:[...formMesures],
+        photos:photosWithData,checks:{...formChecks},
+        rapport:document.getElementById('f-rapport').value.trim(),
+        preconisations:document.getElementById('f-preconisations').value.trim(),
+        duree:dureeVal,
+        dateResolution:document.getElementById('f-date-r').value,
+        note:document.getElementById('f-note').value.trim(),
+        signature:sigData||'',chronoDebut:stampDebut,chronoFin:stampFin,
     };
-
     if(editId){
         const old=interventions.find(i=>i.id===editId);
         const hist=[...(old?.historique||[])];
-        if(old&&old.statut!==ns) hist.push({date:BO.today(),action:`Statut → ${ns}`,couleur:STATUS_C[ns]?.border||'#64748b'});
-        if(data.photos.length>(old?.photos||[]).length) hist.push({date:BO.today(),action:`${data.photos.length} photo(s) ajoutée(s)`,couleur:'#8b5cf6'});
-        if(data.duree&&!old?.duree) hist.push({date:BO.today(),action:`Durée : ${data.duree}h`,couleur:'#8b5cf6'});
+        if(old&&old.statut!==ns)hist.push({date:BO.today(),action:`Statut → ${ns}`,couleur:STATUS_C[ns]?.border||'#64748b'});
+        if(data.photos.length>(old?.photos||[]).length)hist.push({date:BO.today(),action:`${data.photos.length} photo(s) ajoutée(s)`,couleur:'#8b5cf6'});
+        if(data.duree&&!old?.duree)hist.push({date:BO.today(),action:`Durée : ${data.duree}h`,couleur:'#8b5cf6'});
         data.historique=hist;
+        data.lastModified=new Date().toISOString();
         interventions=interventions.map(i=>i.id===editId?{...i,...data}:i);
-        BO.toast('Intervention mise à jour','success');
+        BO.toast('Intervention mise à jour — '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),'success');
     } else {
         data.historique=[{date:BO.today(),action:isDup?'Dupliqué depuis un ticket existant':'Ticket ouvert',couleur:isDup?'#8b5cf6':'#3b82f6'}];
+        data.lastModified=new Date().toISOString();
+        // Numéro de rapport auto-incrémenté
+        const maxNum = interventions.reduce((max,iv)=>Math.max(max,iv.rapportNum||0),0);
+        data.rapportNum = maxNum + 1;
         interventions.unshift({id:BO.uid(),...data});
-        BO.toast(isDup?'Intervention dupliquée':'Intervention créée','success');
+        BO.toast(isDup?'Intervention dupliquée':'Intervention créée — '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),'success');
     }
-
-    clearDraftStorage();
-    resetDirty();
-
-    // FIX #10 : try/catch sur l'écriture
-    try {
-        await BO.write(BO.KEYS.interventions, interventions);
-    } catch(err) {
-        console.error('Erreur sauvegarde:', err);
-        BO.toast('Erreur lors de la sauvegarde — données non persistées','error');
-        return; // Ne pas fermer le modal si la sauvegarde a échoué
-    }
-
-    closeFormModal();
-    refresh(); // FIX #12 : refresh() au lieu de render() + renderCharts() séparés
+    // Réinitialiser l'état du chrono après sauvegarde
+    localStorage.removeItem('bo_chrono_start');
+    localStorage.removeItem('bo_chrono_end');
+    clearDraftStorage();resetDirty();
+    try{await BO.write(BO.KEYS.interventions,interventions);}catch(err){console.error('Erreur sauvegarde:',err);BO.toast('Erreur lors de la sauvegarde','error');return;}
+    closeFormModal();refresh();
 }
 
 async function remove(id){
-    const ok = await boConfirm({
-        title: 'Supprimer l\'intervention ?',
-        msg: 'Cette action est irréversible.',
-        okLabel: 'Supprimer', icon: '🗑️'
-    });
-    if(!ok) return;
+    const ok=await boConfirm({title:"Supprimer l'intervention ?",msg:'Cette action est irréversible.',okLabel:'Supprimer',icon:'🗑️'});
+    if(!ok)return;
     interventions=interventions.filter(i=>i.id!==id);
-    try {
-        await BO.write(BO.KEYS.interventions,interventions);
-        BO.toast('Supprimé','info');
-    } catch(err) {
-        console.error('Erreur suppression:', err);
-        BO.toast('Erreur lors de la suppression','error');
-    }
+    try{await BO.write(BO.KEYS.interventions,interventions);BO.toast('Supprimé','info');}catch{BO.toast('Erreur suppression','error');}
     refresh();
 }
 
-/* ══════════════════════════════════════
-   DETAIL MODAL
-══════════════════════════════════════ */
+/* ══ DETAIL MODAL ══ */
 function openDetail(id){
-    const i=interventions.find(x=>x.id===id); if(!i) return;
+    const i=interventions.find(x=>x.id===id);if(!i)return;
     const c=clients.find(cl=>cl.id===i.clientId);
     const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
     const ov=isOverdue(i);
     const hist=(i.historique||[]).slice().reverse();
+    const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
     const sid=JSON.stringify(id);
+
+    // Score complétion checklist
+    const checkItems=Object.values(i.checks||{});
+    const checkScore=checkItems.length?Math.round(checkItems.filter(Boolean).length/checkItems.length*100):null;
 
     const photosH=(i.photos||[]).length?`
         <div style="margin-bottom:1.1rem;">
             <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">📷 Photos (${i.photos.length})</div>
-            <div class="photo-grid">${i.photos.map((p,idx)=>`
-                <div class="photo-thumb">
-                    <img src="${esc(p.dataUrl||'')}" alt="${esc(p.legend)}" onclick="fullImg('${esc(p.dataUrl||'')}')">
-                    ${p.legend?`<div class="photo-legend-wrap" style="pointer-events:none;"><span style="font-size:.6rem;color:#fff;">${esc(p.legend)}</span></div>`:''}
-                </div>`).join('')}
+            <div class="photo-grid">${i.photos.map(p=>`
+                <div class="photo-thumb"><img src="${esc(p.dataUrl||'')}" alt="${esc(p.legend)}" onclick="fullImg('${esc(p.dataUrl||'')}')">
+                ${p.legend?`<div class="photo-legend-wrap" style="pointer-events:none;"><span style="font-size:.6rem;color:#fff;">${esc(p.legend)}</span></div>`:''}</div>`).join('')}
             </div>
         </div>`:'';
-
     const mesuresH=(i.mesures||[]).length?`
         <div style="margin-bottom:1.1rem;">
-            <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">📐 Mesures (${i.mesures.length})</div>
+            <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">📐 Mesures</div>
             <div style="display:flex;flex-direction:column;gap:.4rem;">${i.mesures.map(m=>`
                 <div class="mesure-item"><div style="flex:1;"><div class="mesure-lbl">${esc(m.label)}</div>
                 <div style="display:flex;align-items:baseline;gap:.3rem;margin-top:.1rem;"><span class="mesure-val">${esc(m.val)}</span><span class="mesure-unit">${esc(m.unit)}</span></div></div></div>`).join('')}
-            </div>
-        </div>`:'';
-
+            </div></div>`:'';
     const checksH=Object.keys(i.checks||{}).length?`
         <div style="margin-bottom:1.1rem;">
-            <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">✅ Checklist</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+                <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;">✅ Checklist</div>
+                ${checkScore!==null?`<span style="font-size:.65rem;font-weight:700;color:${checkScore===100?'#6ee7b7':'#fcd34d'};">${checkScore}% validé</span>`:''}
+            </div>
             <div style="display:flex;flex-direction:column;gap:.3rem;">${Object.entries(i.checks).map(([k,v])=>`
                 <div style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;${v?'':'opacity:.45'}">
                     <span style="color:${v?'#6ee7b7':'var(--muted)'};">${v?'✓':'○'}</span>
                     <span style="${v?'':'text-decoration:line-through;'}">${esc(k)}</span>
                 </div>`).join('')}
-            </div>
-        </div>`:'';
-
+            </div></div>`:'';
     const rapportH=i.rapport?`
         <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:.75rem;padding:.875rem;margin-bottom:1.1rem;">
             <div style="font-size:.52rem;color:#6ee7b7;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;">
@@ -1847,40 +1683,49 @@ function openDetail(id){
             <div style="font-size:.8rem;color:#cbd5e1;line-height:1.6;">${esc(i.rapport)}</div>
             ${i.signature?`<div style="margin-top:.625rem;border-top:1px solid rgba(16,185,129,.15);padding-top:.5rem;"><div style="font-size:.5rem;color:#6ee7b7;font-weight:700;margin-bottom:.2rem;">SIGNATURE CLIENT</div><img src="${esc(i.signature)}" style="border-radius:.5rem;max-height:70px;opacity:.85;"></div>`:''}
         </div>`:'';
-
     const tlH=hist.length?`
         <div style="margin-bottom:1rem;">
             <div style="font-size:.52rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.625rem;">Historique</div>
-            <div class="timeline">${hist.map(h=>`
-                <div class="tl-item">
-                    <div class="tl-line"><div class="tl-dot" style="background:${h.couleur};box-shadow:0 0 5px ${h.couleur}66;"></div><div class="tl-connector"></div></div>
-                    <div><div class="tl-action">${esc(h.action)}</div><div class="tl-date">${esc(BO.fmt(h.date))}</div></div>
-                </div>`).join('')}
-            </div>
+            <div class="timeline">${hist.map(h=>`<div class="tl-item"><div class="tl-line"><div class="tl-dot" style="background:${h.couleur};box-shadow:0 0 5px ${h.couleur}66;"></div><div class="tl-connector"></div></div><div><div class="tl-action">${esc(h.action)}</div><div class="tl-date">${esc(BO.fmt(h.date))}</div></div></div>`).join('')}</div>
         </div>`:'';
+    const techsH=itvTechs.length?`<div style="display:flex;flex-wrap:wrap;gap:.3rem;">${itvTechs.map(t=>`<span class="bo-badge" style="background:rgba(212,168,67,.1);color:var(--gold);border:1px solid rgba(212,168,67,.25);">👤 ${esc(t)}</span>`).join('')}</div>`:'<span style="font-size:.82rem;font-weight:600;color:var(--muted);">Non assigné</span>';
 
     document.getElementById('detail-content').innerHTML=`
         <div class="drag-handle"></div>
         <div class="bo-modal-header">
             <div style="flex:1;min-width:0;">
-                <div style="font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:.2rem;">#${esc(i.id.slice(-4).toUpperCase())} · ${esc(i.type||'Intervention')}</div>
+                <div style="font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:.2rem;">${i.rapportNum?'N°'+String(i.rapportNum).padStart(4,'0')+' · ':''}#${esc(i.id.slice(-4).toUpperCase())}${i.ref?' · '+esc(i.ref):''} · ${esc(i.type||'Intervention')}</div>
                 <div class="bo-modal-title" style="font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(i.titre)}</div>
             </div>
             <div style="display:flex;gap:.4rem;flex-shrink:0;">
+                <button class="bo-btn-icon" onclick="closeDetailModal();generatePDF(${sid});" title="PDF"><i data-lucide="file-text" style="width:14px;height:14px;color:#a78bfa;"></i></button>
                 <button class="bo-btn-icon" onclick="closeDetailModal();duplicate(${sid});" title="Dupliquer"><i data-lucide="copy" style="width:14px;height:14px;color:#94a3b8;"></i></button>
                 <button class="bo-modal-close" onclick="closeDetailModal()"><i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i></button>
             </div>
         </div>
         <div class="bo-modal-body" style="padding:1.1rem;">
+            <!-- Changement de statut rapide -->
+            <div style="display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;">
+                ${['Ouvert','En cours','Résolu','Annulé'].map(s=>{
+                    const sc=STATUS_C[s];
+                    const active=i.statut===s;
+                    return `<button onclick="quickStatus(${sid},'${s}')" style="flex:1;min-width:70px;padding:.45rem .5rem;border-radius:.6rem;border:1px solid ${active?sc.border+'66':'var(--border)'};background:${active?sc.bg:'transparent'};color:${active?sc.text:'var(--muted)'};font-size:.65rem;font-weight:${active?'800':'600'};cursor:pointer;transition:all .15s;touch-action:manipulation;">${active?'● ':''} ${s}</button>`;
+                }).join('')}
+            </div>
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;">
-                <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${esc(i.statut)}</span>
                 <span class="bo-badge" style="background:${PRIO_DOT[i.priorite]}22;color:${PRIO_DOT[i.priorite]};border:1px solid ${PRIO_DOT[i.priorite]}44;">⬤ ${esc(i.priorite)}</span>
                 ${(i.photos||[]).length?`<span class="bo-badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);">📷 ${i.photos.length}</span>`:''}
                 ${(i.mesures||[]).length?`<span class="bo-badge" style="background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.3);">📐 ${i.mesures.length}</span>`:''}
+                ${checkScore!==null?`<span class="bo-badge" style="background:${checkScore===100?'rgba(16,185,129,.12)':'rgba(245,158,11,.12)'};color:${checkScore===100?'#6ee7b7':'#fcd34d'};border:1px solid ${checkScore===100?'rgba(16,185,129,.3)':'rgba(245,158,11,.3)'};">✅ ${checkScore}%</span>`:''}
                 ${ov?'<span class="bo-badge" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);">⏰ Retard</span>':''}
+                ${!(c?.email||c?.tel)?`<button class="bo-badge" onclick="closeDetailModal();openManageModal('clients')" style="background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.25);cursor:pointer;font-size:.63rem;font-weight:700;padding:.2rem .6rem;border-radius:999px;" title="Coordonnées client manquantes — compléter">⚠️ Client incomplet</button>`:''}
+            </div>
+            <div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;">
+                <div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;">Technicien(s) assigné(s)</div>
+                ${techsH}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
-                ${[['Client',c?.nom||'—'],['Technicien',i.technicien||'Non assigné'],['Durée',i.duree?i.duree+'h':'—'],['Créé le',BO.fmt(i.dateCreation)],['Échéance',i.dateEcheance?(ov?'⏰ ':'')+BO.fmt(i.dateEcheance):'—'],['Résolu le',i.dateResolution?BO.fmt(i.dateResolution):'—']].map(([l,v])=>`
+                ${[['Client',c?.nom||'—'],['Email',c?.email||'—'],['Durée',i.duree?i.duree+'h':'—'],['Créé le',BO.fmt(i.dateCreation)],['Échéance',i.dateEcheance?(ov?'⏰ ':'')+BO.fmt(i.dateEcheance):'—'],['Résolu le',i.dateResolution?BO.fmt(i.dateResolution):'—']].map(([l,v])=>`
                 <div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.625rem .75rem;">
                     <div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.15rem;">${esc(l)}</div>
                     <div style="font-size:.82rem;font-weight:600;">${esc(String(v))}</div>
@@ -1888,248 +1733,630 @@ function openDetail(id){
             </div>
             ${i.site?`<div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.625rem .75rem;margin-bottom:.875rem;"><div style="font-size:.48rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem;">Adresse</div><div style="font-size:.8rem;font-weight:600;margin-bottom:.4rem;">${esc(i.site)}</div><a href="${mapsUrl(i.site)}" target="_blank" rel="noopener" class="maps-btn"><i data-lucide="map" style="width:11px;height:11px;"></i> Ouvrir dans Google Maps</a></div>`:''}
             ${i.description?`<div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.48rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:.25rem;">Description</div><div style="font-size:.78rem;color:#cbd5e1;line-height:1.6;">${esc(i.description)}</div></div>`:''}
+            ${i.materiel?.length?`<div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.48rem;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:.4rem;">📦 Matériel</div><div style="display:flex;flex-wrap:wrap;gap:.3rem;">${i.materiel.map(m=>`<span class="bo-chip">${esc(m)}</span>`).join('')}</div></div>`:''}
             ${photosH}${mesuresH}${checksH}${rapportH}
             ${i.note?`<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;"><div style="font-size:.5rem;color:#fcd34d;font-weight:700;text-transform:uppercase;margin-bottom:.3rem;">Note interne</div><div style="font-size:.78rem;color:#cbd5e1;">${esc(i.note)}</div></div>`:''}
+            ${i.preconisations?`<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:.65rem;padding:.875rem;margin-bottom:1rem;"><div style="font-size:.5rem;color:#fcd34d;font-weight:700;text-transform:uppercase;margin-bottom:.4rem;">⚡ Préconisations / Suites à donner</div><div style="font-size:.82rem;color:#fef3c7;line-height:1.6;">${esc(i.preconisations)}</div></div>`:''}
             ${tlH}
         </div>
         <div class="bo-modal-footer">
+            <button class="btn-touch btn-touch-purple" onclick="closeDetailModal();generatePDF(${sid})" style="padding:.75rem 1rem;font-size:.82rem;width:auto;flex:1;">
+                <i data-lucide="file-text" style="width:14px;height:14px;"></i> PDF
+            </button>
+            ${c?.email ? `<button class="btn-touch btn-touch-blue" onclick="sendByEmail(${sid})" style="padding:.75rem 1rem;font-size:.82rem;width:auto;flex:1;"><i data-lucide="send" style="width:14px;height:14px;"></i> Envoyer</button>` : ''}
+            ${i.statut!=='Résolu'?`<button class="btn-touch btn-touch-green" onclick="closeDetailModal();openForm(${sid},'cloture')" style="padding:.75rem 1rem;font-size:.82rem;width:auto;flex:1;"><i data-lucide="check-circle" style="width:14px;height:14px;"></i> Clôturer</button>`:''}
             <button class="bo-btn-ghost" onclick="closeDetailModal()">Fermer</button>
             <button class="bo-btn-gold" onclick="closeDetailModal();openForm(${sid})"><i data-lucide="pencil" style="width:13px;height:13px;"></i> Modifier</button>
         </div>`;
-
     document.getElementById('detail-modal').style.display='flex';
     lucide.createIcons();
 }
 
 /* ══════════════════════════════════════
-   EXPORT CSV
-   FIX #16 : photos exclues du CSV
+   ENVOI PAR EMAIL
 ══════════════════════════════════════ */
+function sendByEmail(id){
+    const i=interventions.find(x=>x.id===id);if(!i)return;
+    const c=clients.find(cl=>cl.id===i.clientId);
+    const email=c?.email||'';
+    const numRapport=i.rapportNum?String(i.rapportNum).padStart(4,'0'):'—';
+    const subject=encodeURIComponent(`Rapport d'intervention n°${numRapport} – ${i.titre}`);
+    const techStr=(i.techniciens&&i.techniciens.length)?i.techniciens.join(', '):(i.technicien||'');
+    const dateR=i.dateResolution?BO.fmt(i.dateResolution):(i.dateCreation?BO.fmt(i.dateCreation):'');
+    const body=encodeURIComponent(
+`Bonjour,
+
+Veuillez trouver ci-joint le rapport d'intervention n°${numRapport} concernant : ${i.titre}.
+
+Résumé :
+• Site : ${i.site||'—'}
+• Date : ${dateR}
+• Technicien(s) : ${techStr||'—'}
+• Durée : ${i.duree?i.duree+'h':'—'}
+• Statut : ${i.statut}
+
+${i.rapport?'Actions réalisées :\n'+i.rapport+'\n\n':''}${i.preconisations?'Préconisations :\n'+i.preconisations+'\n\n':''}N'hésitez pas à nous contacter pour toute question.
+
+Cordialement`);
+    window.location.href=`mailto:${email}?subject=${subject}&body=${body}`;
+    BO.toast('Client mail ouvert — joignez le PDF','info');
+}
+
+/* ══════════════════════════════════════
+   GÉNÉRATION PDF — jsPDF (design premium)
+══════════════════════════════════════ */
+async function generatePDF(id){
+    const i=interventions.find(x=>x.id===id);if(!i){BO.toast('Intervention introuvable','warn');return;}
+
+    if(i.statut!=='Résolu'){
+        const ok=await boConfirm({
+            title:'Intervention non clôturée',
+            msg:`Le statut actuel est "${i.statut}". Le rapport sera incomplet. Continuer quand même ?`,
+            okLabel:'Générer quand même',icon:'⚠️'
+        });
+        if(!ok)return;
+    }
+
+    const cli=clients.find(cl=>cl.id===i.clientId);
+    const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
+    const numRapport=i.rapportNum?String(i.rapportNum).padStart(4,'0'):i.id.slice(-4).toUpperCase();
+    const co=companySettings;
+    const logo=companyLogo;
+
+    BO.toast('Génération du PDF…','info');
+
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const W=210,H=297,M=14,CW=W-M*2;
+    let y=0;
+
+    // ── Palette
+    const GOLD=[212,168,67],GOLD_DARK=[160,120,40];
+    const DARK=[18,22,36],DARK2=[28,34,52];
+    const GREEN=[16,185,129],GREEN_BG=[8,40,28];
+    const AMBER=[245,158,11],AMBER_BG=[45,32,8];
+    const BLUE=[59,130,246],RED=[239,68,68],PURPLE=[139,92,246];
+    const MUTED=[120,130,150],TEXT=[220,228,240],WHITE=[255,255,255];
+    const SURF=[30,40,64],SURF2=[22,30,50],LIGHT=[240,242,248];
+    const stColors={Ouvert:BLUE,'En cours':AMBER,Résolu:GREEN,Annulé:MUTED};
+    const prioColors={Haute:RED,Moyenne:AMBER,Basse:GREEN};
+
+    // ── Helpers
+    const sf=(style,size,color)=>{doc.setFont('helvetica',style);doc.setFontSize(size);if(color)doc.setTextColor(...color);};
+    const fill=(...c)=>doc.setFillColor(...c);
+    const draw=(...c)=>doc.setDrawColor(...c);
+    const lw=(w)=>doc.setLineWidth(w);
+    const rect=(x,y,w,h,r=0,mode='F')=>{r>0?doc.roundedRect(x,y,w,h,r,r,mode):doc.rect(x,y,w,h,mode);};
+    const ps=(s)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[œŒ]/g,m=>m==='œ'?'oe':'OE').replace(/[çÇ]/g,m=>m==='ç'?'c':'C');
+    const txt=(s,x,y2,o={})=>doc.text(ps(s),x,y2,o);
+    const splitW=(s,w)=>doc.splitTextToSize(ps(s),w);
+
+    // ── Saut de page avec mini-header sobre
+    const newPage=()=>{
+        doc.addPage();
+        // Filet doré top
+        fill(...GOLD);rect(0,0,W,1.5);
+        // En-tête minimal
+        fill(...DARK2);rect(0,1.5,W,10);
+        if(logo){try{doc.addImage(logo,'PNG',M,2,18,8,'','FAST');}catch(e){}}
+        const coName=ps(co.nom||'VERTEX');
+        sf('bold',9,GOLD);txt(coName,logo?M+21:M,8);
+        sf('normal',6.5,MUTED);txt(`Rapport N°${numRapport} — ${ps(i.titre).slice(0,45)}`,W/2,8,{align:'center'});
+        sf('normal',6.5,MUTED);txt(`Page ${doc.getCurrentPageInfo().pageNumber}`,W-M,8,{align:'right'});
+        // Filet bas header
+        fill(...GOLD);rect(0,11.5,W,.5);
+        y=17;
+    };
+    const check=(needed)=>{if(y+needed>H-18)newPage();};
+
+    // ══════════════════════════════════════════════
+    // PAGE 1 — COUVERTURE PREMIUM
+    // ══════════════════════════════════════════════
+
+    // Fond sombre pleine page (couverture)
+    fill(...DARK);rect(0,0,W,H);
+
+    // Barre latérale gauche dorée
+    fill(...GOLD);rect(0,0,4,H);
+
+    // Bloc doré décoratif haut droit
+    fill(...GOLD_DARK);rect(W-60,0,60,4);
+    fill(...GOLD);rect(W-40,0,40,4);
+
+    // Zone logo + nom entreprise (haut)
+    let logoH=0;
+    if(logo){
+        try{
+            const tmpImg=new Image();await new Promise(r=>{tmpImg.onload=r;tmpImg.onerror=r;tmpImg.src=logo;});
+            const lRatio=tmpImg.naturalWidth/(tmpImg.naturalHeight||1);
+            const lW=Math.min(55,lRatio*22);const lHH=lW/lRatio;
+            doc.addImage(logo,'PNG',M+6,14,lW,lHH,'','FAST');
+            logoH=lHH+4;
+        }catch(e){}
+    }
+
+    // Nom entreprise
+    sf('bold',16,GOLD);txt(ps(co.nom||'VERTEX'),M+6,14+logoH+8);
+    if(co.adresse){sf('normal',7.5,MUTED);txt(ps(co.adresse),M+6,14+logoH+15);}
+
+    // Ligne dorée séparatrice
+    y=logo?(14+logoH+22):44;
+    fill(...GOLD);rect(M+6,y,CW-6,0.6);
+    y+=10;
+
+    // Gros titre du rapport
+    sf('bold',10,GOLD);txt('RAPPORT D\'INTERVENTION',M+6,y);
+    y+=8;
+
+    const titleLines=splitW(i.titre,CW-6);
+    sf('bold',titleLines.length>1?18:22,WHITE);
+    titleLines.forEach((l,idx)=>{txt(l,M+6,y+idx*9);});
+    y+=titleLines.length*9+6;
+
+    // Badges statut + priorité
+    const stC=stColors[i.statut]||BLUE;
+    fill(...stC);rect(M+6,y,doc.getTextWidth(ps(i.statut.toUpperCase()))+10,7,1.5);
+    sf('bold',7.5,WHITE);txt(i.statut.toUpperCase(),M+11,y+5);
+    let bx2=M+6+doc.getTextWidth(ps(i.statut.toUpperCase()))+16;
+    if(i.priorite){
+        const pc=prioColors[i.priorite]||MUTED;
+        fill(...pc,50);rect(bx2,y,doc.getTextWidth(ps(i.priorite))+10,7,1.5);
+        sf('bold',7.5,WHITE);txt(ps(i.priorite),bx2+5,y+5);
+    }
+    y+=14;
+
+    // Numéro de rapport
+    sf('bold',8,MUTED);txt(`N° ${numRapport}`,M+6,y);
+    sf('normal',8,MUTED);txt('  |  '+new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}),M+6+doc.getTextWidth(`N° ${numRapport}`),y);
+    y+=14;
+
+    // Deuxième ligne dorée
+    fill(...GOLD);rect(M+6,y,CW-6,0.4);
+    y+=10;
+
+    // Bloc CLIENT (couverture)
+    sf('bold',7,MUTED);txt('CLIENT',M+6,y);y+=6;
+    sf('bold',15,WHITE);txt(ps(cli?.nom||'—'),M+6,y);y+=8;
+    if(cli?.contact){sf('normal',8.5,[170,180,200]);txt(ps(cli.contact),M+6,y);y+=6;}
+    if(cli?.tel||cli?.email){
+        const parts=[];
+        if(cli?.tel)parts.push(ps(cli.tel));
+        if(cli?.email)parts.push(ps(cli.email));
+        sf('normal',8,[150,160,180]);txt(parts.join('   |   '),M+6,y);y+=6;
+    }
+    y+=8;
+
+    // Grille infos résumé (2 colonnes)
+    const infoGrid=[
+        ['Technicien(s)',itvTechs.length?ps(itvTechs.join(', ')):'Non assigne'],
+        ['Type',ps(i.type||'—')],
+        ['Site',ps(i.site||'—')],
+        ['Duree',i.duree?i.duree+'h':'—'],
+        ['Date intervention',i.dateResolution?BO.fmt(i.dateResolution):(i.dateCreation?BO.fmt(i.dateCreation):'—')],
+        ['Reference',ps(i.ref||'—')],
+    ];
+    const colW2=(CW-6)/2-3;
+    for(let r=0;r<Math.ceil(infoGrid.length/2);r++){
+        const it1=infoGrid[r*2],it2=infoGrid[r*2+1];
+        [[M+6,it1],[M+6+colW2+6,it2]].forEach(([cx,item])=>{
+            if(!item)return;
+            fill(...DARK2);rect(cx,y,colW2,13,1.5);
+            sf('bold',5.5,MUTED);txt(item[0].toUpperCase(),cx+4,y+4.5);
+            sf('bold',8,TEXT);
+            const v=splitW(item[1],colW2-8);
+            txt(v[0]||'—',cx+4,y+10);
+        });
+        y+=15;
+    }
+
+    // Filet pied de couverture
+    y=H-28;
+    fill(...GOLD);rect(M+6,y,CW-6,0.4);y+=7;
+    const footParts=[co.tel,co.email,co.web].filter(Boolean).map(ps);
+    sf('normal',6.5,MUTED);txt(footParts.join('   ·   '),M+6,y);
+    sf('bold',6.5,GOLD);txt(`N° ${numRapport}`,W-M,y,{align:'right'});
+
+    // ══════════════════════════════════════════════
+    // PAGE 2+ — CONTENU
+    // ══════════════════════════════════════════════
+    newPage();
+
+    // ── Titre section helper
+    const sectionTitle=(label,color=GOLD)=>{
+        check(12);
+        fill(...(color===GOLD?GOLD_DARK:color));rect(M,y-1,CW,8,1);
+        fill(...color);rect(M,y-1,3,8,0);
+        sf('bold',8.5,WHITE);txt(label,M+6,y+4.5);
+        y+=12;
+    };
+
+    // ── Bloc texte helper
+    const textBlock=(text,bgColor=SURF2)=>{
+        const lines=splitW(text,CW-10);
+        const bh=lines.length*5.5+8;
+        check(bh);
+        fill(...bgColor);rect(M,y,CW,bh,1.5);
+        sf('normal',8.5,TEXT);
+        lines.forEach((l,idx)=>txt(l,M+5,y+6+idx*5.5));
+        y+=bh+5;
+    };
+
+    // ══ DESCRIPTION ══
+    if(i.description){
+        sectionTitle('DESCRIPTION DE L\'INTERVENTION');
+        textBlock(i.description);
+    }
+
+    // ══ MATÉRIEL ══
+    if(i.materiel&&i.materiel.length){
+        sectionTitle('MATERIEL UTILISE');
+        i.materiel.forEach((m,idx)=>{
+            check(8);
+            fill(...(idx%2===0?SURF2:SURF));rect(M,y,CW,8,1);
+            fill(...GOLD);rect(M,y,2.5,8,0);
+            sf('normal',8.5,TEXT);txt(ps(m),M+6,y+5.5);
+            y+=8;
+        });
+        y+=5;
+    }
+
+    // ══ MESURES ══
+    if(i.mesures&&i.mesures.length){
+        sectionTitle('MESURES & RELEVES');
+        const tH=9,c1=CW*0.5,c2=CW*0.25,c3=CW*0.25;
+        // Header tableau
+        fill(...DARK);rect(M,y,CW,tH,0);
+        fill(...GOLD);rect(M,y,CW,tH,0);
+        sf('bold',7.5,DARK);
+        txt('Libelle',M+4,y+6);txt('Valeur',M+c1+4,y+6);txt('Unite',M+c1+c2+4,y+6);
+        y+=tH;
+        i.mesures.forEach((m,idx)=>{
+            check(tH);
+            fill(...(idx%2===0?SURF2:SURF));rect(M,y,CW,tH,0);
+            sf('normal',8,TEXT);txt(ps(m.label),M+4,y+6);
+            sf('bold',8,GREEN);txt(ps(m.val),M+c1+4,y+6);
+            sf('normal',8,MUTED);txt(ps(m.unit),M+c1+c2+4,y+6);
+            y+=tH;
+        });
+        y+=5;
+    }
+
+    // ══ CHECKLIST ══
+    if(Object.keys(i.checks||{}).length){
+        const entries=Object.entries(i.checks);
+        const done=entries.filter(([,v])=>v).length;
+        sectionTitle(`POINTS DE VALIDATION  (${done}/${entries.length})`);
+        entries.forEach(([k,v])=>{
+            check(8);
+            fill(...(v?[12,40,28]:[35,38,55]));rect(M,y,CW,8,1);
+            // Case à cocher
+            if(v){fill(...GREEN);rect(M+4,y+1.5,5,5,0.8);}
+            else{fill(...SURF);rect(M+4,y+1.5,5,5,0.8);draw(...MUTED);lw(0.3);rect(M+4,y+1.5,5,5,0.8,'S');}
+            sf(v?'bold':'normal',8,v?TEXT:MUTED);
+            txt(ps(k),M+13,y+5.5);
+            if(v){sf('bold',7,GREEN);txt('OK',W-M-6,y+5.5,{align:'right'});}
+            y+=8;
+        });
+        y+=5;
+    }
+
+    // ══ RAPPORT DE CLÔTURE ══
+    if(i.rapport){
+        sectionTitle('RAPPORT DE CLOTURE',GREEN);
+        // Infos durée
+        if(i.duree||i.dateResolution||i.chronoDebut){
+            check(10);
+            fill(...GREEN_BG);rect(M,y,CW,9,1.5);
+            sf('bold',7.5,GREEN);
+            const parts2=[];
+            if(i.duree)parts2.push('Duree : '+i.duree+'h');
+            if(i.dateResolution)parts2.push('Date : '+BO.fmt(i.dateResolution));
+            if(i.chronoDebut)parts2.push('Horaires : '+ps(i.chronoDebut)+' -> '+(ps(i.chronoFin)||'...'));
+            txt(parts2.join('   |   '),M+5,y+6);
+            y+=13;
+        }
+        textBlock(i.rapport,GREEN_BG);
+    }
+
+    // ══ PRÉCONISATIONS ══
+    if(i.preconisations){
+        sectionTitle('PRECONISATIONS / SUITES A DONNER',AMBER);
+        textBlock(i.preconisations,AMBER_BG);
+    }
+
+    // ══ SIGNATURE ══
+    if(i.signature){
+        check(45);
+        sectionTitle('SIGNATURE CLIENT');
+        fill(...SURF2);rect(M,y,CW,38,1.5);
+        try{
+            doc.addImage(i.signature,'PNG',M+4,y+3,70,28);
+            draw(...GOLD);lw(0.3);doc.line(M+4,y+33,M+74,y+33);
+            sf('normal',6.5,MUTED);txt('Signature du client — '+ps(BO.fmt(i.dateResolution||i.dateCreation)),M+4,y+37);
+        }catch(e){}
+        y+=43;
+    }
+
+    // ══ PHOTOS ══
+    if(i.photos&&i.photos.length){
+        sectionTitle(`PHOTOS DE L'INTERVENTION  (${i.photos.length})`);
+        for(let pi=0;pi<i.photos.length;pi++){
+            const photo=i.photos[pi];
+            if(!photo.dataUrl)continue;
+            const imgMaxW=CW,imgMaxH=110;
+            let imgW=imgMaxW,imgH=imgMaxH;
+            try{
+                const tmp=new Image();
+                await new Promise(r=>{tmp.onload=r;tmp.onerror=r;tmp.src=photo.dataUrl;});
+                if(tmp.naturalWidth&&tmp.naturalHeight){
+                    const ratio=tmp.naturalWidth/tmp.naturalHeight;
+                    if(ratio>imgMaxW/imgMaxH){imgW=imgMaxW;imgH=imgMaxW/ratio;}
+                    else{imgH=imgMaxH;imgW=imgMaxH*ratio;}
+                }
+            }catch(e){}
+            const legendLines=photo.legend?splitW(photo.legend,imgW-8):[];
+            const legendH=legendLines.length?legendLines.length*5+6:0;
+            check(imgH+legendH+16);
+            // Numérotation
+            sf('bold',7,MUTED);txt(`Photo ${pi+1} / ${i.photos.length}`,M,y);y+=4;
+            // Cadre + image
+            fill(...SURF2);rect(M,y,imgW,imgH,1.5);
+            try{doc.addImage(photo.dataUrl,'JPEG',M,y,imgW,imgH,undefined,'FAST');}
+            catch(e){sf('normal',8,MUTED);txt('[Image non disponible]',M+imgW/2,y+imgH/2,{align:'center'});}
+            y+=imgH+2;
+            // Légende
+            if(legendLines.length){
+                fill(...SURF);rect(M,y,imgW,legendH,1);
+                fill(...GOLD);rect(M,y,2.5,legendH,0);
+                sf('italic',7.5,TEXT);
+                legendLines.forEach((l,li)=>txt(l,M+6,y+5+li*5));
+                y+=legendH+2;
+            }
+            y+=8;
+        }
+    }
+
+    // ══ PIED DE PAGE TOUTES LES PAGES ══
+    const pages=doc.getNumberOfPages();
+    for(let p=1;p<=pages;p++){
+        doc.setPage(p);
+        // Barre de pied
+        fill(...DARK2);rect(0,H-12,W,12);
+        fill(...GOLD);rect(0,H-12,W,0.5);
+        fill(...GOLD);rect(0,H-1,W,1);
+        // Contenu pied
+        sf('bold',6,GOLD);txt(ps(co.nom||'VERTEX'),M,H-4.5);
+        const footRight=`Rapport N°${numRapport}  |  Page ${p} / ${pages}`;
+        sf('normal',6,MUTED);txt(footRight,W-M,H-4.5,{align:'right'});
+        if(co.tel||co.email){
+            const mid=[co.tel,co.email].filter(Boolean).map(ps).join('  ·  ');
+            sf('normal',5.5,MUTED);txt(mid,W/2,H-4.5,{align:'center'});
+        }
+    }
+
+    // ══ TÉLÉCHARGEMENT ══
+    const dateStr=new Date().toLocaleDateString('fr-FR').replace(/\//g,'-');
+    const numStr=i.rapportNum?'N'+String(i.rapportNum).padStart(4,'0'):dateStr;
+    const fn=`Rapport_${numStr}_${ps(i.titre).replace(/[^a-z0-9]/gi,'_').slice(0,25)}.pdf`;
+    doc.save(fn);
+    BO.toast(`PDF "${fn}" téléchargé !`,'success');
+}
+
+/* ══ EXPORT CSV ══ */
 function exportCSV(){
-    const cols=['ID','Titre','Client','Site','Type','Technicien','Statut','Priorité','Créé le','Échéance','Résolu le','Durée (h)','Nb Photos','Mesures','Matériel','Description','Rapport'];
+    const cols=['ID','Titre','Client','Référence','Site','Type','Techniciens','Statut','Priorité','Créé le','Échéance','Résolu le','Durée (h)','Nb Photos','Mesures','Matériel','Description','Rapport'];
     const rows=interventions.map(i=>{
         const c=clients.find(cl=>cl.id===i.clientId);
+        const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
         return [
-            i.id, i.titre, c?.nom||'', i.site||'', i.type||'', i.technicien||'',
-            i.statut, i.priorite, i.dateCreation, i.dateEcheance||'', i.dateResolution||'',
-            i.duree||0,
-            (i.photos||[]).length,  // FIX #16 : nombre seulement, pas les dataUrl
+            i.id,i.titre,c?.nom||'',i.ref||'',i.site||'',i.type||'',
+            itvTechs.join(' / '),i.statut,i.priorite,i.dateCreation,
+            i.dateEcheance||'',i.dateResolution||'',i.duree||0,
+            (i.photos||[]).length,
             (i.mesures||[]).map(m=>`${m.label}:${m.val}${m.unit}`).join(' | '),
             (i.materiel||[]).join(' | '),
-            (i.description||'').replace(/\n/g,' '),
-            (i.rapport||'').replace(/\n/g,' '),
+            (i.description||'').replace(/\n/g,' '),(i.rapport||'').replace(/\n/g,' '),
         ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
     });
     const csv=[cols.join(','),...rows].join('\n');
     const a=document.createElement('a');
     a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
-    a.download=`interventions_${BO.today()}.csv`;
-    a.click();
+    a.download=`interventions_${BO.today()}.csv`;a.click();
     BO.toast('Export CSV téléchargé','success');
 }
 
-
-/* ══════════════════════════════════════
-   NOUVELLES FONCTIONS V3
-══════════════════════════════════════ */
-
-/* ── DONNÉES TECHNICIENS (dynamiques) ── */
-let techs = [];
-async function loadTechs(){
-    techs = await BO.read('bo_techs', ['Marc Dubois','Sophie Lenoir','Julien Moreau','Clara Petit']);
-}
-
-/* ── PILLS UNIFIÉES SCROLLABLES ── */
+/* ══ PILLS ══ */
 function buildAllPills(){
-    const c=document.getElementById('all-pills'); if(!c) return;
-    c.innerHTML='';
-    const add=(lbl,active,fn)=>{
-        const b=document.createElement('button');
-        b.className='bo-pill'+(active?' active':''); b.textContent=lbl;
-        b.onclick=fn; c.appendChild(b);
-    };
-    ['Tous','Ouvert','En cours','Résolu','Annulé'].forEach(s=>
-        add(s,s===filterStatus,()=>{filterStatus=s;buildAllPills();render();}));
-    const sep=document.createElement('span');
-    sep.style.cssText='width:1px;height:14px;background:rgba(255,255,255,.1);margin:auto .15rem;flex-shrink:0;';
-    c.appendChild(sep);
-    ['Toutes','Haute','Moyenne','Basse'].forEach(p=>
-        add(p,p===filterPrio,()=>{filterPrio=p;buildAllPills();render();}));
-    const sep2=sep.cloneNode(); c.appendChild(sep2);
+    const c=document.getElementById('all-pills');if(!c)return;c.innerHTML='';
+    const add=(lbl,active,fn)=>{const b=document.createElement('button');b.className='bo-pill'+(active?' active':'');b.textContent=lbl;b.onclick=fn;c.appendChild(b);};
+    ['Tous','Ouvert','En cours','Résolu','Annulé'].forEach(s=>add(s,s===filterStatus,()=>{filterStatus=s;buildAllPills();render();}));
+    const sep=document.createElement('span');sep.style.cssText='width:1px;height:14px;background:rgba(255,255,255,.1);margin:auto .15rem;flex-shrink:0;';c.appendChild(sep);
+    ['Toutes','Haute','Moyenne','Basse'].forEach(p=>add(p,p===filterPrio,()=>{filterPrio=p;buildAllPills();render();}));
+    const sep2=sep.cloneNode();c.appendChild(sep2);
     add('⏰ Retard',filterOverdue,()=>{filterOverdue=!filterOverdue;buildAllPills();render();});
 }
-
-/* ── MOBILE FILTER ── */
 function setMobileFilter(f){
-    filterStatus=f==='encours'?'En cours':'Tous';
-    filterOverdue=false; filterPrio='Toutes';
-    buildAllPills(); render();
-    const navAll=document.getElementById('nav-all');
-    const navEnc=document.getElementById('nav-encours');
-    if(navAll) navAll.classList.toggle('active',f==='all');
-    if(navEnc) navEnc.classList.toggle('active',f==='encours');
+    filterStatus=f==='encours'?'En cours':'Tous';filterOverdue=false;filterPrio='Toutes';
+    buildAllPills();render();
+    const navAll=document.getElementById('nav-all'),navEnc=document.getElementById('nav-encours');
+    if(navAll)navAll.classList.toggle('active',f==='all');if(navEnc)navEnc.classList.toggle('active',f==='encours');
 }
 
-/* ── GOOGLE MAPS ── */
+/* ══ UTILS ══ */
 function updateMapsBtn(){
     const addr=document.getElementById('f-site')?.value.trim();
-    const wrap=document.getElementById('maps-btn-wrap');
-    const btn=document.getElementById('maps-open-btn');
-    if(!wrap||!btn) return;
-    if(!addr){ wrap.style.display='none'; return; }
-    wrap.style.display='';
-    btn.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr);
+    const wrap=document.getElementById('maps-btn-wrap'),btn=document.getElementById('maps-open-btn');
+    if(!wrap||!btn)return;
+    if(!addr){wrap.style.display='none';return;}
+    wrap.style.display='';btn.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr);
 }
-
-/* ── TEMPS MANUEL ── */
+function mapsUrl(addr){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr);}
 function calcManualDuration(){
-    const d=document.getElementById('m-debut')?.value;
-    const f=document.getElementById('m-fin')?.value;
+    const d=document.getElementById('m-debut')?.value,f=document.getElementById('m-fin')?.value;
     const res=document.getElementById('manual-calc-result');
-    if(!d||!f){ if(res) res.style.display='none'; return; }
-    const [dh,dm]=d.split(':').map(Number);
-    const [fh,fm]=f.split(':').map(Number);
-    let mins=(fh*60+fm)-(dh*60+dm);
-    if(mins<0) mins+=1440;
+    if(!d||!f){if(res)res.style.display='none';return;}
+    const[dh,dm]=d.split(':').map(Number),[fh,fm]=f.split(':').map(Number);
+    let mins=(fh*60+fm)-(dh*60+dm);if(mins<0)mins+=1440;
     const h=+(mins/60).toFixed(2);
-    const durEl=document.getElementById('f-duree');
-    const recapEl=document.getElementById('f-duree-recap');
-    if(durEl) durEl.value=h;
-    if(recapEl) recapEl.value=h;
-    // Mettre à jour aussi les stamps
-    stampDebut=d+':00'; stampFin=f+':00';
-    if(res){
-        res.style.display='flex';
-        res.textContent=`✓ ${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')} = ${h}h`;
-    }
+    const durEl=document.getElementById('f-duree'),recapEl=document.getElementById('f-duree-recap');
+    if(durEl)durEl.value=h;if(recapEl)recapEl.value=h;
+    stampDebut=d+':00';stampFin=f+':00';
+    if(res){res.style.display='flex';res.textContent=`✓ ${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')} = ${h}h`;}
+}
+function syncDureeFields(){
+    const d=document.getElementById('f-duree'),r=document.getElementById('f-duree-recap');
+    if(d&&r){d.addEventListener('input',()=>r.value=d.value);r.addEventListener('input',()=>d.value=r.value);}
 }
 
-/* ── GESTION TECHNICIENS ── */
+/* ══ PARAMÈTRES ENTREPRISE ══ */
+let companySettings={nom:'',adresse:'',tel:'',email:'',web:''};
+let companyLogo=''; // base64 dataUrl
+
+async function loadCompanySettings(){
+    companySettings=await BO.read('bo_company',{nom:'',adresse:'',tel:'',email:'',web:''});
+    companyLogo=await BO.read('bo_logo','');
+    updateLogoPreview();
+}
+function loadCompanySettingsForm(){
+    document.getElementById('co-nom').value=companySettings.nom||'';
+    document.getElementById('co-adresse').value=companySettings.adresse||'';
+    document.getElementById('co-tel').value=companySettings.tel||'';
+    document.getElementById('co-email').value=companySettings.email||'';
+    document.getElementById('co-web').value=companySettings.web||'';
+    updateLogoPreview();
+}
+async function saveCompanySettings(){
+    companySettings={
+        nom:document.getElementById('co-nom').value.trim(),
+        adresse:document.getElementById('co-adresse').value.trim(),
+        tel:document.getElementById('co-tel').value.trim(),
+        email:document.getElementById('co-email').value.trim(),
+        web:document.getElementById('co-web').value.trim(),
+    };
+    await BO.write('bo_company',companySettings);
+    BO.toast('Paramètres enregistrés','success');
+}
+function handleLogoUpload(evt){
+    const file=evt.target.files[0];if(!file)return;
+    if(file.size>2*1024*1024){BO.toast('Logo trop lourd (max 2MB)','warn');return;}
+    const reader=new FileReader();
+    reader.onload=async e=>{
+        companyLogo=e.target.result;
+        await BO.write('bo_logo',companyLogo);
+        updateLogoPreview();
+        BO.toast('Logo enregistré','success');
+    };
+    reader.readAsDataURL(file);
+    evt.target.value='';
+}
+async function removeLogo(){
+    companyLogo='';
+    await BO.write('bo_logo','');
+    updateLogoPreview();
+    BO.toast('Logo supprimé','info');
+}
+function updateLogoPreview(){
+    const img=document.getElementById('logo-preview-img');
+    const ph=document.getElementById('logo-placeholder');
+    if(!img||!ph)return;
+    if(companyLogo){img.src=companyLogo;img.style.display='';ph.style.display='none';}
+    else{img.style.display='none';ph.style.display='';}
+}
+
+/* ══ GESTION TECHNICIENS ══ */
 function showManageTab(t){
     document.getElementById('mpanel-techs').style.display=t==='techs'?'':'none';
     document.getElementById('mpanel-clients').style.display=t==='clients'?'':'none';
+    document.getElementById('mpanel-settings').style.display=t==='settings'?'flex':'none';
     document.getElementById('mtab-techs').classList.toggle('active',t==='techs');
     document.getElementById('mtab-clients').classList.toggle('active',t==='clients');
-    if(t==='techs') renderTechList(); else renderClientList();
-}
-function openManageModal(tab){
-    tab=tab||'techs';
-    document.getElementById('manage-modal').style.display='flex';
-    showManageTab(tab);
+    document.getElementById('mtab-settings').classList.toggle('active',t==='settings');
+    if(t==='techs')renderTechList();
+    else if(t==='clients')renderClientList();
+    else if(t==='settings')loadCompanySettingsForm();
     lucide.createIcons();
 }
+function openManageModal(tab){
+    tab=tab||'techs';document.getElementById('manage-modal').style.display='flex';showManageTab(tab);lucide.createIcons();
+}
 function renderTechList(){
-    const el=document.getElementById('tech-list'); if(!el) return;
-    el.innerHTML=techs.length
-        ?techs.map((t,i)=>`
-          <div class="manage-item">
-            <i data-lucide="user" style="width:15px;height:15px;color:var(--muted);flex-shrink:0;"></i>
-            <div style="flex:1;min-width:0;">
-              <div class="manage-item-name">${esc(t)}</div>
-              <div class="manage-item-sub">${interventions.filter(iv=>iv.technicien===t).length} intervention(s)</div>
-            </div>
-            <button class="bo-btn-icon" onclick="editTech(${i})" title="Renommer"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
-            <button class="bo-btn-danger" onclick="removeTech(${i})" title="Supprimer"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
-          </div>`).join('')
-        :'<p style="font-size:.78rem;color:var(--muted);padding:.5rem 0;">Aucun technicien.</p>';
+    const el=document.getElementById('tech-list');if(!el)return;
+    el.innerHTML=techs.length?techs.map((t,i)=>`
+      <div class="manage-item">
+        <i data-lucide="user" style="width:15px;height:15px;color:var(--muted);flex-shrink:0;"></i>
+        <div style="flex:1;min-width:0;"><div class="manage-item-name">${esc(t)}</div>
+        <div class="manage-item-sub">${interventions.filter(iv=>(iv.techniciens||[iv.technicien]).includes(t)).length} intervention(s)</div></div>
+        <button class="bo-btn-icon" onclick="editTech(${i})" title="Renommer"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+        <button class="bo-btn-danger" onclick="removeTech(${i})" title="Supprimer"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+      </div>`).join(''):'<p style="font-size:.78rem;color:var(--muted);padding:.5rem 0;">Aucun technicien.</p>';
     lucide.createIcons();
 }
 async function addTech(){
-    const inp=document.getElementById('new-tech-name');
-    const name=inp.value.trim(); if(!name){BO.toast('Entrez un nom','warn');return;}
+    const inp=document.getElementById('new-tech-name'),name=inp.value.trim();if(!name){BO.toast('Entrez un nom','warn');return;}
     if(techs.includes(name)){BO.toast('Déjà existant','warn');return;}
-    techs.push(name); inp.value='';
-    await BO.write('bo_techs',techs);
-    buildTechSelect(); renderTechList(); BO.toast('Technicien ajouté','success');
+    techs.push(name);inp.value='';await BO.write('bo_techs',techs);
+    buildTechSelectors();renderTechList();BO.toast('Technicien ajouté','success');
 }
 async function editTech(i){
-    const newName=prompt('Nouveau nom :',techs[i]);
-    if(!newName||!newName.trim()) return;
-    const old=techs[i]; techs[i]=newName.trim();
-    interventions=interventions.map(iv=>iv.technicien===old?{...iv,technicien:techs[i]}:iv);
+    const newName=prompt('Nouveau nom :',techs[i]);if(!newName||!newName.trim())return;
+    const old=techs[i];techs[i]=newName.trim();
+    interventions=interventions.map(iv=>({...iv,techniciens:(iv.techniciens||[iv.technicien]).map(t=>t===old?techs[i]:t)}));
     await Promise.all([BO.write('bo_techs',techs),BO.write(BO.KEYS.interventions,interventions)]);
-    buildTechSelect(); renderTechList(); refresh(); BO.toast('Mis à jour','success');
+    buildTechSelectors();renderTechList();refresh();BO.toast('Mis à jour','success');
 }
 async function removeTech(i){
     const n=techs[i];
-    const nb=interventions.filter(iv=>iv.technicien===n).length;
+    const nb=interventions.filter(iv=>(iv.techniciens||[iv.technicien]).includes(n)).length;
     const ok=await boConfirm({title:'Supprimer '+n+' ?',msg:nb?nb+' intervention(s) seront désassignées.':' ',okLabel:'Supprimer',icon:'🗑️'});
-    if(!ok) return;
+    if(!ok)return;
     techs.splice(i,1);
-    if(nb) interventions=interventions.map(iv=>iv.technicien===n?{...iv,technicien:''}:iv);
+    if(nb)interventions=interventions.map(iv=>({...iv,techniciens:(iv.techniciens||[iv.technicien]).filter(t=>t!==n)}));
     await Promise.all([BO.write('bo_techs',techs),nb?BO.write(BO.KEYS.interventions,interventions):Promise.resolve()]);
-    buildTechSelect(); renderTechList(); if(nb) refresh(); BO.toast('Supprimé','info');
+    buildTechSelectors();renderTechList();if(nb)refresh();BO.toast('Supprimé','info');
 }
 
-/* ── GESTION CLIENTS ── */
+/* ══ GESTION CLIENTS ══ */
 function renderClientList(){
-    const el=document.getElementById('client-list'); if(!el) return;
-    el.innerHTML=clients.length
-        ?clients.map((c,i)=>`
-          <div class="manage-item">
-            <i data-lucide="building-2" style="width:15px;height:15px;color:var(--muted);flex-shrink:0;"></i>
-            <div style="flex:1;min-width:0;">
-              <div class="manage-item-name">${esc(c.nom)}</div>
-              <div class="manage-item-sub">${c.contact?esc(c.contact)+' ':''} ${c.tel?esc(c.tel):''}</div>
-            </div>
-            <button class="bo-btn-icon" onclick="editClient(${i})" title="Modifier"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
-            <button class="bo-btn-danger" onclick="removeClient(${i})" title="Supprimer"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
-          </div>`).join('')
-        :'<p style="font-size:.78rem;color:var(--muted);padding:.5rem 0;">Aucun client.</p>';
+    const el=document.getElementById('client-list');if(!el)return;
+    el.innerHTML=clients.length?clients.map((c,i)=>`
+      <div class="manage-item">
+        <i data-lucide="building-2" style="width:15px;height:15px;color:var(--muted);flex-shrink:0;"></i>
+        <div style="flex:1;min-width:0;"><div class="manage-item-name">${esc(c.nom)}</div>
+        <div class="manage-item-sub">${c.contact?esc(c.contact)+' ':''} ${c.tel?esc(c.tel):''} ${c.email?'· '+esc(c.email):''}</div></div>
+        <button class="bo-btn-icon" onclick="editClient(${i})" title="Modifier"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
+        <button class="bo-btn-danger" onclick="removeClient(${i})" title="Supprimer"><i data-lucide="trash-2" style="width:13px;height:13px;color:#f87171;"></i></button>
+      </div>`).join(''):'<p style="font-size:.78rem;color:var(--muted);padding:.5rem 0;">Aucun client.</p>';
     lucide.createIcons();
 }
 async function addClient(){
-    const name=document.getElementById('new-client-name').value.trim();
-    if(!name){BO.toast('Nom requis','warn');return;}
+    const name=document.getElementById('new-client-name').value.trim();if(!name){BO.toast('Nom requis','warn');return;}
     const contact=document.getElementById('new-client-contact').value.trim();
     const tel=document.getElementById('new-client-tel').value.trim();
-    clients.push({id:BO.uid(),nom:name,contact,tel});
-    ['new-client-name','new-client-contact','new-client-tel'].forEach(x=>document.getElementById(x).value='');
+    const email=document.getElementById('new-client-email').value.trim();
+    clients.push({id:BO.uid(),nom:name,contact,tel,email});
+    ['new-client-name','new-client-contact','new-client-tel','new-client-email'].forEach(x=>document.getElementById(x).value='');
     await BO.write(BO.KEYS.clients,clients);
-    buildClientSelect(); renderClientList(); BO.toast('Client ajouté','success');
+    buildClientSelect(); // recalcule _sortedClients
+    renderClientList();
+    BO.toast('Client ajouté','success');
 }
 async function editClient(i){
     const c=clients[i];
-    const newName=prompt('Nom :',c.nom); if(!newName||!newName.trim()) return;
-    const newContact=prompt('Contact :',c.contact||'');
-    const newTel=prompt('Téléphone :',c.tel||'');
-    clients[i]={...c,nom:newName.trim(),contact:(newContact||'').trim(),tel:(newTel||'').trim()};
+    const newName=prompt('Nom :',c.nom);if(!newName||!newName.trim())return;
+    const newContact=prompt('Contact :',c.contact||'');const newTel=prompt('Téléphone :',c.tel||'');const newEmail=prompt('Email :',c.email||'');
+    clients[i]={...c,nom:newName.trim(),contact:(newContact||'').trim(),tel:(newTel||'').trim(),email:(newEmail||'').trim()};
     await BO.write(BO.KEYS.clients,clients);
-    buildClientSelect(); renderClientList(); BO.toast('Client modifié','success');
+    buildClientSelect(); // recalcule _sortedClients
+    renderClientList();
+    BO.toast('Client modifié','success');
 }
 async function removeClient(i){
-    const c=clients[i];
-    const nb=interventions.filter(iv=>iv.clientId===c.id).length;
+    const c=clients[i];const nb=interventions.filter(iv=>iv.clientId===c.id).length;
     const ok=await boConfirm({title:'Supprimer '+c.nom+' ?',msg:nb?nb+' intervention(s) associées.':' ',okLabel:'Supprimer',icon:'🗑️'});
-    if(!ok) return;
-    clients.splice(i,1);
-    await BO.write(BO.KEYS.clients,clients);
-    buildClientSelect(); renderClientList(); BO.toast('Client supprimé','info');
+    if(!ok)return;clients.splice(i,1);await BO.write(BO.KEYS.clients,clients);buildClientSelect();renderClientList();BO.toast('Client supprimé','info');
 }
 
-/* ── TECH SELECT (dynamique) ── */
-function buildTechSelect(){
-    const opts=techs.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
-    const ft=document.getElementById('f-tech');
-    if(ft) ft.innerHTML='<option value="">— Non assigné —</option>'+opts;
-    const st=document.getElementById('sel-tech');
-    if(st) st.innerHTML='<option value="">Tous techniciens</option>'+opts;
-}
-
-/* ── BOUTON MAPS DANS LA FICHE DETAIL ── */
-function mapsUrl(addr){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr); }
-
-/* ── SYNC f-duree et f-duree-recap ── */
-function syncDureeFields(){
-    const d=document.getElementById('f-duree');
-    const r=document.getElementById('f-duree-recap');
-    if(d&&r){
-        d.addEventListener('input',()=>r.value=d.value);
-        r.addEventListener('input',()=>d.value=r.value);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded',init);
 </script>
 </body>
 </html>
