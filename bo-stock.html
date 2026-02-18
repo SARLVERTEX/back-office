@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock · Vertex Backoffice</title>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <span data-module-title="Stock" style="display:none"></span>
     <script src="bo-shell.js"></script>
     <style>
@@ -16,6 +17,85 @@
         .stock-card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(0,0,0,0.3); }
         .stock-card.alert { border-color:rgba(239,68,68,0.3); }
         .stock-card.warn  { border-color:rgba(245,158,11,0.25); }
+
+        /* ── EBP IMPORT MODAL ── */
+        #ebp-modal .bo-modal { max-width:640px; }
+
+        .ebp-drop-zone {
+            border: 2px dashed rgba(255,215,0,0.3);
+            border-radius: 1rem;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,215,0,0.03);
+            position: relative;
+        }
+        .ebp-drop-zone:hover,
+        .ebp-drop-zone.drag-over {
+            border-color: rgba(255,215,0,0.7);
+            background: rgba(255,215,0,0.07);
+        }
+        .ebp-drop-zone input[type=file] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; width:100%; height:100%;
+        }
+
+        .ebp-step { display:none; }
+        .ebp-step.active { display:block; }
+
+        .ebp-stepper {
+            display: flex; gap: 0.5rem; margin-bottom: 1.75rem; align-items: center;
+        }
+        .ebp-step-dot {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.65rem; font-weight: 900;
+            border: 1px solid var(--border);
+            color: var(--muted); background: transparent;
+            flex-shrink: 0; transition: all 0.2s;
+        }
+        .ebp-step-dot.active { background: #FFD700; color: #000; border-color: #FFD700; }
+        .ebp-step-dot.done   { background: rgba(16,185,129,0.2); color: #6ee7b7; border-color: rgba(16,185,129,0.4); }
+        .ebp-step-line { flex:1; height:1px; background: var(--border); }
+
+        .ebp-map-row {
+            display: grid; grid-template-columns: 1fr 24px 1fr; gap: 0.75rem;
+            align-items: center; margin-bottom: 0.6rem;
+        }
+        .ebp-map-label {
+            font-size: 0.7rem; font-weight: 700; color: var(--muted);
+            background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+            border-radius: 0.5rem; padding: 0.45rem 0.75rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ebp-map-arrow { color: #FFD700; font-size: 0.8rem; text-align:center; }
+
+        .ebp-preview-table {
+            width: 100%; border-collapse: collapse; font-size: 0.65rem;
+        }
+        .ebp-preview-table th {
+            background: rgba(255,215,0,0.07); color: #FFD700;
+            padding: 0.4rem 0.6rem; text-align: left; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+        }
+        .ebp-preview-table td {
+            padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: var(--muted);
+        }
+        .ebp-preview-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .ebp-badge-new   { background:rgba(16,185,129,0.15); color:#6ee7b7; border:1px solid rgba(16,185,129,0.3); padding:0.15rem 0.5rem; border-radius:999px; font-size:0.6rem; font-weight:800; }
+        .ebp-badge-upd   { background:rgba(245,158,11,0.15); color:#fcd34d; border:1px solid rgba(245,158,11,0.3); padding:0.15rem 0.5rem; border-radius:999px; font-size:0.6rem; font-weight:800; }
+
+        .ebp-result-box {
+            text-align:center; padding: 2rem 1rem;
+        }
+        .ebp-result-icon {
+            width:56px; height:56px; background:rgba(16,185,129,0.15);
+            border:1px solid rgba(16,185,129,0.3); border-radius:50%;
+            display:flex;align-items:center;justify-content:center;
+            margin:0 auto 1rem;
+        }
     </style>
 </head>
 <body>
@@ -27,17 +107,23 @@
             <div class="bo-eyebrow">Inventaire</div>
             <h1 class="bo-page-title">Stock</h1>
         </div>
-        <button class="bo-btn-gold" onclick="openForm()">
-            <i data-lucide="plus" style="width:14px;height:14px;"></i>
-            Ajouter un article
-        </button>
+        <div style="display:flex;gap:0.75rem;">
+            <button class="bo-btn-ghost" onclick="openEbpImport()" style="display:flex;align-items:center;gap:0.5rem;font-size:0.7rem;">
+                <i data-lucide="upload" style="width:14px;height:14px;"></i>
+                Importer EBP
+            </button>
+            <button class="bo-btn-gold" onclick="openForm()">
+                <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                Ajouter un article
+            </button>
+        </div>
     </div>
 
     <!-- KPIs -->
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;" id="kpi-row"></div>
 
     <!-- Alert banner -->
-    <div id="alert-banner" style="display:none;" class="bo-alert-banner" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);">
+    <div id="alert-banner" style="display:none;" class="bo-alert-banner">
         <i data-lucide="alert-triangle" style="width:18px;height:18px;color:#ef4444;flex-shrink:0;"></i>
         <div>
             <div style="font-size:0.75rem;font-weight:900;text-transform:uppercase;color:#f87171;margin-bottom:0.15rem;">Articles sous le seuil d'alerte</div>
@@ -139,14 +225,9 @@
 
         <div id="mv-current" style="text-align:center;margin-bottom:1.5rem;"></div>
 
-        <!-- Type toggle -->
         <div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;">
-            <button id="mv-add-btn" onclick="setMvType('add')" style="flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.15);color:#6ee7b7;cursor:pointer;font-family:inherit;transition:all 0.2s;">
-                ⬆ Entrée
-            </button>
-            <button id="mv-rem-btn" onclick="setMvType('remove')" style="flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.2s;">
-                ⬇ Sortie
-            </button>
+            <button id="mv-add-btn" onclick="setMvType('add')" style="flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.15);color:#6ee7b7;cursor:pointer;font-family:inherit;transition:all 0.2s;">⬆ Entrée</button>
+            <button id="mv-rem-btn" onclick="setMvType('remove')" style="flex:1;padding:0.7rem;border-radius:0.75rem;font-size:0.7rem;font-weight:800;text-transform:uppercase;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.2s;">⬇ Sortie</button>
         </div>
 
         <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;">
@@ -170,7 +251,174 @@
     </div>
 </div>
 
+<!-- ══════════════════════════════════════════
+     ── EBP IMPORT MODAL (3 étapes) ──
+══════════════════════════════════════════ -->
+<div class="bo-modal-overlay" id="ebp-modal" style="display:none;">
+    <div class="bo-modal" style="max-width:640px;">
+
+        <div class="bo-modal-header">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <div style="width:32px;height:32px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.25);border-radius:0.6rem;display:flex;align-items:center;justify-content:center;">
+                    <i data-lucide="file-up" style="width:15px;height:15px;color:#FFD700;"></i>
+                </div>
+                <div class="bo-modal-title">Import EBP</div>
+            </div>
+            <button class="bo-modal-close" onclick="closeEbpModal()">
+                <i data-lucide="x" style="width:14px;height:14px;color:#94a3b8;"></i>
+            </button>
+        </div>
+
+        <!-- Stepper -->
+        <div class="ebp-stepper">
+            <div class="ebp-step-dot active" id="sd-1">1</div>
+            <div class="ebp-step-line"></div>
+            <div class="ebp-step-dot" id="sd-2">2</div>
+            <div class="ebp-step-line"></div>
+            <div class="ebp-step-dot" id="sd-3">3</div>
+        </div>
+
+        <!-- ── ÉTAPE 1 : Upload ── -->
+        <div class="ebp-step active" id="ebp-s1">
+            <div style="margin-bottom:1rem;">
+                <div style="font-size:0.85rem;font-weight:800;margin-bottom:0.25rem;">Charger le fichier EBP</div>
+                <div style="font-size:0.7rem;color:var(--muted);">Exportez vos articles depuis EBP via <strong style="color:white;">Imports/Exports → Exportation de données</strong>, puis déposez le fichier ici.</div>
+            </div>
+
+            <div class="ebp-drop-zone" id="ebp-drop" ondragover="ebpDragOver(event)" ondragleave="ebpDragLeave()" ondrop="ebpDrop(event)">
+                <input type="file" accept=".csv,.txt,.xlsx,.xls" onchange="ebpFileSelected(this.files[0])">
+                <i data-lucide="upload-cloud" style="width:40px;height:40px;color:#FFD700;opacity:0.5;margin-bottom:0.75rem;"></i>
+                <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.3rem;">Glissez votre fichier ici</div>
+                <div style="font-size:0.65rem;color:var(--muted);">ou cliquez pour parcourir</div>
+                <div style="margin-top:0.75rem;display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+                    <span style="font-size:0.6rem;background:rgba(255,255,255,0.06);padding:0.2rem 0.5rem;border-radius:999px;color:var(--muted);">CSV</span>
+                    <span style="font-size:0.6rem;background:rgba(255,255,255,0.06);padding:0.2rem 0.5rem;border-radius:999px;color:var(--muted);">TXT</span>
+                    <span style="font-size:0.6rem;background:rgba(255,255,255,0.06);padding:0.2rem 0.5rem;border-radius:999px;color:var(--muted);">XLSX</span>
+                    <span style="font-size:0.6rem;background:rgba(255,255,255,0.06);padding:0.2rem 0.5rem;border-radius:999px;color:var(--muted);">XLS</span>
+                </div>
+            </div>
+
+            <div id="ebp-file-info" style="display:none;margin-top:1rem;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.25);border-radius:0.75rem;padding:0.875rem 1rem;display:none;align-items:center;gap:0.75rem;">
+                <i data-lucide="file-check" style="width:20px;height:20px;color:#6ee7b7;flex-shrink:0;"></i>
+                <div style="flex:1;min-width:0;">
+                    <div id="ebp-file-name" style="font-size:0.75rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                    <div id="ebp-file-meta" style="font-size:0.65rem;color:var(--muted);"></div>
+                </div>
+                <button onclick="ebpReset()" style="background:transparent;border:none;cursor:pointer;color:var(--muted);">
+                    <i data-lucide="x" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
+
+            <!-- Séparateur override (CSV/TXT) -->
+            <div id="ebp-sep-row" style="display:none;margin-top:1rem;align-items:center;gap:0.75rem;">
+                <div style="font-size:0.7rem;color:var(--muted);flex-shrink:0;">Séparateur :</div>
+                <select id="ebp-sep" class="bo-select" style="flex:1;">
+                    <option value="auto">Détection auto</option>
+                    <option value=";">Point-virgule ( ; )</option>
+                    <option value=","">Virgule ( , )</option>
+                    <option value="	">Tabulation</option>
+                    <option value="|">Pipe ( | )</option>
+                </select>
+            </div>
+
+            <div class="bo-modal-footer">
+                <button class="bo-btn-ghost" onclick="closeEbpModal()">Annuler</button>
+                <button class="bo-btn-gold" id="ebp-next1" onclick="ebpGoStep2()" disabled>
+                    Suivant <i data-lucide="arrow-right" style="width:13px;height:13px;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ── ÉTAPE 2 : Mapping des colonnes ── -->
+        <div class="ebp-step" id="ebp-s2">
+            <div style="margin-bottom:1.25rem;">
+                <div style="font-size:0.85rem;font-weight:800;margin-bottom:0.25rem;">Correspondance des colonnes</div>
+                <div style="font-size:0.7rem;color:var(--muted);">Associez les colonnes EBP aux champs du back office. La détection automatique a été appliquée — vérifiez et ajustez si besoin.</div>
+            </div>
+
+            <div id="ebp-map-container"></div>
+
+            <!-- Mode fusion -->
+            <div style="margin-top:1.25rem;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:0.75rem;padding:0.875rem 1rem;">
+                <div style="font-size:0.7rem;font-weight:800;margin-bottom:0.75rem;color:white;">Mode de synchronisation</div>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                    <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;">
+                        <input type="radio" name="ebp-mode" value="merge" checked style="margin-top:2px;accent-color:#FFD700;">
+                        <div>
+                            <div style="font-size:0.7rem;font-weight:700;">Fusion intelligente</div>
+                            <div style="font-size:0.62rem;color:var(--muted);">Met à jour les articles existants (par référence) et ajoute les nouveaux</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;">
+                        <input type="radio" name="ebp-mode" value="replace" style="margin-top:2px;accent-color:#FFD700;">
+                        <div>
+                            <div style="font-size:0.7rem;font-weight:700;">Remplacer tout</div>
+                            <div style="font-size:0.62rem;color:var(--muted);">Supprime le stock actuel et importe uniquement le fichier EBP</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;">
+                        <input type="radio" name="ebp-mode" value="add" style="margin-top:2px;accent-color:#FFD700;">
+                        <div>
+                            <div style="font-size:0.7rem;font-weight:700;">Ajouter uniquement</div>
+                            <div style="font-size:0.62rem;color:var(--muted);">Ajoute les nouveaux articles sans toucher aux existants</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="bo-modal-footer">
+                <button class="bo-btn-ghost" onclick="ebpGoStep1()">← Retour</button>
+                <button class="bo-btn-gold" onclick="ebpGoStep3()">
+                    Prévisualiser <i data-lucide="eye" style="width:13px;height:13px;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ── ÉTAPE 3 : Prévisualisation + confirmation ── -->
+        <div class="ebp-step" id="ebp-s3">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                <div>
+                    <div style="font-size:0.85rem;font-weight:800;margin-bottom:0.15rem;">Prévisualisation</div>
+                    <div style="font-size:0.7rem;color:var(--muted);" id="ebp-preview-summary"></div>
+                </div>
+                <div id="ebp-preview-badges" style="display:flex;gap:0.4rem;"></div>
+            </div>
+
+            <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:0.75rem;margin-bottom:1rem;">
+                <table class="ebp-preview-table">
+                    <thead>
+                        <tr>
+                            <th>Statut</th>
+                            <th>Réf</th>
+                            <th>Nom</th>
+                            <th>Qté</th>
+                            <th>Prix</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ebp-preview-body"></tbody>
+                </table>
+            </div>
+
+            <div id="ebp-skip-warning" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:0.75rem;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.65rem;color:#fcd34d;">
+                <strong>⚠ Lignes ignorées :</strong> <span id="ebp-skip-count"></span> ligne(s) sans nom d'article valide ont été exclues.
+            </div>
+
+            <div class="bo-modal-footer">
+                <button class="bo-btn-ghost" onclick="ebpGoStep2()">← Retour</button>
+                <button class="bo-btn-gold" onclick="ebpConfirmImport()">
+                    <i data-lucide="check" style="width:14px;height:14px;"></i>
+                    Importer
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 <script>
+/* ═══════════════════════════════════════════
+   STOCK CORE
+═══════════════════════════════════════════ */
 let stocks = [];
 let filterCat = 'Toutes';
 let editId = null;
@@ -224,16 +472,15 @@ function render() {
         return mq && mc;
     });
 
-    // KPIs
     const alerts = stocks.filter(s => s.quantite <= s.seuilAlerte);
     const totalVal = stocks.reduce((a,s) => a + s.quantite * (s.prix||0), 0);
     const totalItems = stocks.reduce((a,s) => a + s.quantite, 0);
 
     document.getElementById('kpi-row').innerHTML = [
-        { label:'Références',   val: stocks.length, sub:'articles',           color:'#FFD700' },
-        { label:'Unités totales',val: totalItems,   sub:'en inventaire',      color:'#3b82f6' },
-        { label:'Valeur stock', val: `${Math.round(totalVal/1000*10)/10}k €`, sub:'valorisation', color:'#10b981' },
-        { label:'Alertes',      val: alerts.length, sub:'sous le seuil',      color:'#ef4444' },
+        { label:'Références',    val: stocks.length,  sub:'articles',        color:'#FFD700' },
+        { label:'Unités totales',val: totalItems,      sub:'en inventaire',   color:'#3b82f6' },
+        { label:'Valeur stock',  val: `${Math.round(totalVal/1000*10)/10}k €`, sub:'valorisation', color:'#10b981' },
+        { label:'Alertes',       val: alerts.length,  sub:'sous le seuil',   color:'#ef4444' },
     ].map(k => `
         <div class="bo-stat">
             <div class="bo-stat-label">${k.label}</div>
@@ -241,7 +488,6 @@ function render() {
             <div class="bo-stat-sub">${k.sub}</div>
         </div>`).join('');
 
-    // Alert banner
     const banner = document.getElementById('alert-banner');
     if (alerts.length > 0) {
         banner.style.cssText = 'display:flex;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:0.875rem;padding:0.875rem 1.25rem;align-items:center;gap:0.875rem;margin-bottom:1.5rem;';
@@ -250,10 +496,9 @@ function render() {
         banner.style.display = 'none';
     }
 
-    // Container
     const cont = document.getElementById('stock-container');
     if (filtered.length === 0) {
-        cont.innerHTML = `<div class="bo-card bo-card-p"><div class="bo-empty"><div class="bo-empty-title">Aucun article</div><div class="bo-empty-desc">Ajoutez votre premier article au stock.</div></div></div>`;
+        cont.innerHTML = `<div class="bo-card bo-card-p"><div class="bo-empty"><div class="bo-empty-title">Aucun article</div><div class="bo-empty-desc">Ajoutez votre premier article ou importez depuis EBP.</div></div></div>`;
         lucide.createIcons(); return;
     }
 
@@ -264,7 +509,6 @@ function render() {
         cont.style.cssText = 'display:flex;flex-direction:column;gap:0.75rem;';
         cont.innerHTML = `<div class="bo-card" style="overflow:hidden;">${filtered.map((s,i) => renderCardList(s,i,filtered.length)).join('')}</div>`;
     }
-
     lucide.createIcons();
 }
 
@@ -280,7 +524,6 @@ function renderCardGrid(s) {
     const alert = s.quantite <= s.seuilAlerte;
     const warn  = s.quantite <= s.seuilAlerte * 1.5;
     const catColor = CAT_COLORS[s.categorie] || '#64748b';
-
     return `
     <div class="stock-card ${alert?'alert':warn?'warn':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
@@ -294,7 +537,6 @@ function renderCardGrid(s) {
                 <div style="font-size:0.6rem;color:var(--muted);">unités</div>
             </div>
         </div>
-
         <div style="margin-bottom:1rem;">
             <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);margin-bottom:0.3rem;">
                 <span>Stock actuel</span><span>Seuil: ${s.seuilAlerte}</span>
@@ -303,12 +545,10 @@ function renderCardGrid(s) {
                 <div class="bo-progress-bar" style="width:${pct}%;background:${color};"></div>
             </div>
         </div>
-
         <div style="font-size:0.65rem;color:var(--muted);margin-bottom:1rem;display:flex;justify-content:space-between;">
             <span>📦 ${s.emplacement||'—'}</span>
             <span>${s.prix > 0 ? s.prix.toLocaleString('fr-FR') + ' €/u.' : '—'}</span>
         </div>
-
         <div style="display:flex;gap:0.5rem;">
             <button onclick="openMv('${s.id}')" style="flex:1;padding:0.5rem;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:0.5rem;font-size:0.6rem;font-weight:800;text-transform:uppercase;color:#FFD700;cursor:pointer;font-family:inherit;">Mouvement</button>
             <button class="bo-btn-icon" onclick="openForm('${s.id}')"><i data-lucide="pencil" style="width:13px;height:13px;color:#94a3b8;"></i></button>
@@ -321,7 +561,6 @@ function renderCardList(s, idx, total) {
     const color = stockColor(s);
     const pct   = Math.min(100, (s.quantite / Math.max(s.seuilAlerte * 3, 1)) * 100);
     const catColor = CAT_COLORS[s.categorie] || '#64748b';
-
     return `
     <div class="bo-row" style="${idx < total-1 ? 'border-bottom:1px solid var(--border);' : ''}">
         <div style="font-size:0.65rem;font-weight:700;color:var(--muted);width:80px;flex-shrink:0;">${s.ref||'—'}</div>
@@ -348,7 +587,6 @@ function renderCardList(s, idx, total) {
 function openForm(id = null) {
     editId = id;
     document.getElementById('modal-title').textContent = id ? 'Modifier l\'article' : 'Nouvel article';
-
     if (id) {
         const s = stocks.find(x => x.id === id);
         if (!s) return;
@@ -376,18 +614,16 @@ function closeModal() { document.getElementById('modal').style.display = 'none';
 async function saveForm() {
     const nom = document.getElementById('f-nom').value.trim();
     if (!nom) { BO.toast('Le nom est obligatoire', 'warn'); return; }
-
     const data = {
-        ref:        document.getElementById('f-ref').value.trim(),
-        categorie:  document.getElementById('f-cat').value,
+        ref:         document.getElementById('f-ref').value.trim(),
+        categorie:   document.getElementById('f-cat').value,
         nom,
-        quantite:   parseInt(document.getElementById('f-qty').value) || 0,
-        seuilAlerte:parseInt(document.getElementById('f-seuil').value) || 0,
-        prix:       parseFloat(document.getElementById('f-prix').value) || 0,
-        emplacement:document.getElementById('f-empl').value.trim(),
-        notes:      document.getElementById('f-notes').value.trim(),
+        quantite:    parseInt(document.getElementById('f-qty').value) || 0,
+        seuilAlerte: parseInt(document.getElementById('f-seuil').value) || 0,
+        prix:        parseFloat(document.getElementById('f-prix').value) || 0,
+        emplacement: document.getElementById('f-empl').value.trim(),
+        notes:       document.getElementById('f-notes').value.trim(),
     };
-
     if (editId) {
         stocks = stocks.map(s => s.id === editId ? { ...s, ...data } : s);
         BO.toast('Article mis à jour', 'success');
@@ -395,11 +631,8 @@ async function saveForm() {
         stocks.unshift({ id: BO.uid(), ...data });
         BO.toast('Article ajouté', 'success');
     }
-
     await BO.write(BO.KEYS.stocks, stocks);
-    closeModal();
-    buildCatPills();
-    render();
+    closeModal(); buildCatPills(); render();
 }
 
 async function removeItem(id) {
@@ -407,8 +640,7 @@ async function removeItem(id) {
     stocks = stocks.filter(s => s.id !== id);
     await BO.write(BO.KEYS.stocks, stocks);
     BO.toast('Article supprimé', 'info');
-    buildCatPills();
-    render();
+    buildCatPills(); render();
 }
 
 /* ── MOVEMENT ── */
@@ -416,15 +648,12 @@ function openMv(id) {
     mvId = id; mvQty = 1; mvType = 'add';
     const s = stocks.find(x => x.id === id);
     if (!s) return;
-
     document.getElementById('mv-title').textContent = s.nom;
     document.getElementById('mv-reason').value = '';
-    renderMvQty();
-    setMvType('add');
+    renderMvQty(); setMvType('add');
     document.getElementById('mv-modal').style.display = 'flex';
     lucide.createIcons();
 }
-
 function closeMvModal() { document.getElementById('mv-modal').style.display = 'none'; }
 
 function setMvType(type) {
@@ -457,18 +686,330 @@ function renderMvQty() {
 async function confirmMv() {
     const qty = parseInt(document.getElementById('mv-qty-input').value) || 0;
     if (qty <= 0) { BO.toast('Quantité invalide', 'warn'); return; }
-
     stocks = stocks.map(s => {
         if (s.id !== mvId) return s;
         const delta = mvType === 'add' ? qty : -qty;
         return { ...s, quantite: Math.max(0, s.quantite + delta) };
     });
-
     await BO.write(BO.KEYS.stocks, stocks);
     const label = mvType === 'add' ? `+${qty} unité(s) ajoutée(s)` : `−${qty} unité(s) retirée(s)`;
     BO.toast(label, mvType === 'add' ? 'success' : 'info');
-    closeMvModal();
+    closeMvModal(); render();
+}
+
+
+/* ═══════════════════════════════════════════
+   EBP IMPORT — STATE
+═══════════════════════════════════════════ */
+let ebpRawRows  = [];   // toutes les lignes du fichier (tableaux)
+let ebpHeaders  = [];   // ligne d'en-tête détectée
+let ebpMapping  = {};   // { boField: colIndex|null }
+let ebpParsed   = [];   // articles prêts à importer (après mapping)
+let ebpSkipped  = 0;
+let ebpStep     = 1;
+
+// Champs cibles du back office
+const BO_FIELDS = [
+    { key:'ref',         label:'Référence',       required:false },
+    { key:'nom',         label:'Nom / Libellé',   required:true  },
+    { key:'quantite',    label:'Quantité',         required:false },
+    { key:'prix',        label:'Prix unitaire',    required:false },
+    { key:'categorie',   label:'Catégorie',        required:false },
+    { key:'emplacement', label:'Emplacement',      required:false },
+    { key:'seuilAlerte', label:'Seuil d\'alerte',  required:false },
+    { key:'notes',       label:'Notes / Desc.',    required:false },
+];
+
+// Mots-clés EBP → champs BO (détection auto)
+const EBP_AUTO_MAP = {
+    ref:         ['code','référence','ref','codearticle','code article','sku'],
+    nom:         ['libellé','libelle','désignation','designation','nom','article','description'],
+    quantite:    ['quantite','quantité','stock','qty','qte','stockréel','stock réel','en stock'],
+    prix:        ['prix','prixvente','prix vente','puht','pu ht','tarif','montant'],
+    categorie:   ['famille','catégorie','categorie','type','gamme'],
+    emplacement: ['emplacement','depot','dépôt','localisation','entrepot','entrepôt'],
+    seuilAlerte: ['seuil','seuilalerte','seuil alerte','stockminimum','stock minimum','mini'],
+    notes:       ['notes','note','observation','remarque','commentaire','description détaillée'],
+};
+
+function openEbpImport() {
+    ebpRawRows = []; ebpHeaders = []; ebpMapping = {}; ebpParsed = []; ebpSkipped = 0;
+    ebpGoStep(1);
+    document.getElementById('ebp-drop').classList.remove('drag-over');
+    document.getElementById('ebp-file-info').style.display = 'none';
+    document.getElementById('ebp-sep-row').style.display = 'none';
+    document.getElementById('ebp-next1').disabled = true;
+    document.getElementById('ebp-modal').style.display = 'flex';
+    lucide.createIcons();
+}
+
+function closeEbpModal() {
+    document.getElementById('ebp-modal').style.display = 'none';
+}
+
+function ebpGoStep(n) {
+    ebpStep = n;
+    [1,2,3].forEach(i => {
+        document.getElementById('ebp-s'+i).classList.toggle('active', i===n);
+        const dot = document.getElementById('sd-'+i);
+        dot.classList.remove('active','done');
+        if (i === n) dot.classList.add('active');
+        else if (i < n) dot.classList.add('done');
+    });
+    lucide.createIcons();
+}
+
+/* Drag & drop */
+function ebpDragOver(e) { e.preventDefault(); document.getElementById('ebp-drop').classList.add('drag-over'); }
+function ebpDragLeave()  { document.getElementById('ebp-drop').classList.remove('drag-over'); }
+function ebpDrop(e) {
+    e.preventDefault();
+    document.getElementById('ebp-drop').classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) ebpFileSelected(f);
+}
+
+function ebpReset() {
+    ebpRawRows = []; ebpHeaders = [];
+    document.getElementById('ebp-file-info').style.display = 'none';
+    document.getElementById('ebp-sep-row').style.display = 'none';
+    document.getElementById('ebp-next1').disabled = true;
+}
+
+async function ebpFileSelected(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    let rows = [];
+
+    try {
+        if (ext === 'xlsx' || ext === 'xls') {
+            rows = await parseExcel(file);
+        } else {
+            // CSV / TXT
+            const text = await readFileText(file);
+            const sep = detectSeparator(text);
+            rows = parseCSV(text, sep);
+            // Affiche le select séparateur
+            const sepRow = document.getElementById('ebp-sep-row');
+            sepRow.style.cssText = 'display:flex;margin-top:1rem;align-items:center;gap:0.75rem;';
+            document.getElementById('ebp-sep').value = 'auto';
+            // Rebind pour recalculer si changé
+            document.getElementById('ebp-sep').onchange = async () => {
+                const s = document.getElementById('ebp-sep').value;
+                const t = await readFileText(file);
+                const chosenSep = s === 'auto' ? detectSeparator(t) : s;
+                ebpRawRows = parseCSV(t, chosenSep);
+                ebpHeaders = ebpRawRows[0] || [];
+            };
+        }
+
+        if (rows.length < 2) { BO.toast('Fichier vide ou non reconnu', 'warn'); return; }
+
+        ebpRawRows = rows;
+        ebpHeaders = rows[0] || [];
+
+        // Affiche infos fichier
+        const info = document.getElementById('ebp-file-info');
+        info.style.cssText = 'display:flex;margin-top:1rem;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.25);border-radius:0.75rem;padding:0.875rem 1rem;align-items:center;gap:0.75rem;';
+        document.getElementById('ebp-file-name').textContent = file.name;
+        document.getElementById('ebp-file-meta').textContent = `${rows.length - 1} ligne(s) · ${ebpHeaders.length} colonne(s) détectées`;
+
+        document.getElementById('ebp-next1').disabled = false;
+        lucide.createIcons();
+
+    } catch(e) {
+        BO.toast('Erreur lecture fichier : ' + e.message, 'warn');
+    }
+}
+
+function readFileText(file) {
+    return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = e => res(e.target.result);
+        r.onerror = () => rej(new Error('Lecture impossible'));
+        r.readAsText(file, 'UTF-8');
+    });
+}
+
+function detectSeparator(text) {
+    const line = text.split('\n')[0];
+    const counts = { ';': 0, ',': 0, '\t': 0, '|': 0 };
+    for (const c of line) if (counts[c] !== undefined) counts[c]++;
+    return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
+}
+
+function parseCSV(text, sep) {
+    return text.split('\n')
+        .map(l => l.replace(/\r$/, ''))
+        .filter(l => l.trim())
+        .map(l => l.split(sep).map(c => c.replace(/^"|"$/g, '').trim()));
+}
+
+function parseExcel(file) {
+    return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = e => {
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'binary' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                res(data.map(row => row.map(c => String(c).trim())));
+            } catch(err) { rej(err); }
+        };
+        r.onerror = () => rej(new Error('Lecture Excel impossible'));
+        r.readAsBinaryString(file);
+    });
+}
+
+/* Détection automatique des colonnes */
+function autoDetectMapping() {
+    const mapping = {};
+    BO_FIELDS.forEach(f => { mapping[f.key] = null; });
+
+    ebpHeaders.forEach((h, idx) => {
+        const norm = h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+        for (const [boKey, keywords] of Object.entries(EBP_AUTO_MAP)) {
+            if (mapping[boKey] === null && keywords.some(k => norm.includes(k))) {
+                mapping[boKey] = idx;
+            }
+        }
+    });
+    return mapping;
+}
+
+function ebpGoStep1() { ebpGoStep(1); }
+
+function ebpGoStep2() {
+    ebpMapping = autoDetectMapping();
+
+    const colOptions = ebpHeaders.map((h, i) => `<option value="${i}">${h || '(colonne '+(i+1)+')'}</option>`).join('');
+    const noneOpt = `<option value="">— Ignorer —</option>`;
+
+    document.getElementById('ebp-map-container').innerHTML = BO_FIELDS.map(f => `
+        <div class="ebp-map-row">
+            <div class="ebp-map-label">
+                ${f.required ? `<span style="color:#ef4444;margin-right:3px;">*</span>` : ''}
+                ${f.label}
+            </div>
+            <div class="ebp-map-arrow">→</div>
+            <select class="bo-select" id="map-${f.key}" style="font-size:0.7rem;">
+                ${noneOpt}${colOptions}
+            </select>
+        </div>
+    `).join('');
+
+    // Applique la détection auto
+    BO_FIELDS.forEach(f => {
+        const sel = document.getElementById('map-'+f.key);
+        if (sel && ebpMapping[f.key] !== null) sel.value = ebpMapping[f.key];
+    });
+
+    ebpGoStep(2);
+}
+
+function ebpGoStep3() {
+    // Récupère le mapping depuis les selects
+    BO_FIELDS.forEach(f => {
+        const sel = document.getElementById('map-'+f.key);
+        ebpMapping[f.key] = sel && sel.value !== '' ? parseInt(sel.value) : null;
+    });
+
+    if (ebpMapping.nom === null) {
+        BO.toast('Le champ "Nom / Libellé" est obligatoire', 'warn'); return;
+    }
+
+    const mode = document.querySelector('input[name="ebp-mode"]:checked').value;
+    const dataRows = ebpRawRows.slice(1); // skip header
+    ebpParsed = []; ebpSkipped = 0;
+
+    dataRows.forEach(row => {
+        const nom = ebpMapping.nom !== null ? (row[ebpMapping.nom] || '').trim() : '';
+        if (!nom) { ebpSkipped++; return; }
+
+        const ref = ebpMapping.ref !== null ? (row[ebpMapping.ref] || '').trim() : '';
+        const qty = ebpMapping.quantite !== null ? parseFloat((row[ebpMapping.quantite]||'').replace(',','.')) || 0 : 0;
+        const prix = ebpMapping.prix !== null ? parseFloat((row[ebpMapping.prix]||'').replace(',','.')) || 0 : 0;
+        const cat  = ebpMapping.categorie !== null ? (row[ebpMapping.categorie] || '').trim() : 'Autre';
+        const empl = ebpMapping.emplacement !== null ? (row[ebpMapping.emplacement] || '').trim() : '';
+        const seuil= ebpMapping.seuilAlerte !== null ? parseInt(row[ebpMapping.seuilAlerte]) || 2 : 2;
+        const notes= ebpMapping.notes !== null ? (row[ebpMapping.notes] || '').trim() : '';
+
+        // Détermine si new ou update
+        const existing = stocks.find(s => ref && s.ref && s.ref.toLowerCase() === ref.toLowerCase());
+        const status = existing ? 'update' : 'new';
+
+        ebpParsed.push({ ref, nom, quantite: qty, prix, categorie: cat || 'Autre', emplacement: empl, seuilAlerte: seuil, notes, status, existingId: existing?.id });
+    });
+
+    // Prévisualisation
+    const newCount = ebpParsed.filter(p => p.status==='new').length;
+    const updCount = ebpParsed.filter(p => p.status==='update').length;
+
+    document.getElementById('ebp-preview-summary').textContent =
+        `${ebpParsed.length} article(s) traité(s) — mode : ${mode}`;
+
+    document.getElementById('ebp-preview-badges').innerHTML = `
+        <span class="ebp-badge-new">+${newCount} nouveau${newCount>1?'x':''}</span>
+        ${updCount > 0 ? `<span class="ebp-badge-upd">↻ ${updCount} mis à jour</span>` : ''}
+    `;
+
+    const skipWarn = document.getElementById('ebp-skip-warning');
+    if (ebpSkipped > 0) {
+        skipWarn.style.display = 'block';
+        document.getElementById('ebp-skip-count').textContent = ebpSkipped;
+    } else {
+        skipWarn.style.display = 'none';
+    }
+
+    document.getElementById('ebp-preview-body').innerHTML = ebpParsed.slice(0, 50).map(p => `
+        <tr>
+            <td><span class="${p.status==='new'?'ebp-badge-new':'ebp-badge-upd'}">${p.status==='new'?'Nouveau':'Màj'}</span></td>
+            <td>${p.ref||'—'}</td>
+            <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.nom}</td>
+            <td>${p.quantite}</td>
+            <td>${p.prix > 0 ? p.prix.toLocaleString('fr-FR')+' €' : '—'}</td>
+        </tr>
+    `).join('') + (ebpParsed.length > 50 ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:0.75rem;">… et ${ebpParsed.length-50} autres</td></tr>` : '');
+
+    ebpGoStep(3);
+}
+
+async function ebpConfirmImport() {
+    const mode = document.querySelector('input[name="ebp-mode"]:checked').value;
+
+    if (mode === 'replace') {
+        stocks = [];
+    }
+
+    let added = 0, updated = 0;
+
+    ebpParsed.forEach(p => {
+        const { status, existingId, ...data } = p;
+
+        if (mode === 'add' && status === 'update') return; // skip existing en mode add-only
+
+        if (status === 'update' && existingId && mode !== 'replace') {
+            stocks = stocks.map(s => s.id === existingId
+                ? { ...s, nom: data.nom, quantite: data.quantite, prix: data.prix,
+                    categorie: data.categorie || s.categorie,
+                    emplacement: data.emplacement || s.emplacement,
+                    seuilAlerte: data.seuilAlerte || s.seuilAlerte,
+                    notes: data.notes || s.notes,
+                    ref: data.ref || s.ref }
+                : s);
+            updated++;
+        } else {
+            stocks.unshift({ id: BO.uid(), ...data });
+            added++;
+        }
+    });
+
+    await BO.write(BO.KEYS.stocks, stocks);
+    closeEbpModal();
+    buildCatPills();
     render();
+
+    BO.toast(`Import EBP : +${added} ajouté(s), ↻ ${updated} mis à jour`, 'success');
 }
 
 document.addEventListener('DOMContentLoaded', init);
