@@ -315,6 +315,12 @@
     .manage-item-sub{font-size:.58rem;color:var(--muted);}
     @media(max-width:639px){ #btn-csv, #btn-team, #btn-new-desktop { display:none !important; } }
     ::-webkit-scrollbar{ width:5px; } ::-webkit-scrollbar-track{ background:transparent; } ::-webkit-scrollbar-thumb{ background:var(--border2); border-radius:3px; }
+
+    /* ── FIX LUCIDE : les SVG ne doivent pas intercepter les clics ── */
+    .bo-btn-icon svg, .bo-btn-danger svg, .bo-btn-gold svg, .bo-btn-ghost svg,
+    .btn-touch svg, .bo-modal-close svg, .form-tab svg, .fab svg,
+    .itv-card-actions svg, .mobile-nav svg,
+    button svg, a svg { pointer-events: none; }
     </style>
 </head>
 <body>
@@ -326,6 +332,9 @@
             <h1 class="bo-page-title">Interventions</h1>
         </div>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+            <button class="bo-btn-ghost" id="btn-backup" onclick="backupData()" title="Sauvegarder toutes vos données dans un fichier JSON" style="border-color:rgba(212,168,67,.4);color:var(--gold);"><i data-lucide="shield" style="width:14px;height:14px;"></i> Sauvegarder</button>
+            <button class="bo-btn-ghost" id="btn-restore" onclick="document.getElementById('restore-input').click()" title="Restaurer depuis un fichier de sauvegarde"><i data-lucide="upload" style="width:14px;height:14px;"></i> Restaurer</button>
+            <input type="file" id="restore-input" accept=".json" style="display:none;" onchange="restoreData(event)">
             <button class="bo-btn-ghost" id="btn-csv" onclick="exportCSV()"><i data-lucide="download" style="width:14px;height:14px;"></i> Export</button>
             <button class="bo-btn-ghost" id="btn-team" onclick="openManageModal()"><i data-lucide="users" style="width:14px;height:14px;"></i> Équipe</button>
             <button class="bo-btn-gold" id="btn-new-desktop" onclick="openForm()">
@@ -1402,7 +1411,7 @@ function renderList(list){
         const np=(i.photos||[]).length,nm=(i.mesures||[]).length;
         const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
         const id=JSON.stringify(i.id);
-        return `<div class="itv-card" onclick="openDetail(${id})">
+        return `<div class="itv-card" onclick="if(!event.target.closest('[data-stop]'))openDetail(${id})">
             <div class="itv-card-top">
                 <div style="width:9px;height:9px;border-radius:50%;background:${PRIO_DOT[i.priorite]};box-shadow:0 0 5px ${PRIO_DOT[i.priorite]}66;flex-shrink:0;margin-top:.3rem;"></div>
                 <div class="itv-card-body">
@@ -1416,11 +1425,11 @@ function renderList(list){
                         ${ov?'<span style="color:#f87171;">⏰ retard</span>':''}
                     </div>
                 </div>
-                <div class="itv-card-actions" onclick="event.stopPropagation()">
-                    <button class="bo-btn-icon" onclick="generatePDF(${id})" title="PDF"><i data-lucide="file-text" style="width:14px;height:14px;color:#a78bfa;"></i></button>
-                    <button class="bo-btn-icon" onclick="openForm(${id})" title="Modifier"><i data-lucide="pencil" style="width:14px;height:14px;color:#94a3b8;"></i></button>
-                    <button class="bo-btn-icon" onclick="duplicate(${id})" title="Dupliquer"><i data-lucide="copy" style="width:14px;height:14px;color:#94a3b8;"></i></button>
-                    <button class="bo-btn-danger" onclick="remove(${id})" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px;color:#f87171;"></i></button>
+                <div class="itv-card-actions" data-stop="1">
+                    <button class="bo-btn-icon" data-action="pdf" data-id=${id} title="PDF"><i data-lucide="file-text" style="width:14px;height:14px;color:#a78bfa;pointer-events:none;"></i></button>
+                    <button class="bo-btn-icon" data-action="edit" data-id=${id} title="Modifier"><i data-lucide="pencil" style="width:14px;height:14px;color:#94a3b8;pointer-events:none;"></i></button>
+                    <button class="bo-btn-icon" data-action="dup" data-id=${id} title="Dupliquer"><i data-lucide="copy" style="width:14px;height:14px;color:#94a3b8;pointer-events:none;"></i></button>
+                    <button class="bo-btn-danger" data-action="del" data-id=${id} title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px;color:#f87171;pointer-events:none;"></i></button>
                 </div>
             </div>
             <div class="itv-card-bottom">
@@ -1433,6 +1442,21 @@ function renderList(list){
         </div>`;
     }).join('');
     lucide.createIcons();
+
+    // ── Délégation d'événements robuste (contourne le problème SVG Lucide) ──
+    w.onclick = function(e) {
+        const actionsZone = e.target.closest('[data-stop]');
+        if (actionsZone) e.stopPropagation();
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        e.stopPropagation();
+        const rawId = btn.dataset.id;
+        const action = btn.dataset.action;
+        if (action === 'pdf')  generatePDF(rawId);
+        else if (action === 'edit') openForm(rawId);
+        else if (action === 'dup')  duplicate(rawId);
+        else if (action === 'del')  remove(rawId);
+    };
 }
 
 function renderKanban(list){
@@ -2273,6 +2297,68 @@ async function removeClient(i){
     const c=clients[i];const nb=interventions.filter(iv=>iv.clientId===c.id).length;
     const ok=await boConfirm({title:'Supprimer '+c.nom+' ?',msg:nb?nb+' intervention(s) associées.':' ',okLabel:'Supprimer',icon:'🗑️'});
     if(!ok)return;clients.splice(i,1);await BO.write(BO.KEYS.clients,clients);buildClientSelect();renderClientList();BO.toast('Client supprimé','info');
+}
+
+/* ══ SAUVEGARDE / RESTAURATION COMPLÈTE ══ */
+function backupData(){
+    const allKeys=[
+        BO.KEYS.interventions, BO.KEYS.clients, 'bo_techs',
+        'bo_company', 'bo_logo',
+        'bo_chrono_start', 'bo_chrono_end',
+    ];
+    const backup={_version:1, _date:new Date().toISOString(), data:{}};
+    allKeys.forEach(k=>{
+        const v=localStorage.getItem(k);
+        if(v!==null) backup.data[k]=v; // on garde le JSON brut
+    });
+    backup.data['_interventions_count']= String(interventions.length);
+    backup.data['_clients_count']= String(clients.length);
+    const json=JSON.stringify(backup, null, 2);
+    const a=document.createElement('a');
+    const date=new Date().toLocaleDateString('fr-FR').replace(/\//g,'-');
+    a.href='data:application/json;charset=utf-8,'+encodeURIComponent(json);
+    a.download=`backup_interventions_${date}.json`;
+    a.click();
+    BO.toast(`✓ Sauvegarde téléchargée — ${interventions.length} intervention(s), ${clients.length} client(s)`,'success');
+}
+
+async function restoreData(evt){
+    const file=evt.target.files[0]; evt.target.value='';
+    if(!file){return;}
+    const ok=await boConfirm({
+        title:'Restaurer une sauvegarde ?',
+        msg:'Toutes les données actuelles seront remplacées par celles du fichier. Cette action est irréversible.',
+        okLabel:'Restaurer',okClass:'gold',icon:'📂'
+    });
+    if(!ok)return;
+    const reader=new FileReader();
+    reader.onload=async(e)=>{
+        try{
+            const backup=JSON.parse(e.target.result);
+            if(!backup._version||!backup.data) throw new Error('Format invalide');
+            // Restaurer chaque clé directement dans localStorage
+            for(const [k,v] of Object.entries(backup.data)){
+                if(k.startsWith('_')) continue; // ignorer les méta
+                localStorage.setItem(k,v);
+            }
+            // Recharger l'état en mémoire
+            [interventions, clients]= await Promise.all([
+                BO.read(BO.KEYS.interventions, []),
+                BO.read(BO.KEYS.clients, []),
+            ]);
+            await loadTechs();
+            await loadCompanySettings();
+            buildAllPills();
+            buildClientSelect();
+            refresh();
+            lucide.createIcons();
+            BO.toast(`✓ Restauration réussie — ${interventions.length} intervention(s), ${clients.length} client(s)`,'success');
+        }catch(err){
+            BO.toast('Fichier de sauvegarde invalide ou corrompu','error');
+            console.error(err);
+        }
+    };
+    reader.readAsText(file);
 }
 
 document.addEventListener('DOMContentLoaded',init);
