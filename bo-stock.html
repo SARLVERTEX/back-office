@@ -3,23 +3,304 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock · Vertex Backoffice</title>
+    <title>Catalogue · Vertex Backoffice</title>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <span data-module-title="Stock" style="display:none"></span>
-    <script src="bo-shell.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        .stock-card {
-            background:var(--card); border:1px solid var(--border);
-            border-radius:1.25rem; padding:1.25rem;
-            transition:all 0.25s; position: relative;
-        }
-        .stock-card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(0,0,0,0.3); }
-        .stock-card.alert { border-color:rgba(239,68,68,0.5); background: rgba(239,68,68,0.02); }
-        .stock-card.warn  { border-color:rgba(245,158,11,0.3); }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── EBP IMPORT MODAL ── */
-        #ebp-modal .bo-modal { max-width:640px; }
+        :root {
+            --bg: #0a0a0c;
+            --surface: #111114;
+            --card: #16161a;
+            --border: rgba(255,255,255,0.07);
+            --border-hover: rgba(255,255,255,0.15);
+            --gold: #FFD700;
+            --gold-dim: rgba(255,215,0,0.12);
+            --gold-glow: rgba(255,215,0,0.25);
+            --muted: #5a5a6e;
+            --text: #e8e8f0;
+            --text-dim: #9090a8;
+            --red: #ef4444;
+            --green: #10b981;
+            --amber: #f59e0b;
+            --blue: #3b82f6;
+            --font-head: 'Syne', sans-serif;
+            --font-mono: 'DM Mono', monospace;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-weight: 400;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* ── LAYOUT ── */
+        .page { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+        /* ── HEADER ── */
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 2.5rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .eyebrow {
+            font-family: var(--font-mono); font-size: 0.6rem; font-weight: 500;
+            color: var(--gold); letter-spacing: 0.15em; text-transform: uppercase;
+            margin-bottom: 0.4rem;
+        }
+        .page-title {
+            font-family: var(--font-head); font-size: 2rem; font-weight: 800;
+            color: var(--text); letter-spacing: -0.02em;
+        }
+        .header-actions { display: flex; gap: 0.6rem; align-items: center; }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.45rem;
+            padding: 0.55rem 1.1rem; border-radius: 0.6rem; font-size: 0.72rem;
+            font-weight: 500; cursor: pointer; border: none; transition: all 0.18s;
+            font-family: var(--font-body); white-space: nowrap;
+        }
+        .btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+        .btn-gold { background: var(--gold); color: #000; font-weight: 700; }
+        .btn-gold:hover { background: #ffe033; transform: translateY(-1px); box-shadow: 0 4px 16px var(--gold-glow); }
+        .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+        .btn-ghost:hover { border-color: var(--border-hover); color: var(--text); background: rgba(255,255,255,0.04); }
+        .btn-danger { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+        .btn-danger:hover { background: rgba(239,68,68,0.18); }
+        .btn-icon {
+            width: 28px; height: 28px; border-radius: 0.4rem; display: inline-flex;
+            align-items: center; justify-content: center; cursor: pointer;
+            background: transparent; border: 1px solid var(--border); color: var(--muted);
+            transition: all 0.15s;
+        }
+        .btn-icon:hover { border-color: var(--border-hover); color: var(--text); background: rgba(255,255,255,0.05); }
+        .btn-icon svg { width: 12px; height: 12px; }
+
+        /* ── KPI STRIP ── */
+        .kpi-strip {
+            display: flex; gap: 1px; background: var(--border);
+            border: 1px solid var(--border); border-radius: 0.75rem;
+            overflow: hidden; margin-bottom: 2rem;
+        }
+        .kpi-cell {
+            flex: 1; background: var(--surface); padding: 1rem 1.25rem;
+            min-width: 100px;
+        }
+        .kpi-label { font-family: var(--font-mono); font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+        .kpi-value { font-family: var(--font-head); font-size: 1.4rem; font-weight: 800; color: var(--text); }
+        .kpi-value.red { color: var(--red); }
+        .kpi-value.gold { color: var(--gold); }
+
+        /* ── TOOLBAR ── */
+        .toolbar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+        .search-wrap { position: relative; flex: 1; min-width: 200px; }
+        .search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--muted); width: 14px; height: 14px; }
+        .search-input {
+            width: 100%; background: var(--surface); border: 1px solid var(--border);
+            border-radius: 0.6rem; padding: 0.55rem 0.75rem 0.55rem 2.25rem;
+            color: var(--text); font-size: 0.78rem; font-family: var(--font-body);
+            transition: border-color 0.15s; outline: none;
+        }
+        .search-input:focus { border-color: rgba(255,215,0,0.35); }
+        .search-input::placeholder { color: var(--muted); }
+
+        select.bo-select {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 0.6rem; padding: 0.55rem 0.75rem; color: var(--text);
+            font-size: 0.72rem; font-family: var(--font-body); cursor: pointer;
+            outline: none; transition: border-color 0.15s;
+        }
+        select.bo-select:focus { border-color: rgba(255,215,0,0.35); }
+
+        /* ── CAT PILLS ── */
+        .cat-pills { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+        .cat-pill {
+            padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.65rem;
+            font-weight: 500; cursor: pointer; border: 1px solid var(--border);
+            background: transparent; color: var(--muted); transition: all 0.15s;
+            font-family: var(--font-body);
+        }
+        .cat-pill:hover { border-color: var(--border-hover); color: var(--text); }
+        .cat-pill.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 700; }
+
+        /* ── ALERT BANNER ── */
+        .alert-banner {
+            display: flex; align-items: center; gap: 0.75rem;
+            background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 0.6rem; padding: 0.75rem 1rem; margin-bottom: 1.5rem;
+            font-size: 0.72rem; color: var(--text-dim);
+        }
+        .alert-banner svg { color: var(--red); flex-shrink: 0; }
+
+        /* ── PRODUCT GRID ── */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        /* ── PRODUCT CARD ── */
+        .product-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 1rem; overflow: hidden; transition: all 0.22s;
+            display: flex; flex-direction: column; cursor: pointer;
+            position: relative;
+        }
+        .product-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+        .product-card.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-glow); }
+
+        .card-thumb {
+            height: 120px; background: var(--surface); display: flex;
+            align-items: center; justify-content: center; position: relative;
+            overflow: hidden;
+        }
+        .card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .card-thumb-placeholder {
+            display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+            color: var(--muted);
+        }
+        .card-thumb-placeholder svg { width: 28px; height: 28px; opacity: 0.4; }
+        .card-thumb-placeholder span { font-size: 0.58rem; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+
+        .cat-badge {
+            position: absolute; top: 0.6rem; left: 0.6rem;
+            padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.55rem;
+            font-weight: 700; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+        }
+        .cat-badge.ecrans { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+        .cat-badge.led { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+        .cat-badge.players { background: rgba(245,158,11,0.2); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+        .cat-badge.cablage { background: rgba(139,92,246,0.2); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
+        .cat-badge.autre { background: rgba(156,163,175,0.1); color: #9ca3af; border: 1px solid rgba(156,163,175,0.2); }
+
+        .select-check {
+            position: absolute; top: 0.6rem; right: 0.6rem;
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 1.5px solid var(--border); background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; z-index: 2;
+        }
+        .select-check svg { width: 10px; height: 10px; color: #000; display: none; }
+        .product-card.selected .select-check { background: var(--gold); border-color: var(--gold); }
+        .product-card.selected .select-check svg { display: block; }
+
+        .card-body { padding: 1rem; flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+        .card-ref { font-family: var(--font-mono); font-size: 0.58rem; color: var(--muted); }
+        .card-name { font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+        .card-desc { font-size: 0.68rem; color: var(--text-dim); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        .card-specs {
+            display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.25rem;
+        }
+        .spec-chip {
+            background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+            border-radius: 0.35rem; padding: 0.2rem 0.5rem;
+            font-size: 0.58rem; font-family: var(--font-mono); color: var(--text-dim);
+        }
+
+        .card-footer {
+            padding: 0.65rem 1rem; border-top: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .card-price { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 500; color: var(--gold); }
+        .card-actions { display: flex; gap: 0.35rem; }
+
+        /* ── SELECTION BAR ── */
+        .selection-bar {
+            position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: var(--card); border: 1px solid var(--gold);
+            border-radius: 0.8rem; padding: 0.75rem 1.25rem;
+            display: flex; align-items: center; gap: 1rem; z-index: 100;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px var(--gold-glow);
+            transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            white-space: nowrap;
+        }
+        .selection-bar.visible { transform: translateX(-50%) translateY(0); }
+        .sel-count { font-family: var(--font-mono); font-size: 0.72rem; color: var(--gold); font-weight: 500; }
+        .sel-label { font-size: 0.72rem; color: var(--text-dim); }
+
+        /* ── MODAL OVERLAY ── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 200; padding: 1rem; backdrop-filter: blur(4px);
+        }
+        .modal {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 1.25rem; width: 100%; max-width: 680px;
+            max-height: 90vh; overflow-y: auto; position: relative;
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.5rem 1.5rem 0;
+        }
+        .modal-title { font-family: var(--font-head); font-size: 1.1rem; font-weight: 700; }
+        .modal-body { padding: 1.25rem 1.5rem; }
+        .modal-footer { padding: 1rem 1.5rem 1.5rem; display: flex; gap: 0.6rem; justify-content: flex-end; border-top: 1px solid var(--border); margin-top: 1rem; }
+
+        /* ── FORM ── */
+        .field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.9rem; }
+        .field label { font-size: 0.65rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); }
+        .field input, .field select, .field textarea {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 0.6rem; padding: 0.6rem 0.85rem; color: var(--text);
+            font-size: 0.78rem; font-family: var(--font-body); outline: none;
+            transition: border-color 0.15s; width: 100%;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: rgba(255,215,0,0.4); }
+        .field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+        .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+        .field-section {
+            font-family: var(--font-mono); font-size: 0.58rem; color: var(--gold);
+            text-transform: uppercase; letter-spacing: 0.12em; padding: 0.5rem 0;
+            border-bottom: 1px solid var(--gold-dim); margin-bottom: 0.75rem; margin-top: 0.5rem;
+        }
+
+        /* ── TABS (fiche) ── */
+        .tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: -1px; }
+        .tab {
+            padding: 0.5rem 1rem; font-size: 0.72rem; font-weight: 500; cursor: pointer;
+            border: none; background: transparent; color: var(--muted); border-bottom: 2px solid transparent;
+            transition: all 0.15s; font-family: var(--font-body); margin-bottom: -1px;
+        }
+        .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── HISTORY ── */
+        .history-item {
+            display: flex; gap: 0.75rem; padding: 0.65rem 0; border-bottom: 1px solid var(--border);
+        }
+        .history-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-top: 0.35rem; flex-shrink: 0; }
+        .history-dot.import { background: var(--gold); }
+        .history-dot.edit { background: var(--blue); }
+        .history-dot.create { background: var(--green); }
+        .history-meta { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); }
+        .history-desc { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.2rem; }
+
+        /* ── PHOTO UPLOAD ── */
+        .photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.5rem; }
+        .photo-thumb {
+            aspect-ratio: 4/3; border-radius: 0.5rem; overflow: hidden;
+            background: var(--surface); border: 1px dashed var(--border);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; transition: border-color 0.15s;
+        }
+        .photo-thumb:hover { border-color: rgba(255,215,0,0.4); }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+        .photo-thumb input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .photo-add-icon { color: var(--muted); opacity: 0.5; }
+        .photo-add-icon svg { width: 20px; height: 20px; }
+
+        /* ── EBP IMPORT ── */
         .ebp-drop-zone {
             border: 2px dashed rgba(255,215,0,0.3); border-radius: 1rem;
             padding: 2.5rem 1.5rem; text-align: center; cursor: pointer;
@@ -27,264 +308,734 @@
         }
         .ebp-drop-zone:hover, .ebp-drop-zone.drag-over { border-color: rgba(255,215,0,0.7); background: rgba(255,215,0,0.07); }
         .ebp-drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width:100%; height:100%; }
-
-        .ebp-step { display:none; }
-        .ebp-step.active { display:block; }
+        .ebp-drop-zone svg { color: var(--gold); margin-bottom: 0.75rem; }
+        .ebp-drop-title { font-weight: 600; color: var(--text); font-size: 0.85rem; margin-bottom: 0.3rem; }
+        .ebp-drop-sub { font-size: 0.68rem; color: var(--muted); }
 
         .ebp-stepper { display: flex; gap: 0.5rem; margin-bottom: 1.75rem; align-items: center; }
         .ebp-step-dot {
-            width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 0.65rem; font-weight: 900; border: 1px solid var(--border); color: var(--muted); flex-shrink: 0;
+            width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 0.65rem; font-weight: 900;
+            border: 1px solid var(--border); color: var(--muted); flex-shrink: 0;
+            font-family: var(--font-mono);
         }
-        .ebp-step-dot.active { background: #FFD700; color: #000; border-color: #FFD700; }
+        .ebp-step-dot.active { background: var(--gold); color: #000; border-color: var(--gold); }
         .ebp-step-line { flex:1; height:1px; background: var(--border); }
 
-        .ebp-map-row { display: grid; grid-template-columns: 1fr 24px 1fr; gap: 0.75rem; align-items: center; margin-bottom: 0.6rem; }
-        .ebp-map-label { font-size: 0.7rem; font-weight: 700; color: var(--muted); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.45rem 0.75rem; }
+        .ebp-map-row { display: grid; grid-template-columns: 1fr 20px 1fr; gap: 0.75rem; align-items: center; margin-bottom: 0.6rem; }
+        .ebp-map-label { font-size: 0.68rem; font-weight: 600; color: var(--text-dim); background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.45rem 0.75rem; font-family: var(--font-mono); }
+        .ebp-arrow { text-align: center; color: var(--gold); font-size: 0.8rem; }
 
+        .ebp-preview-wrap { max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 0.6rem; }
         .ebp-preview-table { width: 100%; border-collapse: collapse; font-size: 0.65rem; }
-        .ebp-preview-table th { background: rgba(255,215,0,0.07); color: #FFD700; padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); }
-        .ebp-preview-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--muted); }
-        
-        .ebp-badge-new { background:rgba(16,185,129,0.15); color:#6ee7b7; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.6rem; }
-        .ebp-badge-upd { background:rgba(245,158,11,0.15); color:#fcd34d; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.6rem; }
+        .ebp-preview-table th { background: rgba(255,215,0,0.06); color: var(--gold); padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-weight: 500; position: sticky; top: 0; }
+        .ebp-preview-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-dim); }
+
+        .badge { padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.58rem; font-weight: 700; font-family: var(--font-mono); }
+        .badge-new { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+        .badge-upd { background: rgba(245,158,11,0.15); color: #fcd34d; }
+
+        .ebp-step-content { display: none; }
+        .ebp-step-content.active { display: block; }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 4rem 2rem; color: var(--muted); gap: 0.75rem; text-align: center;
+        }
+        .empty-state svg { width: 40px; height: 40px; opacity: 0.3; }
+        .empty-state h3 { font-family: var(--font-head); font-size: 1rem; color: var(--text-dim); }
+        .empty-state p { font-size: 0.72rem; max-width: 280px; }
+
+        /* ── EXPORT MODAL ── */
+        .export-option {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 0.75rem;
+            padding: 1rem 1.25rem; cursor: pointer; transition: all 0.15s; display: flex; gap: 0.75rem; align-items: center;
+        }
+        .export-option:hover { border-color: var(--gold); background: var(--gold-dim); }
+        .export-option-icon { width: 36px; height: 36px; border-radius: 0.5rem; background: var(--gold-dim); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .export-option-icon svg { width: 16px; height: 16px; color: var(--gold); }
+        .export-option-title { font-weight: 600; font-size: 0.8rem; margin-bottom: 0.2rem; }
+        .export-option-desc { font-size: 0.65rem; color: var(--muted); }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+
+        @media (max-width: 600px) {
+            .product-grid { grid-template-columns: 1fr; }
+            .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-
-<main class="bo-page bo-animate">
-    <div class="bo-page-header">
+<div class="page">
+    <div class="page-header">
         <div>
-            <div class="bo-eyebrow">Inventaire</div>
-            <h1 class="bo-page-title">Stock</h1>
+            <div class="eyebrow">Vertex Backoffice</div>
+            <h1 class="page-title">Catalogue Produits</h1>
         </div>
-        <div style="display:flex;gap:0.75rem;">
-            <button class="bo-btn-ghost" onclick="openEbpImport()" style="display:flex;align-items:center;gap:0.5rem;font-size:0.7rem;">
-                <i data-lucide="upload" style="width:14px;height:14px;"></i> Importer EBP
+        <div class="header-actions">
+            <button class="btn btn-ghost" onclick="openEbpImport()">
+                <i data-lucide="upload-cloud"></i> Importer EBP
             </button>
-            <button class="bo-btn-gold" onclick="openForm()">
-                <i data-lucide="plus" style="width:14px;height:14px;"></i> Ajouter
+            <button class="btn btn-ghost" id="btn-export-sel" onclick="openExportModal()" style="display:none;">
+                <i data-lucide="download"></i> Exporter sélection
+            </button>
+            <button class="btn btn-gold" onclick="openForm()">
+                <i data-lucide="plus"></i> Nouveau
             </button>
         </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;" id="kpi-row"></div>
+    <div class="kpi-strip" id="kpi-row"></div>
 
-    <div id="alert-banner" style="display:none;" class="bo-alert-banner">
-        <i data-lucide="alert-triangle" style="width:18px;height:18px;color:#ef4444;"></i>
-        <div id="alert-items" style="font-size:0.7rem; color:var(--muted);"></div>
+    <div id="alert-banner" class="alert-banner" style="display:none;">
+        <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+        <span id="alert-items"></span>
     </div>
 
-    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center;">
-        <div class="bo-search-wrap" style="flex:1;min-width:180px;">
-            <i data-lucide="search" class="bo-search-icon"></i>
-            <input id="search" class="bo-search" placeholder="Réf, nom…" oninput="render()">
+    <div class="toolbar">
+        <div class="search-wrap">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="search" class="search-input" placeholder="Rechercher par ref, nom, description…" oninput="render()">
         </div>
-        
-        <select id="sort-select" class="bo-select" style="width:auto; font-size:0.7rem;" onchange="render()">
-            <option value="nom">Trier par Nom</option>
-            <option value="qty-asc">Stock : + Petit</option>
-            <option value="qty-desc">Stock : + Grand</option>
-            <option value="prix">Prix : + Élevé</option>
+        <select id="sort-select" class="bo-select" onchange="render()">
+            <option value="nom">Nom A→Z</option>
+            <option value="cat">Catégorie</option>
+            <option value="prix-desc">Prix décroissant</option>
+            <option value="recent">Récents d'abord</option>
         </select>
-
-        <div id="cat-pills" style="display:flex;gap:0.4rem;"></div>
-        
-        <div id="view-toggle" style="display:flex;gap:0.4rem;">
-            <button class="bo-pill active" id="view-grid" onclick="setView('grid')"><i data-lucide="layout-grid"></i></button>
-            <button class="bo-pill" id="view-list" onclick="setView('list')"><i data-lucide="list"></i></button>
-        </div>
+        <div class="cat-pills" id="cat-pills"></div>
     </div>
 
-    <div id="stock-container"></div>
-</main>
+    <div class="product-grid" id="product-grid"></div>
+</div>
 
-<div class="bo-modal-overlay" id="modal" style="display:none;">
-    <div class="bo-modal" style="max-width:520px;">
-        <div class="bo-modal-header">
-            <div class="bo-modal-title" id="modal-title">Article</div>
-            <button class="bo-modal-close" onclick="closeModal()"><i data-lucide="x"></i></button>
+<!-- SELECTION BAR -->
+<div class="selection-bar" id="selection-bar">
+    <span class="sel-count" id="sel-count">0 sélectionné(s)</span>
+    <span class="sel-label">→</span>
+    <button class="btn btn-gold" onclick="openExportModal()" style="padding:0.4rem 0.9rem; font-size:0.68rem;">
+        <i data-lucide="download"></i> Exporter vers EBP
+    </button>
+    <button class="btn btn-ghost" onclick="clearSelection()" style="padding:0.4rem 0.75rem; font-size:0.68rem;">
+        <i data-lucide="x"></i>
+    </button>
+</div>
+
+<!-- ══ FICHE PRODUIT MODAL ══ -->
+<div class="modal-overlay" id="modal-form" style="display:none;" onclick="handleOverlayClick(event,'modal-form')">
+    <div class="modal" style="max-width:700px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title" id="form-title">Nouveau produit</div>
+            <button class="btn-icon" onclick="closeModal('modal-form')"><i data-lucide="x"></i></button>
         </div>
-        <div class="bo-field"><label class="bo-label">Nom <span class="req">*</span></label><input id="f-nom" class="bo-input"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-            <div class="bo-field"><label class="bo-label">Référence</label><input id="f-ref" class="bo-input"></div>
-            <div class="bo-field">
-                <label class="bo-label">Catégorie</label>
-                <select id="f-cat" class="bo-select">
-                    <option>Affichage</option><option>LED</option><option>Totem</option><option>Câblage</option><option>Autre</option>
-                </select>
+        <div class="modal-body">
+            <div class="tabs" id="form-tabs">
+                <button class="tab active" onclick="switchTab('tab-general',this)">Général</button>
+                <button class="tab" onclick="switchTab('tab-specs',this)">Spécifications</button>
+                <button class="tab" onclick="switchTab('tab-media',this)">Médias</button>
+                <button class="tab" onclick="switchTab('tab-history',this)">Historique</button>
+            </div>
+
+            <!-- TAB GENERAL -->
+            <div class="tab-panel active" id="tab-general">
+                <div class="form-grid-2">
+                    <div class="field">
+                        <label>Référence EBP</label>
+                        <input id="f-ref" placeholder="EX-1234">
+                    </div>
+                    <div class="field">
+                        <label>Catégorie</label>
+                        <select id="f-cat" onchange="updateSpecFields()">
+                            <option value="Ecrans">Écrans / Dalles</option>
+                            <option value="LED">Murs LED / Modules</option>
+                            <option value="Players">Lecteurs / Players</option>
+                            <option value="Cablage">Câblage & Accessoires</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Désignation *</label>
+                    <input id="f-nom" placeholder="Nom complet du produit">
+                </div>
+                <div class="field">
+                    <label>Description</label>
+                    <textarea id="f-desc" placeholder="Description détaillée, usage, particularités…"></textarea>
+                </div>
+                <div class="form-grid-3">
+                    <div class="field">
+                        <label>Prix HT (€)</label>
+                        <input id="f-prix" type="number" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="field">
+                        <label>Marque / Fabricant</label>
+                        <input id="f-marque" placeholder="Samsung, LG, Absen…">
+                    </div>
+                    <div class="field">
+                        <label>Tags (virgule)</label>
+                        <input id="f-tags" placeholder="outdoor, 4K, UHD…">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB SPECS -->
+            <div class="tab-panel" id="tab-specs">
+                <div id="spec-fields-container">
+                    <!-- injected dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB MEDIA -->
+            <div class="tab-panel" id="tab-media">
+                <div class="field-section">Photos produit</div>
+                <div class="photo-grid" id="photo-grid"></div>
+                <div class="field" style="margin-top:1rem;">
+                    <label>URL fiche technique (PDF ou lien)</label>
+                    <input id="f-doc-url" placeholder="https://…">
+                </div>
+                <div class="field">
+                    <label>Notes internes</label>
+                    <textarea id="f-notes" placeholder="Infos fournisseur, délais, remarques…" style="min-height:60px;"></textarea>
+                </div>
+            </div>
+
+            <!-- TAB HISTORIQUE -->
+            <div class="tab-panel" id="tab-history">
+                <div id="history-list" style="padding-top:0.25rem;"></div>
             </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
-            <div class="bo-field"><label class="bo-label">Quantité</label><input id="f-qty" type="number" class="bo-input"></div>
-            <div class="bo-field"><label class="bo-label">Seuil (0=off)</label><input id="f-seuil" type="number" class="bo-input"></div>
-            <div class="bo-field"><label class="bo-label">Prix (€)</label><input id="f-prix" type="number" class="bo-input"></div>
-        </div>
-        <div class="bo-modal-footer">
-            <button class="bo-btn-gold" onclick="saveForm()">Enregistrer</button>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('modal-form')">Annuler</button>
+            <button class="btn btn-gold" onclick="saveForm()"><i data-lucide="save"></i> Enregistrer</button>
         </div>
     </div>
 </div>
 
-<div class="bo-modal-overlay" id="ebp-modal" style="display:none;">
-    <div class="bo-modal">
-        <div class="bo-modal-header">
-            <div class="bo-modal-title">Import EBP</div>
-            <button class="bo-modal-close" onclick="closeEbpModal()"><i data-lucide="x"></i></button>
+<!-- ══ EBP IMPORT MODAL ══ -->
+<div class="modal-overlay" id="modal-ebp" style="display:none;" onclick="handleOverlayClick(event,'modal-ebp')">
+    <div class="modal" style="max-width:640px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">Import EBP</div>
+            <button class="btn-icon" onclick="closeModal('modal-ebp')"><i data-lucide="x"></i></button>
         </div>
-
-        <div class="ebp-stepper">
-            <div class="ebp-step-dot active" id="sd-1">1</div><div class="ebp-step-line"></div>
-            <div class="ebp-step-dot" id="sd-2">2</div><div class="ebp-step-line"></div>
-            <div class="ebp-step-dot" id="sd-3">3</div>
-        </div>
-
-        <div class="ebp-step active" id="ebp-s1">
-            <div class="ebp-drop-zone" id="ebp-drop">
-                <input type="file" accept=".csv,.txt,.xlsx" onchange="ebpFileSelected(this.files[0])">
-                <i data-lucide="upload-cloud" style="width:40px;height:40px;color:#FFD700;margin-bottom:1rem;"></i>
-                <div>Glissez votre fichier EBP ici</div>
+        <div class="modal-body">
+            <div class="ebp-stepper">
+                <div class="ebp-step-dot active" id="sd-1">1</div><div class="ebp-step-line"></div>
+                <div class="ebp-step-dot" id="sd-2">2</div><div class="ebp-step-line"></div>
+                <div class="ebp-step-dot" id="sd-3">3</div>
             </div>
-            <div id="ebp-file-info" style="display:none; margin-top:1rem; color:#6ee7b7; font-size:0.7rem;"></div>
-            <div class="bo-modal-footer"><button class="bo-btn-gold" id="ebp-next1" disabled onclick="ebpGoStep2()">Suivant</button></div>
-        </div>
 
-        <div class="ebp-step" id="ebp-s2">
-            <div id="ebp-map-container"></div>
-            <div class="bo-modal-footer"><button class="bo-btn-gold" onclick="ebpGoStep3()">Prévisualiser</button></div>
-        </div>
-
-        <div class="ebp-step" id="ebp-s3">
-            <div style="max-height:300px; overflow-y:auto; border:1px solid var(--border); border-radius:0.5rem;">
-                <table class="ebp-preview-table"><tbody id="ebp-preview-body"></tbody></table>
+            <div class="ebp-step-content active" id="ebp-s1">
+                <div class="ebp-drop-zone" id="ebp-drop">
+                    <input type="file" accept=".csv,.txt,.xlsx" onchange="ebpFileSelected(this.files[0])">
+                    <i data-lucide="upload-cloud" style="width:40px;height:40px;"></i>
+                    <div class="ebp-drop-title">Glissez votre export EBP ici</div>
+                    <div class="ebp-drop-sub">Formats acceptés : CSV, TXT, XLSX</div>
+                </div>
+                <div id="ebp-file-info" style="display:none; margin-top:1rem; color:#6ee7b7; font-size:0.7rem; font-family:var(--font-mono);"></div>
+                <div class="modal-footer" style="border:none; padding:1rem 0 0;">
+                    <button class="btn btn-gold" id="ebp-next1" disabled onclick="ebpGoStep2()">Suivant <i data-lucide="arrow-right"></i></button>
+                </div>
             </div>
-            <div class="bo-modal-footer"><button class="bo-btn-gold" onclick="ebpConfirmImport()">Importer</button></div>
+
+            <div class="ebp-step-content" id="ebp-s2">
+                <div style="font-size:0.7rem; color:var(--muted); margin-bottom:1rem; font-family:var(--font-mono);">Faites correspondre les colonnes EBP avec les champs du catalogue :</div>
+                <div id="ebp-map-container"></div>
+                <div class="modal-footer" style="border:none; padding:1rem 0 0;">
+                    <button class="btn btn-ghost" onclick="ebpSwitchStep(1)"><i data-lucide="arrow-left"></i> Retour</button>
+                    <button class="btn btn-gold" onclick="ebpGoStep3()">Prévisualiser <i data-lucide="eye"></i></button>
+                </div>
+            </div>
+
+            <div class="ebp-step-content" id="ebp-s3">
+                <div id="ebp-summary" style="font-size:0.7rem; color:var(--muted); margin-bottom:0.75rem; font-family:var(--font-mono);"></div>
+                <div class="ebp-preview-wrap">
+                    <table class="ebp-preview-table">
+                        <thead><tr><th></th><th>Réf</th><th>Désignation</th><th>Prix HT</th></tr></thead>
+                        <tbody id="ebp-preview-body"></tbody>
+                    </table>
+                </div>
+                <div class="modal-footer" style="border:none; padding:1rem 0 0;">
+                    <button class="btn btn-ghost" onclick="ebpSwitchStep(2)"><i data-lucide="arrow-left"></i> Retour</button>
+                    <button class="btn btn-gold" onclick="ebpConfirmImport()"><i data-lucide="check"></i> Importer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ EXPORT MODAL ══ -->
+<div class="modal-overlay" id="modal-export" style="display:none;" onclick="handleOverlayClick(event,'modal-export')">
+    <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">Exporter vers EBP</div>
+            <button class="btn-icon" onclick="closeModal('modal-export')"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div style="font-size:0.72rem; color:var(--muted); margin-bottom:1.25rem;" id="export-count-label"></div>
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                <div class="export-option" onclick="doExport('ebp-articles')">
+                    <div class="export-option-icon"><i data-lucide="file-spreadsheet"></i></div>
+                    <div>
+                        <div class="export-option-title">Articles EBP (CSV)</div>
+                        <div class="export-option-desc">Format réimport EBP — Réf, Désignation, Prix HT, Famille</div>
+                    </div>
+                </div>
+                <div class="export-option" onclick="doExport('catalogue-complet')">
+                    <div class="export-option-icon"><i data-lucide="table-2"></i></div>
+                    <div>
+                        <div class="export-option-title">Catalogue complet (CSV)</div>
+                        <div class="export-option-desc">Tous les champs — pour archivage ou Excel</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-let stocks = [];
-let filterCat = 'Toutes';
-let editId = null, viewMode = 'grid';
-let ebpRawData = [], ebpHeaders = [], ebpFile = null;
+// ══════════════════════════════════════════
+// DATA STORE (localStorage fallback sans BO)
+// ══════════════════════════════════════════
+const DB = {
+    get(key, def) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; } },
+    set(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+};
 
-async function init() {
-    stocks = await BO.read(BO.KEYS.stocks, []);
+const KEYS = { products: 'vx_products_v2' };
+
+// CATÉGORIE → SPECS FIELDS CONFIG
+const CAT_SPECS = {
+    Ecrans: [
+        { id: 'taille', label: 'Taille (pouces)', type: 'text', placeholder: '55"' },
+        { id: 'luminosite', label: 'Luminosité (nits)', type: 'text', placeholder: '500 nits' },
+        { id: 'resolution', label: 'Résolution', type: 'text', placeholder: '1920×1080' },
+        { id: 'orientation', label: 'Orientation', type: 'select', options: ['Paysage', 'Portrait', 'Les deux'] },
+        { id: 'dalle', label: 'Type dalle', type: 'text', placeholder: 'IPS, VA, OLED…' },
+        { id: 'connectique', label: 'Connectique', type: 'text', placeholder: 'HDMI 2.0, DP, USB-C…' },
+    ],
+    LED: [
+        { id: 'pitch', label: 'Pitch', type: 'text', placeholder: 'P2.5, P1.875…' },
+        { id: 'module_w', label: 'Largeur module (mm)', type: 'number', placeholder: '320' },
+        { id: 'module_h', label: 'Hauteur module (mm)', type: 'number', placeholder: '160' },
+        { id: 'luminosite', label: 'Luminosité (nits)', type: 'text', placeholder: '6000 nits' },
+        { id: 'usage', label: 'Usage', type: 'select', options: ['Indoor', 'Outdoor', 'Semi-outdoor'] },
+        { id: 'refresh', label: 'Taux de rafraîchissement', type: 'text', placeholder: '3840 Hz' },
+    ],
+    Players: [
+        { id: 'os', label: 'Système', type: 'text', placeholder: 'Android 11, Windows, Linux…' },
+        { id: 'sortie_video', label: 'Sorties vidéo', type: 'text', placeholder: '2×HDMI 4K…' },
+        { id: 'reseau', label: 'Réseau', type: 'text', placeholder: 'LAN, WiFi 5, 4G…' },
+        { id: 'stockage', label: 'Stockage', type: 'text', placeholder: '16 Go eMMC…' },
+        { id: 'logiciel', label: 'Logiciel compatible', type: 'text', placeholder: 'BrightSign, Scala…' },
+    ],
+    Cablage: [
+        { id: 'longueur', label: 'Longueur (m)', type: 'number', placeholder: '5' },
+        { id: 'connecteurs', label: 'Connecteurs', type: 'text', placeholder: 'HDMI A→A, RJ45…' },
+        { id: 'categorie_cable', label: 'Catégorie', type: 'text', placeholder: 'Cat6, Cat7, Fibre…' },
+    ],
+    Autre: []
+};
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let products = [];
+let filterCat = 'Toutes';
+let selectedIds = new Set();
+let editId = null;
+let editPhotos = []; // base64
+let ebpRawData = [], ebpHeaders = [];
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+function init() {
+    products = DB.get(KEYS.products, []);
     buildCatPills();
     render();
+    lucide.createIcons();
 }
 
-/** * CORRECTIONS ACCENTS & NETTOYAGE
- */
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
 function cleanText(t) {
-    if(!t) return "";
-    return t.toString().trim().replace(/[^\x20-\x7E\xC0-\xFF]/g, '').replace(/\s+/g, ' ');
+    if (!t) return '';
+    return t.toString().trim().replace(/\s+/g, ' ');
 }
 
+function uid() {
+    return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function fmtDate(ts) {
+    if (!ts) return '';
+    return new Date(ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function catClass(cat) {
+    const m = { Ecrans: 'ecrans', LED: 'led', Players: 'players', Cablage: 'cablage', Autre: 'autre' };
+    return m[cat] || 'autre';
+}
+
+function catLabel(cat) {
+    const m = { Ecrans: 'Écrans', LED: 'Murs LED', Players: 'Players', Cablage: 'Câblage', Autre: 'Autre' };
+    return m[cat] || cat;
+}
+
+// ══════════════════════════════════════════
+// UI BUILDERS
+// ══════════════════════════════════════════
 function buildCatPills() {
-    const cats = ['Toutes', ...new Set(stocks.map(s => s.categorie))];
-    document.getElementById('cat-pills').innerHTML = cats.map(c => `
-        <button class="bo-pill ${c===filterCat?'active':''}" onclick="filterCat='${c}';buildCatPills();render();">${c}</button>
-    `).join('');
+    const cats = ['Toutes', ...new Set(products.map(p => p.categorie))];
+    document.getElementById('cat-pills').innerHTML = cats.map(c =>
+        `<button class="cat-pill ${c === filterCat ? 'active' : ''}" onclick="filterCat='${c}';buildCatPills();render();">${catLabel(c) !== c ? catLabel(c) : c}</button>`
+    ).join('');
 }
 
 function render() {
     const q = document.getElementById('search').value.toLowerCase();
     const sortBy = document.getElementById('sort-select').value;
 
-    let filtered = stocks.filter(s => {
-        const mq = !q || s.nom.toLowerCase().includes(q) || (s.ref||'').toLowerCase().includes(q);
-        return mq && (filterCat==='Toutes' || s.categorie===filterCat);
+    let list = products.filter(p => {
+        const matchQ = !q || p.nom.toLowerCase().includes(q) || (p.ref || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q) || (p.tags || '').toLowerCase().includes(q);
+        const matchCat = filterCat === 'Toutes' || p.categorie === filterCat;
+        return matchQ && matchCat;
     });
 
-    filtered.sort((a,b) => {
-        if(sortBy==='qty-asc') return a.quantite - b.quantite;
-        if(sortBy==='qty-desc') return b.quantite - a.quantite;
-        if(sortBy==='prix') return (b.prix||0) - (a.prix||0);
+    list.sort((a, b) => {
+        if (sortBy === 'cat') return a.categorie.localeCompare(b.categorie);
+        if (sortBy === 'prix-desc') return (b.prix || 0) - (a.prix || 0);
+        if (sortBy === 'recent') return (b.createdAt || 0) - (a.createdAt || 0);
         return a.nom.localeCompare(b.nom);
     });
 
-    // Alertes
-    const alerts = stocks.filter(s => s.seuilAlerte > 0 && s.quantite <= s.seuilAlerte);
-    const banner = document.getElementById('alert-banner');
-    if(alerts.length > 0) {
-        banner.style.display = 'flex';
-        document.getElementById('alert-items').textContent = alerts.slice(0,3).map(a => a.nom).join(', ') + (alerts.length>3?'...':'');
-    } else banner.style.display = 'none';
-
-    // KPIs
-    const val = stocks.reduce((a,s) => a+(s.quantite*(s.prix||0)), 0);
+    // KPI
     document.getElementById('kpi-row').innerHTML = `
-        <div class="bo-stat"><div class="bo-stat-label">Valeur</div><div class="bo-stat-value">${Math.round(val).toLocaleString()}€</div></div>
-        <div class="bo-stat"><div class="bo-stat-label">Alertes</div><div class="bo-stat-value" style="color:#ef4444">${alerts.length}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">Total articles</div><div class="kpi-value gold">${products.length}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">Écrans / Dalles</div><div class="kpi-value">${products.filter(p=>p.categorie==='Ecrans').length}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">Murs LED</div><div class="kpi-value">${products.filter(p=>p.categorie==='LED').length}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">Players</div><div class="kpi-value">${products.filter(p=>p.categorie==='Players').length}</div></div>
+        <div class="kpi-cell"><div class="kpi-label">Sélectionnés</div><div class="kpi-value ${selectedIds.size>0?'gold':''}">${selectedIds.size}</div></div>
     `;
 
-    const cont = document.getElementById('stock-container');
-    cont.style.display = viewMode === 'grid' ? 'grid' : 'block';
-    cont.innerHTML = filtered.map(s => viewMode==='grid' ? renderCardGrid(s) : renderCardList(s)).join('');
+    const grid = document.getElementById('product-grid');
+    if (list.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+            <i data-lucide="package-x"></i>
+            <h3>Aucun produit trouvé</h3>
+            <p>Importez un fichier EBP ou ajoutez un produit manuellement.</p>
+        </div>`;
+    } else {
+        grid.innerHTML = list.map(p => renderCard(p)).join('');
+    }
+
+    // Selection bar
+    const bar = document.getElementById('selection-bar');
+    bar.classList.toggle('visible', selectedIds.size > 0);
+    document.getElementById('sel-count').textContent = `${selectedIds.size} sélectionné(s)`;
+    const btnExportSel = document.getElementById('btn-export-sel');
+    if (btnExportSel) btnExportSel.style.display = selectedIds.size > 0 ? 'inline-flex' : 'none';
+
     lucide.createIcons();
 }
 
-function renderCardGrid(s) {
-    const color = (s.seuilAlerte>0 && s.quantite<=s.seuilAlerte) ? '#ef4444' : '#10b981';
-    return `<div class="stock-card">
-        <div style="font-size:0.6rem; color:var(--muted)">${s.ref||'-'}</div>
-        <div style="font-weight:700; margin:0.5rem 0;">${s.nom}</div>
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-size:1.5rem; font-weight:900; color:${color}">${s.quantite}</div>
-            <div style="display:flex; gap:0.4rem;">
-                <button onclick="openForm('${s.id}')" class="bo-btn-icon"><i data-lucide="pencil"></i></button>
-                <button onclick="deleteItem('${s.id}')" class="bo-btn-icon"><i data-lucide="trash-2" style="color:#ef4444"></i></button>
+function renderCard(p) {
+    const isSelected = selectedIds.has(p.id);
+    const specs = buildSpecChips(p);
+    const thumb = p.photos && p.photos[0]
+        ? `<img src="${p.photos[0]}" alt="${p.nom}">`
+        : `<div class="card-thumb-placeholder"><i data-lucide="${catIcon(p.categorie)}"></i><span>${catLabel(p.categorie)}</span></div>`;
+
+    return `<div class="product-card ${isSelected ? 'selected' : ''}" id="card-${p.id}">
+        <div class="card-thumb">
+            ${thumb}
+            <div class="cat-badge ${catClass(p.categorie)}">${catLabel(p.categorie)}</div>
+            <div class="select-check" onclick="toggleSelect('${p.id}',event)">
+                <i data-lucide="check"></i>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="card-ref">${p.ref || '—'}</div>
+            <div class="card-name">${p.nom}</div>
+            ${p.description ? `<div class="card-desc">${p.description}</div>` : ''}
+            ${specs ? `<div class="card-specs">${specs}</div>` : ''}
+        </div>
+        <div class="card-footer">
+            <div class="card-price">${p.prix ? p.prix.toLocaleString('fr-FR', {minimumFractionDigits:2}) + ' €' : '—'}</div>
+            <div class="card-actions">
+                <button class="btn-icon" onclick="openForm('${p.id}')"><i data-lucide="pencil"></i></button>
+                <button class="btn-icon" onclick="deleteProduct('${p.id}')"><i data-lucide="trash-2" style="color:var(--red);"></i></button>
             </div>
         </div>
     </div>`;
 }
 
-function renderCardList(s) {
-    return `<div class="bo-row">
-        <div style="width:100px; font-size:0.7rem;">${s.ref||'-'}</div>
-        <div style="flex:1"><strong>${s.nom}</strong></div>
-        <div style="width:60px; font-weight:900;">${s.quantite}</div>
-        <button onclick="openForm('${s.id}')" class="bo-btn-icon"><i data-lucide="pencil"></i></button>
-    </div>`;
+function buildSpecChips(p) {
+    const s = p.specs || {};
+    const chips = [];
+    if (p.categorie === 'Ecrans') {
+        if (s.taille) chips.push(s.taille);
+        if (s.luminosite) chips.push(s.luminosite);
+        if (s.resolution) chips.push(s.resolution);
+    } else if (p.categorie === 'LED') {
+        if (s.pitch) chips.push(s.pitch);
+        if (s.module_w && s.module_h) chips.push(`${s.module_w}×${s.module_h}mm`);
+        if (s.usage) chips.push(s.usage);
+    } else if (p.categorie === 'Players') {
+        if (s.os) chips.push(s.os);
+        if (s.sortie_video) chips.push(s.sortie_video);
+    } else if (p.categorie === 'Cablage') {
+        if (s.longueur) chips.push(s.longueur + 'm');
+        if (s.connecteurs) chips.push(s.connecteurs);
+    }
+    if (p.marque) chips.unshift(p.marque);
+    return chips.slice(0, 4).map(c => `<span class="spec-chip">${c}</span>`).join('');
 }
 
-/* --- LOGIQUE IMPORT EBP AMÉLIORÉE --- */
-function openEbpImport() { 
-    ebpReset();
-    document.getElementById('ebp-modal').style.display='flex'; 
+function catIcon(cat) {
+    const m = { Ecrans: 'monitor', LED: 'grid-2x2', Players: 'play-circle', Cablage: 'cable', Autre: 'package' };
+    return m[cat] || 'package';
+}
+
+// ══════════════════════════════════════════
+// SELECTION
+// ══════════════════════════════════════════
+function toggleSelect(id, e) {
+    e.stopPropagation();
+    if (selectedIds.has(id)) selectedIds.delete(id);
+    else selectedIds.add(id);
+    render();
+}
+
+function clearSelection() {
+    selectedIds.clear();
+    render();
+}
+
+// ══════════════════════════════════════════
+// FORM
+// ══════════════════════════════════════════
+function openForm(id = null) {
+    editId = id;
+    editPhotos = [];
+    document.getElementById('form-title').textContent = id ? 'Modifier le produit' : 'Nouveau produit';
+
+    // Reset tabs
+    switchTab('tab-general', document.querySelector('#form-tabs .tab'));
+
+    const p = id ? products.find(x => x.id === id) : null;
+    document.getElementById('f-nom').value = p ? p.nom : '';
+    document.getElementById('f-ref').value = p ? (p.ref || '') : '';
+    document.getElementById('f-cat').value = p ? p.categorie : 'Ecrans';
+    document.getElementById('f-desc').value = p ? (p.description || '') : '';
+    document.getElementById('f-prix').value = p ? (p.prix || '') : '';
+    document.getElementById('f-marque').value = p ? (p.marque || '') : '';
+    document.getElementById('f-tags').value = p ? (p.tags || '') : '';
+    document.getElementById('f-doc-url').value = p ? (p.docUrl || '') : '';
+    document.getElementById('f-notes').value = p ? (p.notes || '') : '';
+    editPhotos = p && p.photos ? [...p.photos] : [];
+
+    updateSpecFields(p ? p.specs : null);
+    renderPhotoGrid();
+    renderHistory(p ? p.history : []);
+    openModal('modal-form');
+}
+
+function updateSpecFields(existingSpecs = null) {
+    const cat = document.getElementById('f-cat').value;
+    const fields = CAT_SPECS[cat] || [];
+    const specs = existingSpecs || {};
+
+    const container = document.getElementById('spec-fields-container');
+    if (fields.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted); font-size:0.72rem; padding:1rem 0;">Aucune spécification définie pour cette catégorie.</div>';
+        return;
+    }
+
+    const pairs = [];
+    for (let i = 0; i < fields.length; i += 2) {
+        pairs.push(fields.slice(i, i + 2));
+    }
+
+    container.innerHTML = `
+        <div class="field-section">Spécifications ${catLabel(cat)}</div>
+        ${pairs.map(pair => `
+            <div class="${pair.length === 2 ? 'form-grid-2' : ''}">
+                ${pair.map(f => `
+                    <div class="field">
+                        <label>${f.label}</label>
+                        ${f.type === 'select'
+                            ? `<select id="spec-${f.id}">
+                                ${f.options.map(o => `<option ${(specs[f.id] === o) ? 'selected' : ''}>${o}</option>`).join('')}
+                               </select>`
+                            : `<input id="spec-${f.id}" type="${f.type}" placeholder="${f.placeholder}" value="${specs[f.id] || ''}">`
+                        }
+                    </div>
+                `).join('')}
+            </div>
+        `).join('')}
+    `;
+}
+
+function gatherSpecs() {
+    const cat = document.getElementById('f-cat').value;
+    const fields = CAT_SPECS[cat] || [];
+    const specs = {};
+    fields.forEach(f => {
+        const el = document.getElementById(`spec-${f.id}`);
+        if (el) specs[f.id] = el.value.trim();
+    });
+    return specs;
+}
+
+function renderPhotoGrid() {
+    const grid = document.getElementById('photo-grid');
+    const slots = [...editPhotos, ...Array(Math.max(0, 3 - editPhotos.length)).fill(null)];
+    grid.innerHTML = slots.map((photo, i) => `
+        <div class="photo-thumb" onclick="photoSlotClick(${i})">
+            ${photo ? `<img src="${photo}" alt="photo ${i+1}">` : `<div class="photo-add-icon"><i data-lucide="image-plus"></i></div>`}
+            <input type="file" accept="image/*" onchange="handlePhotoUpload(${i}, this)" style="display:none" id="photo-input-${i}">
+        </div>
+    `).join('');
     lucide.createIcons();
 }
 
-function ebpFileSelected(file) {
-    if(!file) return;
-    ebpFile = file;
+function photoSlotClick(i) {
+    document.getElementById(`photo-input-${i}`).click();
+}
+
+function handlePhotoUpload(i, input) {
+    const file = input.files[0];
+    if (!file) return;
     const reader = new FileReader();
-    
-    // Correction cruciale : ISO-8859-1 pour EBP Windows
-    reader.readAsText(file, "ISO-8859-1"); 
-    
-    reader.onload = (e) => {
+    reader.onload = e => {
+        editPhotos[i] = e.target.result;
+        renderPhotoGrid();
+    };
+    reader.readAsDataURL(file);
+}
+
+function renderHistory(history) {
+    const list = document.getElementById('history-list');
+    if (!history || history.length === 0) {
+        list.innerHTML = '<div style="color:var(--muted); font-size:0.72rem; padding:1rem 0;">Aucun historique disponible.</div>';
+        return;
+    }
+    list.innerHTML = [...history].reverse().map(h => `
+        <div class="history-item">
+            <div class="history-dot ${h.type}"></div>
+            <div>
+                <div class="history-meta">${fmtDate(h.ts)}</div>
+                <div class="history-desc">${h.desc}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function saveForm() {
+    const nom = document.getElementById('f-nom').value.trim();
+    if (!nom) { document.getElementById('f-nom').focus(); return; }
+
+    const now = Date.now();
+    const existing = editId ? products.find(p => p.id === editId) : null;
+    const history = existing ? [...(existing.history || [])] : [];
+    history.push({ ts: now, type: editId ? 'edit' : 'create', desc: editId ? 'Fiche modifiée manuellement' : 'Produit créé' });
+
+    const item = {
+        id: editId || uid(),
+        nom: cleanText(nom),
+        ref: cleanText(document.getElementById('f-ref').value),
+        categorie: document.getElementById('f-cat').value,
+        description: document.getElementById('f-desc').value.trim(),
+        prix: parseFloat(document.getElementById('f-prix').value) || 0,
+        marque: document.getElementById('f-marque').value.trim(),
+        tags: document.getElementById('f-tags').value.trim(),
+        docUrl: document.getElementById('f-doc-url').value.trim(),
+        notes: document.getElementById('f-notes').value.trim(),
+        specs: gatherSpecs(),
+        photos: editPhotos.filter(Boolean),
+        history,
+        createdAt: existing ? existing.createdAt : now,
+        updatedAt: now
+    };
+
+    if (editId) products = products.map(p => p.id === editId ? item : p);
+    else products.push(item);
+
+    DB.set(KEYS.products, products);
+    closeModal('modal-form');
+    buildCatPills();
+    render();
+}
+
+async function deleteProduct(id) {
+    if (!confirm('Supprimer ce produit ?')) return;
+    products = products.filter(p => p.id !== id);
+    selectedIds.delete(id);
+    DB.set(KEYS.products, products);
+    buildCatPills();
+    render();
+}
+
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+function switchTab(panelId, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(panelId).classList.add('active');
+    if (btn) btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════
+function openModal(id) {
+    document.getElementById(id).style.display = 'flex';
+    lucide.createIcons();
+}
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function handleOverlayClick(e, id) { if (e.target.id === id) closeModal(id); }
+
+// ══════════════════════════════════════════
+// EBP IMPORT
+// ══════════════════════════════════════════
+function openEbpImport() {
+    ebpReset();
+    openModal('modal-ebp');
+}
+
+function ebpFileSelected(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.readAsText(file, 'ISO-8859-1');
+    reader.onload = e => {
         const content = e.target.result;
-        // On nettoie les lignes et on détecte le séparateur
-        const lines = content.split(/\r?\n/).filter(l => l.trim() !== "");
+        const lines = content.split(/\r?\n/).filter(l => l.trim() !== '');
         const sep = content.includes(';') ? ';' : ',';
         ebpHeaders = lines[0].split(sep).map(h => h.replace(/"/g, '').trim());
         ebpRawData = lines.slice(1).map(l => l.split(sep).map(v => v.replace(/"/g, '').trim()));
-        
+
         document.getElementById('ebp-file-info').style.display = 'block';
-        document.getElementById('ebp-file-info').textContent = `Fichier prêt : ${file.name} (${ebpRawData.length} lignes)`;
+        document.getElementById('ebp-file-info').textContent = `✓ ${file.name} — ${ebpRawData.length} lignes détectées`;
         document.getElementById('ebp-next1').disabled = false;
+        lucide.createIcons();
     };
 }
 
 function ebpGoStep2() {
     const fields = [
-        { id: 'nom', label: 'Nom / Désignation', search: ['nom', 'designation', 'libelle'] },
-        { id: 'ref', label: 'Référence', search: ['ref', 'code'] },
-        { id: 'qty', label: 'Quantité Stock', search: ['stock', 'reelle', 'quantite'] },
-        { id: 'prix', label: 'Prix Vente', search: ['prix', 'vente', 'ht'] }
+        { id: 'nom', label: 'Désignation *', search: ['nom', 'designation', 'libelle', 'article'] },
+        { id: 'ref', label: 'Référence', search: ['ref', 'code', 'numero'] },
+        { id: 'prix', label: 'Prix HT', search: ['prix', 'ht', 'vente', 'tarif'] },
+        { id: 'marque', label: 'Marque / Famille', search: ['marque', 'famille', 'fournisseur'] },
+        { id: 'desc', label: 'Description', search: ['desc', 'commentaire', 'note'] },
     ];
 
     let html = '';
@@ -292,132 +1043,154 @@ function ebpGoStep2() {
         const found = ebpHeaders.findIndex(h => f.search.some(s => h.toLowerCase().includes(s)));
         html += `<div class="ebp-map-row">
             <div class="ebp-map-label">${f.label}</div>
-            <div style="text-align:center; color:#FFD700">→</div>
+            <div class="ebp-arrow">→</div>
             <select id="map-${f.id}" class="bo-select">
-                <option value="-1">Ne pas importer</option>
-                ${ebpHeaders.map((h, i) => `<option value="${i}" ${i===found?'selected':''}>${h}</button>`).join('')}
+                <option value="-1">— ne pas importer</option>
+                ${ebpHeaders.map((h, i) => `<option value="${i}" ${i === found ? 'selected' : ''}>${h}</option>`).join('')}
             </select>
         </div>`;
     });
-
     document.getElementById('ebp-map-container').innerHTML = html;
-    switchStep(2);
+    ebpSwitchStep(2);
 }
 
 function ebpGoStep3() {
-    const map = {
-        nom: parseInt(document.getElementById('map-nom').value),
-        ref: parseInt(document.getElementById('map-ref').value),
-        qty: parseInt(document.getElementById('map-qty').value),
-        prix: parseInt(document.getElementById('map-prix').value)
-    };
-
+    const map = getEbpMap();
+    let newCount = 0, updCount = 0;
     let html = '';
-    ebpRawData.slice(0, 50).forEach(row => {
+
+    ebpRawData.slice(0, 100).forEach(row => {
         const nom = cleanText(row[map.nom]);
-        if(!nom) return;
-        const exist = stocks.find(s => s.ref === row[map.ref]);
+        if (!nom) return;
+        const ref = map.ref >= 0 ? cleanText(row[map.ref]) : '';
+        const exist = products.find(p => p.ref === ref && ref !== '');
+        if (exist) updCount++; else newCount++;
         html += `<tr>
-            <td><span class="${exist?'ebp-badge-upd':'ebp-badge-new'}">${exist?'MAJ':'NEW'}</span></td>
-            <td>${row[map.ref]||'-'}</td>
+            <td><span class="badge ${exist ? 'badge-upd' : 'badge-new'}">${exist ? 'MAJ' : 'NEW'}</span></td>
+            <td>${ref || '—'}</td>
             <td>${nom}</td>
-            <td>${row[map.qty]||0}</td>
+            <td>${map.prix >= 0 ? (row[map.prix] || '—') : '—'}</td>
         </tr>`;
     });
+
     document.getElementById('ebp-preview-body').innerHTML = html;
-    switchStep(3);
+    document.getElementById('ebp-summary').textContent = `${newCount} nouveaux · ${updCount} mis à jour (prévisualisation sur 100 max)`;
+    ebpSwitchStep(3);
 }
 
-async function ebpConfirmImport() {
-    const map = {
+function getEbpMap() {
+    return {
         nom: parseInt(document.getElementById('map-nom').value),
         ref: parseInt(document.getElementById('map-ref').value),
-        qty: parseInt(document.getElementById('map-qty').value),
-        prix: parseInt(document.getElementById('map-prix').value)
+        prix: parseInt(document.getElementById('map-prix').value),
+        marque: parseInt(document.getElementById('map-marque').value),
+        desc: parseInt(document.getElementById('map-desc').value),
     };
+}
+
+function ebpConfirmImport() {
+    const map = getEbpMap();
+    const now = Date.now();
 
     ebpRawData.forEach(row => {
         const nom = cleanText(row[map.nom]);
-        if(!nom) return;
-        
-        const ref = cleanText(row[map.ref]);
-        const qty = parseInt(row[map.qty]) || 0;
-        const prix = parseFloat(row[map.prix]?.replace(',', '.')) || 0;
+        if (!nom) return;
+        const ref = map.ref >= 0 ? cleanText(row[map.ref]) : '';
+        const prix = map.prix >= 0 ? parseFloat((row[map.prix] || '').replace(',', '.')) || 0 : 0;
+        const marque = map.marque >= 0 ? cleanText(row[map.marque]) : '';
+        const desc = map.desc >= 0 ? cleanText(row[map.desc]) : '';
 
-        const idx = stocks.findIndex(s => s.ref === ref && ref !== "");
-        if(idx !== -1) {
-            stocks[idx].quantite = qty;
-            stocks[idx].prix = prix;
-            stocks[idx].nom = nom;
+        const idx = products.findIndex(p => p.ref === ref && ref !== '');
+        if (idx !== -1) {
+            const old = products[idx];
+            const history = [...(old.history || []), { ts: now, type: 'import', desc: `Import EBP — prix: ${prix}€` }];
+            products[idx] = { ...old, nom, prix, marque: marque || old.marque, description: desc || old.description, updatedAt: now, history };
         } else {
-            stocks.push({
-                id: Date.now().toString() + Math.random(),
-                nom, ref, quantite: qty, prix, 
-                categorie: 'Autre', seuilAlerte: 0
+            products.push({
+                id: uid(), nom, ref, prix, marque, description: desc,
+                categorie: 'Autre', specs: {}, photos: [], tags: '', notes: '', docUrl: '',
+                history: [{ ts: now, type: 'import', desc: 'Créé par import EBP' }],
+                createdAt: now, updatedAt: now
             });
         }
     });
 
-    await BO.write(BO.KEYS.stocks, stocks);
-    closeEbpModal();
+    DB.set(KEYS.products, products);
+    closeModal('modal-ebp');
+    buildCatPills();
     render();
-    alert("Importation terminée avec succès.");
+    showToast(`Import terminé — ${products.length} articles au catalogue`);
 }
 
-/* UTILS */
-function switchStep(n) {
-    document.querySelectorAll('.ebp-step').forEach(s => s.classList.remove('active'));
+function ebpSwitchStep(n) {
+    document.querySelectorAll('.ebp-step-content').forEach(s => s.classList.remove('active'));
     document.getElementById(`ebp-s${n}`).classList.add('active');
-    document.querySelectorAll('.ebp-step-dot').forEach((d, i) => d.classList.toggle('active', i+1 === n));
+    document.querySelectorAll('.ebp-step-dot').forEach((d, i) => d.classList.toggle('active', i + 1 === n));
 }
 
 function ebpReset() {
-    ebpFile = null; ebpRawData = [];
-    document.getElementById('ebp-file-info').style.display='none';
-    document.getElementById('ebp-next1').disabled=true;
-    switchStep(1);
+    ebpRawData = []; ebpHeaders = [];
+    document.getElementById('ebp-file-info').style.display = 'none';
+    document.getElementById('ebp-next1').disabled = true;
+    ebpSwitchStep(1);
 }
 
-function openForm(id=null) {
-    editId = id; closeModal(); 
-    document.getElementById('modal').style.display='flex';
-    if(id) {
-        const s = stocks.find(x => x.id === id);
-        document.getElementById('f-nom').value = s.nom;
-        document.getElementById('f-ref').value = s.ref;
-        document.getElementById('f-qty').value = s.quantite;
-        document.getElementById('f-seuil').value = s.seuilAlerte;
-        document.getElementById('f-prix').value = s.prix;
+// ══════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════
+function openExportModal() {
+    const count = selectedIds.size > 0 ? selectedIds.size : products.length;
+    document.getElementById('export-count-label').textContent =
+        selectedIds.size > 0
+            ? `${selectedIds.size} produit(s) sélectionné(s) seront exportés.`
+            : `Aucune sélection — les ${products.length} produits du catalogue seront exportés.`;
+    openModal('modal-export');
+}
+
+function doExport(type) {
+    const toExport = selectedIds.size > 0 ? products.filter(p => selectedIds.has(p.id)) : products;
+
+    let csv = '';
+    if (type === 'ebp-articles') {
+        // Format EBP réimport : Ref ; Designation ; PrixHT ; Famille
+        csv = 'Reference;Designation;PrixHT;Famille\n';
+        csv += toExport.map(p =>
+            [p.ref || '', `"${(p.nom || '').replace(/"/g, '""')}"`, (p.prix || 0).toFixed(2).replace('.', ','), p.categorie || ''].join(';')
+        ).join('\n');
+    } else {
+        // Catalogue complet
+        const headers = ['Reference', 'Designation', 'Categorie', 'PrixHT', 'Marque', 'Description', 'Tags', 'Notes', 'DocURL'];
+        csv = headers.join(';') + '\n';
+        csv += toExport.map(p =>
+            [
+                p.ref || '', `"${(p.nom || '').replace(/"/g, '""')}"`, p.categorie || '',
+                (p.prix || 0).toFixed(2).replace('.', ','), p.marque || '',
+                `"${(p.description || '').replace(/"/g, '""')}"`,
+                p.tags || '', `"${(p.notes || '').replace(/"/g, '""')}"`, p.docUrl || ''
+            ].join(';')
+        ).join('\n');
     }
+
+    // BOM UTF-8 pour Excel français
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `export_${type}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    closeModal('modal-export');
+    showToast(`Export "${type}" téléchargé`);
 }
 
-async function saveForm() {
-    const item = {
-        id: editId || Date.now().toString(),
-        nom: cleanText(document.getElementById('f-nom').value),
-        ref: cleanText(document.getElementById('f-ref').value),
-        categorie: document.getElementById('f-cat').value,
-        quantite: parseInt(document.getElementById('f-qty').value)||0,
-        seuilAlerte: parseInt(document.getElementById('f-seuil').value)||0,
-        prix: parseFloat(document.getElementById('f-prix').value)||0
-    };
-    if(editId) stocks = stocks.map(s => s.id === editId ? item : s);
-    else stocks.push(item);
-    await BO.write(BO.KEYS.stocks, stocks);
-    closeModal(); render();
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+function showToast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:6rem;left:50%;transform:translateX(-50%);background:#111114;border:1px solid rgba(255,215,0,0.4);color:#e8e8f0;padding:0.65rem 1.25rem;border-radius:0.6rem;font-size:0.72rem;font-family:var(--font-mono);z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.4);`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
 }
-
-async function deleteItem(id) {
-    if(confirm("Supprimer ?")) {
-        stocks = stocks.filter(s => s.id !== id);
-        await BO.write(BO.KEYS.stocks, stocks);
-        render();
-    }
-}
-
-function setView(m) { viewMode=m; render(); }
-function closeModal() { document.getElementById('modal').style.display='none'; }
-function closeEbpModal() { document.getElementById('ebp-modal').style.display='none'; }
 
 init();
 </script>
