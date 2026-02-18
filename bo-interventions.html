@@ -6,7 +6,94 @@
     <title>Interventions · Vertex Backoffice</title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="bo-shell.js"></script>
+
+    <!-- ══ BO SHELL INLINE ══ -->
+    <script>
+    (function(global) {
+        'use strict';
+        const KEYS = {
+            interventions: 'bo_interventions',
+            clients: 'bo_clients',
+            techs: 'bo_techs',
+        };
+        function uid() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+        function today() {
+            return new Date().toISOString().slice(0, 10);
+        }
+        function fmt(dateStr) {
+            if (!dateStr) return '—';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d)) return dateStr;
+                return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            } catch(e) { return dateStr; }
+        }
+        let toastContainer = null;
+        function ensureToastContainer() {
+            if (toastContainer) return toastContainer;
+            toastContainer = document.createElement('div');
+            toastContainer.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none;max-width:320px;';
+            document.body.appendChild(toastContainer);
+            return toastContainer;
+        }
+        function toast(message, type) {
+            type = type || 'info';
+            const container = ensureToastContainer();
+            const colors = {
+                success: { bg: 'rgba(16,185,129,.95)', border: '#10b981', icon: '✓' },
+                error:   { bg: 'rgba(239,68,68,.95)',  border: '#ef4444', icon: '✕' },
+                warn:    { bg: 'rgba(245,158,11,.95)',  border: '#f59e0b', icon: '⚠' },
+                info:    { bg: 'rgba(59,130,246,.95)',  border: '#3b82f6', icon: 'ℹ' },
+            };
+            const c = colors[type] || colors.info;
+            const el = document.createElement('div');
+            el.style.cssText = 'background:' + c.bg + ';border:1px solid ' + c.border + ';color:#fff;font-size:.82rem;font-weight:600;padding:.65rem 1rem;border-radius:.75rem;box-shadow:0 4px 20px rgba(0,0,0,.4);display:flex;align-items:center;gap:.5rem;pointer-events:auto;cursor:pointer;backdrop-filter:blur(8px);animation:toastIn .2s ease both;';
+            el.innerHTML = '<span style="font-size:1rem;flex-shrink:0;">' + c.icon + '</span><span>' + message + '</span>';
+            el.onclick = function() { el.remove(); };
+            container.appendChild(el);
+            if (!document.getElementById('bo-toast-style')) {
+                const style = document.createElement('style');
+                style.id = 'bo-toast-style';
+                style.textContent = '@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}';
+                document.head.appendChild(style);
+            }
+            setTimeout(function() {
+                el.style.transition = 'opacity .3s,transform .3s';
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(20px)';
+                setTimeout(function() { el.remove(); }, 300);
+            }, type === 'error' ? 5000 : 3000);
+        }
+        function read(key, defaultValue) {
+            if (defaultValue === undefined) defaultValue = null;
+            return new Promise(function(resolve) {
+                try {
+                    const raw = localStorage.getItem(key);
+                    if (raw === null) { resolve(defaultValue); return; }
+                    resolve(JSON.parse(raw));
+                } catch(e) { resolve(defaultValue); }
+            });
+        }
+        function write(key, value) {
+            return new Promise(function(resolve, reject) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                    resolve(true);
+                } catch(e) { console.error('BO.write error:', e); reject(e); }
+            });
+        }
+        function removeKey(key) {
+            return new Promise(function(resolve) {
+                try { localStorage.removeItem(key); } catch(e) {}
+                resolve(true);
+            });
+        }
+        global.BO = { KEYS: KEYS, uid: uid, today: today, fmt: fmt, toast: toast, read: read, write: write, remove: removeKey };
+    })(window);
+    </script>
+
     <span data-module-title="Interventions" style="display:none"></span>
     <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
@@ -82,8 +169,6 @@
     .bo-textarea { resize:vertical; min-height:88px; line-height:1.55; }
     .bo-chip { display:inline-flex; align-items:center; gap:.3rem; background:rgba(212,168,67,.1); border:1px solid rgba(212,168,67,.25); color:var(--gold); font-size:.72rem; font-weight:600; padding:.28rem .6rem; border-radius:999px; }
     .bo-chip-btn { background:none; border:none; cursor:pointer; color:inherit; display:flex; align-items:center; padding:0; opacity:.7; }
-
-    /* ── TECH MULTI-SELECT ── */
     .tech-selector { background:var(--surface2); border:1px solid var(--border); border-radius:.6rem; padding:.5rem; transition:border-color .15s; }
     .tech-selector:focus-within { border-color:var(--gold); }
     .tech-options { display:flex; flex-wrap:wrap; gap:.35rem; }
@@ -92,8 +177,6 @@
     .tech-option.selected { background:rgba(212,168,67,.15); border-color:rgba(212,168,67,.4); color:var(--gold); }
     .tech-option .tech-check { width:14px; height:14px; border-radius:50%; border:1.5px solid var(--border2); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s; }
     .tech-option.selected .tech-check { background:var(--gold); border-color:var(--gold); }
-
-    /* ── MODAL ── */
     .bo-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.82); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); display:flex; align-items:flex-end; justify-content:center; z-index:1000; }
     @media(min-width:640px){ .bo-modal-overlay{ align-items:center; padding:1rem; } }
     .bo-modal { background:var(--surface); border:1px solid var(--border); border-radius:1.5rem 1.5rem 0 0; width:100%; max-height:96vh; overflow:hidden; display:flex; flex-direction:column; padding-bottom:var(--safe-b); animation:slideUp .28s cubic-bezier(.32,.72,0,1) both; }
@@ -231,14 +314,6 @@
     .manage-item-name{flex:1;font-size:.88rem;font-weight:600;}
     .manage-item-sub{font-size:.58rem;color:var(--muted);}
     @media(max-width:639px){ #btn-csv, #btn-team, #btn-new-desktop { display:none !important; } }
-
-    /* ── PDF PREVIEW ── */
-    .pdf-preview-wrap { background:#f5f5f5; border-radius:.75rem; overflow:hidden; }
-    .pdf-actions { display:flex; gap:.5rem; padding:.75rem; background:var(--surface2); border-radius:.75rem; flex-wrap:wrap; }
-
-    /* ── SCORE COMPLETION ── */
-    .completion-ring { width:38px; height:38px; flex-shrink:0; }
-
     ::-webkit-scrollbar{ width:5px; } ::-webkit-scrollbar-track{ background:transparent; } ::-webkit-scrollbar-thumb{ background:var(--border2); border-radius:3px; }
     </style>
 </head>
@@ -353,7 +428,6 @@
                 <label class="bo-label" style="display:flex;align-items:center;justify-content:space-between;">Client <span class="req" style="margin-right:auto;margin-left:.2rem;">*</span>
                     <button onclick="openManageModal('clients')" style="background:none;border:none;cursor:pointer;color:var(--gold);font-size:.58rem;font-weight:700;display:inline-flex;align-items:center;gap:.15rem;padding:0;"><i data-lucide="plus" style="width:9px;height:9px;"></i>Gérer</button>
                 </label>
-                <!-- Champ client avec autocomplétion -->
                 <div style="position:relative;">
                     <input id="f-client-search" class="bo-input" placeholder="Rechercher un client…" autocomplete="off" oninput="filterClientDropdown()" onfocus="filterClientDropdown()" onblur="setTimeout(()=>document.getElementById('client-dropdown').style.display='none',180)">
                     <input type="hidden" id="f-client">
@@ -372,7 +446,6 @@
             </div>
         </div>
 
-        <!-- MULTI-TECHNICIENS -->
         <div class="bo-field">
             <label class="bo-label" style="display:flex;align-items:center;justify-content:space-between;">
                 Technicien(s) assigné(s)
@@ -535,7 +608,6 @@
             <div id="checklist-wrap" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.75rem;"></div>
         </div>
 
-        <!-- PRÉCONISATIONS -->
         <div class="bo-field">
             <label class="bo-label" style="display:flex;align-items:center;gap:.4rem;">
                 <span style="color:#fcd34d;">⚡</span> Préconisations / Suites à donner
@@ -627,9 +699,7 @@
       </div>
     </div>
 
-    <!-- ══ PANNEAU PARAMÈTRES ENTREPRISE ══ -->
-    <div id="mpanel-settings" style="display:none;display:flex;flex-direction:column;gap:1rem;">
-      <!-- Logo -->
+    <div id="mpanel-settings" style="display:none;flex-direction:column;gap:1rem;">
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:.75rem;padding:.875rem;display:flex;flex-direction:column;gap:.625rem;">
         <div style="font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Logo entreprise (PDF)</div>
         <div style="display:flex;align-items:center;gap:.875rem;">
@@ -647,7 +717,6 @@
         </div>
         <div style="font-size:.57rem;color:var(--muted);">PNG ou JPG recommandé · Fond transparent idéal · Max 2MB</div>
       </div>
-      <!-- Infos entreprise -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:.75rem;padding:.875rem;display:flex;flex-direction:column;gap:.5rem;">
         <div style="font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Informations entreprise (pied de page PDF)</div>
         <input id="co-nom" class="bo-input" placeholder="Nom de l'entreprise" style="font-size:15px;">
@@ -715,8 +784,10 @@ function boConfirm({ title='Confirmation', msg='', okLabel='Confirmer', okClass=
         ov.style.display = 'flex';
         const cleanup = (val) => {
             ov.style.display = 'none';
-            okB.replaceWith(okB.cloneNode(true));
-            caB.replaceWith(caB.cloneNode(true));
+            const newOkB = okB.cloneNode(true);
+            okB.parentNode.replaceChild(newOkB, okB);
+            const newCaB = caB.cloneNode(true);
+            caB.parentNode.replaceChild(newCaB, caB);
             resolve(val);
         };
         document.getElementById('confirm-ok-btn').addEventListener('click', () => cleanup(true),  { once: true });
@@ -757,7 +828,7 @@ let filterStatus='Tous', filterPrio='Toutes', filterOverdue=false;
 let sortCol='dateCreation', sortDir='desc';
 let currentView='list', editId=null, isDup=false;
 let formMat=[], formMesures=[], formPhotos=[], formChecks={};
-let formTechs=[]; // Multi-techniciens
+let formTechs=[];
 let formDirty=false;
 let chronoIv=null, stampDebut='', stampFin='';
 let sigCtx=null, sigDrawing=false, sigData='';
@@ -816,7 +887,6 @@ async function loadTechs(){
 }
 
 function buildClientSelect(){
-    // Reconstruire le dropdown — la valeur sélectionnée est dans #f-client (hidden)
     const sorted=[...clients].sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
     window._sortedClients=sorted;
     filterClientDropdown();
@@ -839,7 +909,6 @@ function selectClient(id){
     document.getElementById('f-client').value=id;
     document.getElementById('f-client-search').value=c.nom;
     document.getElementById('client-dropdown').style.display='none';
-    // Afficher les infos du client sous le champ
     const hint=document.getElementById('client-info-hint');
     const parts=[c.contact,c.email,c.tel].filter(Boolean);
     if(parts.length){hint.textContent=parts.join(' · ');hint.style.display='';}
@@ -853,7 +922,6 @@ function buildTypeSelect(){
 
 /* ══ MULTI-TECH SELECTOR ══ */
 function buildTechSelectors(){
-    // Selector dans le formulaire
     const formOpts = document.getElementById('tech-options-form');
     if(formOpts){
         formOpts.innerHTML = techs.map(t=>`
@@ -862,7 +930,6 @@ function buildTechSelectors(){
                 ${esc(t.split(' ')[0])}
             </div>`).join('');
     }
-    // Filtre technicien dans la liste
     const sel = document.getElementById('sel-tech');
     if(sel) sel.innerHTML='<option value="">Tous techniciens</option>'+techs.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
 }
@@ -972,7 +1039,6 @@ async function renderPhotoGrid(){
     const totalKB=formPhotos.reduce((a,p)=>a+(p.size||0),0);
     document.getElementById('photo-total-size').textContent=totalKB?(totalKB<1024?totalKB+'KB':(totalKB/1024).toFixed(1)+'MB')+' total':'';
     const thumbs=await Promise.all(formPhotos.map(p=>loadPhotoBlob(p.id)));
-    // Détecter les photos dont l'image est perdue (cache IndexedDB vidé)
     const lostCount=thumbs.filter((t,i)=>!t&&formPhotos[i]).length;
     if(lostCount>0){
         const warn=document.getElementById('photo-lost-warn');
@@ -999,7 +1065,7 @@ async function collectPhotoData(){
     const results=await Promise.all(formPhotos.map(async p=>({id:p.id,legend:p.legend,size:p.size,dataUrl:await loadPhotoBlob(p.id)})));
     const lost=results.filter(r=>!r.dataUrl).length;
     if(lost>0) BO.toast(`⚠️ ${lost} photo(s) non retrouvée(s) et exclues du rapport`,'warn');
-    return results.filter(r=>r.dataUrl); // on n'enregistre pas de dataUrl null
+    return results.filter(r=>r.dataUrl);
 }
 async function openPhotoFull(i){
     const url=await loadPhotoBlob(formPhotos[i]?.id); if(!url) return;
@@ -1058,7 +1124,6 @@ function renderMesures(){
 let _lastChecklistType='';
 async function buildChecklist(){
     const type=document.getElementById('f-type').value;
-    // Ne pas redemander si le type n'a pas changé (ex: changement d'onglet)
     if(type===_lastChecklistType&&Object.keys(formChecks).length>0){renderChecklist(Object.keys(formChecks));return;}
     const items=CHECKLISTS[type]||CHECKLISTS['default'];
     const checkedCount=Object.values(formChecks).filter(Boolean).length;
@@ -1160,10 +1225,8 @@ function saveDraft(){
     const data=collectFormData();
     if(!data.titre&&!data.clientId)return;
     const{photos:_,...dataNoPhotos}=data;
-    // Inclure la signature dans le brouillon (base64, taille raisonnable)
     const draftPayload={...dataNoPhotos,_editId:editId,_ts:Date.now(),_sig:sigData||''};
     try{localStorage.setItem(DRAFT_KEY,JSON.stringify(draftPayload));}catch(e){
-        // Quota dépassé à cause de la signature — on sauvegarde sans
         try{localStorage.setItem(DRAFT_KEY,JSON.stringify({...dataNoPhotos,_editId:editId,_ts:Date.now()}));}catch{}
     }
     const lbl=document.getElementById('draft-saved-lbl');
@@ -1182,7 +1245,6 @@ async function checkDraftOnOpen(id){
 }
 function restoreDraft(d){
     document.getElementById('f-titre').value=d.titre||'';
-    // Restaurer client (hidden + search visuel)
     document.getElementById('f-client').value=d.clientId||'';
     const cli=clients.find(c=>c.id===d.clientId);
     document.getElementById('f-client-search').value=cli?.nom||'';
@@ -1206,7 +1268,6 @@ function restoreDraft(d){
     formMat=[...(d.materiel||[])];formMesures=[...(d.mesures||[])];
     formChecks={...(d.checks||{})};
     setFormTechs(d.techniciens||[]);
-    // Restaurer la signature si présente dans le brouillon
     if(d._sig&&sigCtx){
         const img=new Image();img.onload=()=>{resizeSig();sigCtx.drawImage(img,0,0,document.getElementById('sig-canvas').width/window.devicePixelRatio,document.getElementById('sig-canvas').height/window.devicePixelRatio);sigData=d._sig;};img.src=d._sig;
     }
@@ -1255,7 +1316,6 @@ function getFiltered(){
     return interventions.filter(i=>{
         const ms=filterStatus==='Tous'||i.statut===filterStatus;
         const mp=filterPrio==='Toutes'||i.priorite===filterPrio;
-        // Multi-tech : filtrer si au moins un des techniciens correspond
         const mt=!tech||(i.techniciens||[i.technicien]).includes(tech);
         const mty=!type||i.type===type;
         const techStr=(i.techniciens||[i.technicien]||[]).join(' ');
@@ -1340,7 +1400,6 @@ function renderList(list){
         const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];
         const ov=isOverdue(i);
         const np=(i.photos||[]).length,nm=(i.mesures||[]).length;
-        // Compatibilité ancien format (technicien string) + nouveau (techniciens array)
         const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
         const id=JSON.stringify(i.id);
         return `<div class="itv-card" onclick="openDetail(${id})">
@@ -1410,7 +1469,8 @@ function renderKanban(list){
 }
 
 /* ══ OPEN FORM ══ */
-function openForm(id=null, tabOverride=null){
+function openForm(id, tabOverride){
+    id = id || null; tabOverride = tabOverride || null;
     editId=id;isDup=false;
     formMat=[];formMesures=[];formPhotos=[];formChecks={};formTechs=[];
     sigData='';clearSig();resetDirty();
@@ -1420,10 +1480,8 @@ function openForm(id=null, tabOverride=null){
     if(id){
         const i=interventions.find(x=>x.id===id);if(!i)return;
         fillFormFrom(i);
-        // Onglet forcé (ex: bouton Clôturer) sinon intelligent selon statut
         if(tabOverride) {
             smartTab=tabOverride;
-            // Si on clôture, pré-remplir le statut et la date
             if(tabOverride==='cloture'&&i.statut!=='Résolu'){
                 document.getElementById('f-statut').value='Résolu';
                 if(!document.getElementById('f-date-r').value) document.getElementById('f-date-r').value=BO.today();
@@ -1449,7 +1507,6 @@ function openForm(id=null, tabOverride=null){
 }
 function fillFormFrom(i){
     document.getElementById('f-titre').value=i.titre;
-    // Client : hidden field + search visuel
     document.getElementById('f-client').value=i.clientId||'';
     const cli=clients.find(c=>c.id===i.clientId);
     document.getElementById('f-client-search').value=cli?.nom||'';
@@ -1473,7 +1530,6 @@ function fillFormFrom(i){
     document.getElementById('f-preconisations').value=i.preconisations||'';
     formMat=[...(i.materiel||[])];formMesures=[...(i.mesures||[])];
     formPhotos=[...(i.photos||[])];formChecks={...(i.checks||{})};
-    // Compatibilité : ancien champ technicien (string) → techniciens (array)
     const ts=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
     setFormTechs(ts);
 }
@@ -1504,10 +1560,8 @@ async function quickStatus(id, newStatut){
     try{
         await BO.write(BO.KEYS.interventions,interventions);
         BO.toast(`Statut → ${newStatut}`,'success');
-        // Mettre à jour la liste en arrière-plan sans scroll jump
         const filtered=getFiltered();
         currentView==='list'?renderList(filtered):renderKanban(filtered);
-        // Rafraîchir les KPIs et charts discrètement
         const total=interventions.length,resolus=interventions.filter(x=>x.statut==='Résolu').length;
         const enCours=interventions.filter(x=>x.statut==='En cours').length;
         const ouverts=interventions.filter(x=>x.statut==='Ouvert').length;
@@ -1522,7 +1576,6 @@ async function quickStatus(id, newStatut){
         ].map(k=>`<div class="bo-stat"><div class="bo-stat-label">${esc(k.l)}</div><div class="bo-stat-value" style="color:${k.c};">${k.v}</div>${k.s?`<div class="bo-stat-sub">${esc(k.s)}</div>`:''}</div>`).join('');
         document.getElementById('pbar').style.width=pct+'%';
         document.getElementById('pct-label').textContent=pct+'%';
-        // Rouvrir la fiche détail à jour sans fermer/rouvrir l'overlay
         openDetail(id);
     }catch(e){
         interventions[idx]=old;
@@ -1543,7 +1596,7 @@ function renderDupList(){
     const listEl=document.getElementById('dup-list');if(!listEl)return;
     listEl.innerHTML=list.map(i=>{
         const c=clients.find(cl=>cl.id===i.clientId);const st=STATUS_C[i.statut]||STATUS_C['Ouvert'];const id=JSON.stringify(i.id);
-        return `<div class="bo-row" style="border-radius:.75rem;display:flex;align-items:center;gap:.75rem;padding:.875rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;" onclick="duplicate(${id})">
+        return `<div style="border-radius:.75rem;display:flex;align-items:center;gap:.75rem;padding:.875rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;" onclick="duplicate(${id})">
             <div style="flex:1;min-width:0;"><div style="font-size:.82rem;font-weight:700;">${esc(i.titre)}</div>
             <div style="font-size:.62rem;color:var(--muted);">${esc(c?.nom||'—')} · ${esc(BO.fmt(i.dateCreation))}</div></div>
             <span class="bo-badge" style="background:${st.bg};color:${st.text};border:1px solid ${st.border}44;">${esc(i.statut)}</span>
@@ -1555,7 +1608,6 @@ function duplicate(id){
     const src=interventions.find(x=>x.id===id);if(!src)return;
     editId=null;isDup=true;
     formMat=[];formMesures=[];formPhotos=[];formChecks={};sigData='';clearSig();resetDirty();
-    // Réinitialiser rapportNum pour qu'un nouveau numéro soit attribué à la sauvegarde
     const copy={...src,statut:'Ouvert',dateCreation:BO.today(),dateEcheance:'',dateResolution:'',rapport:'',preconisations:'',signature:'',chronoDebut:'',chronoFin:'',duree:0,historique:[],checks:{},rapportNum:undefined};
     fillFormFrom(copy);
     formMat=[...(src.materiel||[])];formChecks={};
@@ -1573,12 +1625,10 @@ async function saveForm(){
     const client=document.getElementById('f-client').value;
     if(!titre){showTab('infos');BO.toast('Titre obligatoire','warn');return;}
     if(!client){showTab('infos');document.getElementById('f-client-search').focus();BO.toast('Sélectionnez un client','warn');return;}
-    // Arrêter le chrono automatiquement s'il tourne encore
     const start=+localStorage.getItem('bo_chrono_start'), end=+localStorage.getItem('bo_chrono_end');
     if(start&&!end){ chronoStop(); BO.toast('Chrono arrêté automatiquement','info'); }
     const ns=document.getElementById('f-statut').value;
     const photosWithData=await collectPhotoData();
-    // Durée : prendre f-duree en priorité, sinon f-duree-recap (onglet Clôture)
     const dureeVal=parseFloat(document.getElementById('f-duree').value)||parseFloat(document.getElementById('f-duree-recap')?.value)||0;
     const data={
         titre,clientId:client,
@@ -1612,13 +1662,11 @@ async function saveForm(){
     } else {
         data.historique=[{date:BO.today(),action:isDup?'Dupliqué depuis un ticket existant':'Ticket ouvert',couleur:isDup?'#8b5cf6':'#3b82f6'}];
         data.lastModified=new Date().toISOString();
-        // Numéro de rapport auto-incrémenté
         const maxNum = interventions.reduce((max,iv)=>Math.max(max,iv.rapportNum||0),0);
         data.rapportNum = maxNum + 1;
         interventions.unshift({id:BO.uid(),...data});
         BO.toast(isDup?'Intervention dupliquée':'Intervention créée — '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),'success');
     }
-    // Réinitialiser l'état du chrono après sauvegarde
     localStorage.removeItem('bo_chrono_start');
     localStorage.removeItem('bo_chrono_end');
     clearDraftStorage();resetDirty();
@@ -1644,7 +1692,6 @@ function openDetail(id){
     const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
     const sid=JSON.stringify(id);
 
-    // Score complétion checklist
     const checkItems=Object.values(i.checks||{});
     const checkScore=checkItems.length?Math.round(checkItems.filter(Boolean).length/checkItems.length*100):null;
 
@@ -1704,7 +1751,6 @@ function openDetail(id){
             </div>
         </div>
         <div class="bo-modal-body" style="padding:1.1rem;">
-            <!-- Changement de statut rapide -->
             <div style="display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;">
                 ${['Ouvert','En cours','Résolu','Annulé'].map(s=>{
                     const sc=STATUS_C[s];
@@ -1718,7 +1764,6 @@ function openDetail(id){
                 ${(i.mesures||[]).length?`<span class="bo-badge" style="background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.3);">📐 ${i.mesures.length}</span>`:''}
                 ${checkScore!==null?`<span class="bo-badge" style="background:${checkScore===100?'rgba(16,185,129,.12)':'rgba(245,158,11,.12)'};color:${checkScore===100?'#6ee7b7':'#fcd34d'};border:1px solid ${checkScore===100?'rgba(16,185,129,.3)':'rgba(245,158,11,.3)'};">✅ ${checkScore}%</span>`:''}
                 ${ov?'<span class="bo-badge" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);">⏰ Retard</span>':''}
-                ${!(c?.email||c?.tel)?`<button class="bo-badge" onclick="closeDetailModal();openManageModal('clients')" style="background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.25);cursor:pointer;font-size:.63rem;font-weight:700;padding:.2rem .6rem;border-radius:999px;" title="Coordonnées client manquantes — compléter">⚠️ Client incomplet</button>`:''}
             </div>
             <div style="background:rgba(0,0,0,.25);border-radius:.65rem;padding:.75rem;margin-bottom:1rem;">
                 <div style="font-size:.5rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;">Technicien(s) assigné(s)</div>
@@ -1752,9 +1797,7 @@ function openDetail(id){
     lucide.createIcons();
 }
 
-/* ══════════════════════════════════════
-   ENVOI PAR EMAIL
-══════════════════════════════════════ */
+/* ══ EMAIL ══ */
 function sendByEmail(id){
     const i=interventions.find(x=>x.id===id);if(!i)return;
     const c=clients.find(cl=>cl.id===i.clientId);
@@ -1763,107 +1806,63 @@ function sendByEmail(id){
     const subject=encodeURIComponent(`Rapport d'intervention n°${numRapport} – ${i.titre}`);
     const techStr=(i.techniciens&&i.techniciens.length)?i.techniciens.join(', '):(i.technicien||'');
     const dateR=i.dateResolution?BO.fmt(i.dateResolution):(i.dateCreation?BO.fmt(i.dateCreation):'');
-    const body=encodeURIComponent(
-`Bonjour,
-
-Veuillez trouver ci-joint le rapport d'intervention n°${numRapport} concernant : ${i.titre}.
-
-Résumé :
-• Site : ${i.site||'—'}
-• Date : ${dateR}
-• Technicien(s) : ${techStr||'—'}
-• Durée : ${i.duree?i.duree+'h':'—'}
-• Statut : ${i.statut}
-
-${i.rapport?'Actions réalisées :\n'+i.rapport+'\n\n':''}${i.preconisations?'Préconisations :\n'+i.preconisations+'\n\n':''}N'hésitez pas à nous contacter pour toute question.
-
-Cordialement`);
+    const body=encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint le rapport d'intervention n°${numRapport} concernant : ${i.titre}.\n\nRésumé :\n• Site : ${i.site||'—'}\n• Date : ${dateR}\n• Technicien(s) : ${techStr||'—'}\n• Durée : ${i.duree?i.duree+'h':'—'}\n• Statut : ${i.statut}\n\n${i.rapport?'Actions réalisées :\n'+i.rapport+'\n\n':''}${i.preconisations?'Préconisations :\n'+i.preconisations+'\n\n':''}N'hésitez pas à nous contacter pour toute question.\n\nCordialement`);
     window.location.href=`mailto:${email}?subject=${subject}&body=${body}`;
     BO.toast('Client mail ouvert — joignez le PDF','info');
 }
 
-/* ══════════════════════════════════════
-   GÉNÉRATION PDF — jsPDF (design premium)
-══════════════════════════════════════ */
+/* ══ PDF ══ */
 async function generatePDF(id){
     const i=interventions.find(x=>x.id===id);if(!i){BO.toast('Intervention introuvable','warn');return;}
-
     if(i.statut!=='Résolu'){
-        const ok=await boConfirm({
-            title:'Intervention non clôturée',
-            msg:`Le statut actuel est "${i.statut}". Le rapport sera incomplet. Continuer quand même ?`,
-            okLabel:'Générer quand même',icon:'⚠️'
-        });
+        const ok=await boConfirm({title:'Intervention non clôturée',msg:`Le statut actuel est "${i.statut}". Le rapport sera incomplet. Continuer quand même ?`,okLabel:'Générer quand même',icon:'⚠️'});
         if(!ok)return;
     }
-
     const cli=clients.find(cl=>cl.id===i.clientId);
     const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
     const numRapport=i.rapportNum?String(i.rapportNum).padStart(4,'0'):i.id.slice(-4).toUpperCase();
     const co=companySettings;
     const logo=companyLogo;
-
     BO.toast('Génération du PDF…','info');
-
     const {jsPDF}=window.jspdf;
     const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const W=210,H=297,M=14,CW=W-M*2;
     let y=0;
-
-    // ── Palette
     const GOLD=[212,168,67],GOLD_DARK=[160,120,40];
     const DARK=[18,22,36],DARK2=[28,34,52];
     const GREEN=[16,185,129],GREEN_BG=[8,40,28];
     const AMBER=[245,158,11],AMBER_BG=[45,32,8];
     const BLUE=[59,130,246],RED=[239,68,68],PURPLE=[139,92,246];
     const MUTED=[120,130,150],TEXT=[220,228,240],WHITE=[255,255,255];
-    const SURF=[30,40,64],SURF2=[22,30,50],LIGHT=[240,242,248];
+    const SURF=[30,40,64],SURF2=[22,30,50];
     const stColors={Ouvert:BLUE,'En cours':AMBER,Résolu:GREEN,Annulé:MUTED};
     const prioColors={Haute:RED,Moyenne:AMBER,Basse:GREEN};
-
-    // ── Helpers
     const sf=(style,size,color)=>{doc.setFont('helvetica',style);doc.setFontSize(size);if(color)doc.setTextColor(...color);};
     const fill=(...c)=>doc.setFillColor(...c);
     const draw=(...c)=>doc.setDrawColor(...c);
     const lw=(w)=>doc.setLineWidth(w);
-    const rect=(x,y,w,h,r=0,mode='F')=>{r>0?doc.roundedRect(x,y,w,h,r,r,mode):doc.rect(x,y,w,h,mode);};
+    const rect=(x,y,w,h,r,mode)=>{r=r||0;mode=mode||'F';r>0?doc.roundedRect(x,y,w,h,r,r,mode):doc.rect(x,y,w,h,mode);};
     const ps=(s)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[œŒ]/g,m=>m==='œ'?'oe':'OE').replace(/[çÇ]/g,m=>m==='ç'?'c':'C');
-    const txt=(s,x,y2,o={})=>doc.text(ps(s),x,y2,o);
+    const txt=(s,x,y2,o)=>{o=o||{};doc.text(ps(s),x,y2,o);};
     const splitW=(s,w)=>doc.splitTextToSize(ps(s),w);
-
-    // ── Saut de page avec mini-header sobre
     const newPage=()=>{
         doc.addPage();
-        // Filet doré top
         fill(...GOLD);rect(0,0,W,1.5);
-        // En-tête minimal
         fill(...DARK2);rect(0,1.5,W,10);
         if(logo){try{doc.addImage(logo,'PNG',M,2,18,8,'','FAST');}catch(e){}}
         const coName=ps(co.nom||'VERTEX');
         sf('bold',9,GOLD);txt(coName,logo?M+21:M,8);
         sf('normal',6.5,MUTED);txt(`Rapport N°${numRapport} — ${ps(i.titre).slice(0,45)}`,W/2,8,{align:'center'});
         sf('normal',6.5,MUTED);txt(`Page ${doc.getCurrentPageInfo().pageNumber}`,W-M,8,{align:'right'});
-        // Filet bas header
         fill(...GOLD);rect(0,11.5,W,.5);
         y=17;
     };
     const check=(needed)=>{if(y+needed>H-18)newPage();};
-
-    // ══════════════════════════════════════════════
-    // PAGE 1 — COUVERTURE PREMIUM
-    // ══════════════════════════════════════════════
-
-    // Fond sombre pleine page (couverture)
+    // Couverture
     fill(...DARK);rect(0,0,W,H);
-
-    // Barre latérale gauche dorée
     fill(...GOLD);rect(0,0,4,H);
-
-    // Bloc doré décoratif haut droit
     fill(...GOLD_DARK);rect(W-60,0,60,4);
     fill(...GOLD);rect(W-40,0,40,4);
-
-    // Zone logo + nom entreprise (haut)
     let logoH=0;
     if(logo){
         try{
@@ -1874,26 +1873,17 @@ async function generatePDF(id){
             logoH=lHH+4;
         }catch(e){}
     }
-
-    // Nom entreprise
     sf('bold',16,GOLD);txt(ps(co.nom||'VERTEX'),M+6,14+logoH+8);
     if(co.adresse){sf('normal',7.5,MUTED);txt(ps(co.adresse),M+6,14+logoH+15);}
-
-    // Ligne dorée séparatrice
     y=logo?(14+logoH+22):44;
     fill(...GOLD);rect(M+6,y,CW-6,0.6);
     y+=10;
-
-    // Gros titre du rapport
-    sf('bold',10,GOLD);txt('RAPPORT D\'INTERVENTION',M+6,y);
+    sf('bold',10,GOLD);txt("RAPPORT D'INTERVENTION",M+6,y);
     y+=8;
-
     const titleLines=splitW(i.titre,CW-6);
     sf('bold',titleLines.length>1?18:22,WHITE);
     titleLines.forEach((l,idx)=>{txt(l,M+6,y+idx*9);});
     y+=titleLines.length*9+6;
-
-    // Badges statut + priorité
     const stC=stColors[i.statut]||BLUE;
     fill(...stC);rect(M+6,y,doc.getTextWidth(ps(i.statut.toUpperCase()))+10,7,1.5);
     sf('bold',7.5,WHITE);txt(i.statut.toUpperCase(),M+11,y+5);
@@ -1904,17 +1894,11 @@ async function generatePDF(id){
         sf('bold',7.5,WHITE);txt(ps(i.priorite),bx2+5,y+5);
     }
     y+=14;
-
-    // Numéro de rapport
     sf('bold',8,MUTED);txt(`N° ${numRapport}`,M+6,y);
     sf('normal',8,MUTED);txt('  |  '+new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}),M+6+doc.getTextWidth(`N° ${numRapport}`),y);
     y+=14;
-
-    // Deuxième ligne dorée
     fill(...GOLD);rect(M+6,y,CW-6,0.4);
     y+=10;
-
-    // Bloc CLIENT (couverture)
     sf('bold',7,MUTED);txt('CLIENT',M+6,y);y+=6;
     sf('bold',15,WHITE);txt(ps(cli?.nom||'—'),M+6,y);y+=8;
     if(cli?.contact){sf('normal',8.5,[170,180,200]);txt(ps(cli.contact),M+6,y);y+=6;}
@@ -1925,8 +1909,6 @@ async function generatePDF(id){
         sf('normal',8,[150,160,180]);txt(parts.join('   |   '),M+6,y);y+=6;
     }
     y+=8;
-
-    // Grille infos résumé (2 colonnes)
     const infoGrid=[
         ['Technicien(s)',itvTechs.length?ps(itvTechs.join(', ')):'Non assigne'],
         ['Type',ps(i.type||'—')],
@@ -1948,30 +1930,23 @@ async function generatePDF(id){
         });
         y+=15;
     }
-
-    // Filet pied de couverture
     y=H-28;
     fill(...GOLD);rect(M+6,y,CW-6,0.4);y+=7;
     const footParts=[co.tel,co.email,co.web].filter(Boolean).map(ps);
     sf('normal',6.5,MUTED);txt(footParts.join('   ·   '),M+6,y);
     sf('bold',6.5,GOLD);txt(`N° ${numRapport}`,W-M,y,{align:'right'});
-
-    // ══════════════════════════════════════════════
-    // PAGE 2+ — CONTENU
-    // ══════════════════════════════════════════════
+    // Page contenu
     newPage();
-
-    // ── Titre section helper
-    const sectionTitle=(label,color=GOLD)=>{
+    const sectionTitle=(label,color)=>{
+        color=color||GOLD;
         check(12);
         fill(...(color===GOLD?GOLD_DARK:color));rect(M,y-1,CW,8,1);
         fill(...color);rect(M,y-1,3,8,0);
         sf('bold',8.5,WHITE);txt(label,M+6,y+4.5);
         y+=12;
     };
-
-    // ── Bloc texte helper
-    const textBlock=(text,bgColor=SURF2)=>{
+    const textBlock=(text,bgColor)=>{
+        bgColor=bgColor||SURF2;
         const lines=splitW(text,CW-10);
         const bh=lines.length*5.5+8;
         check(bh);
@@ -1980,14 +1955,7 @@ async function generatePDF(id){
         lines.forEach((l,idx)=>txt(l,M+5,y+6+idx*5.5));
         y+=bh+5;
     };
-
-    // ══ DESCRIPTION ══
-    if(i.description){
-        sectionTitle('DESCRIPTION DE L\'INTERVENTION');
-        textBlock(i.description);
-    }
-
-    // ══ MATÉRIEL ══
+    if(i.description){sectionTitle("DESCRIPTION DE L'INTERVENTION");textBlock(i.description);}
     if(i.materiel&&i.materiel.length){
         sectionTitle('MATERIEL UTILISE');
         i.materiel.forEach((m,idx)=>{
@@ -1999,20 +1967,14 @@ async function generatePDF(id){
         });
         y+=5;
     }
-
-    // ══ MESURES ══
     if(i.mesures&&i.mesures.length){
         sectionTitle('MESURES & RELEVES');
-        const tH=9,c1=CW*0.5,c2=CW*0.25,c3=CW*0.25;
-        // Header tableau
-        fill(...DARK);rect(M,y,CW,tH,0);
+        const tH=9,c1=CW*0.5,c2=CW*0.25;
         fill(...GOLD);rect(M,y,CW,tH,0);
-        sf('bold',7.5,DARK);
-        txt('Libelle',M+4,y+6);txt('Valeur',M+c1+4,y+6);txt('Unite',M+c1+c2+4,y+6);
+        sf('bold',7.5,DARK);txt('Libelle',M+4,y+6);txt('Valeur',M+c1+4,y+6);txt('Unite',M+c1+c2+4,y+6);
         y+=tH;
         i.mesures.forEach((m,idx)=>{
-            check(tH);
-            fill(...(idx%2===0?SURF2:SURF));rect(M,y,CW,tH,0);
+            check(tH);fill(...(idx%2===0?SURF2:SURF));rect(M,y,CW,tH,0);
             sf('normal',8,TEXT);txt(ps(m.label),M+4,y+6);
             sf('bold',8,GREEN);txt(ps(m.val),M+c1+4,y+6);
             sf('normal',8,MUTED);txt(ps(m.unit),M+c1+c2+4,y+6);
@@ -2020,33 +1982,24 @@ async function generatePDF(id){
         });
         y+=5;
     }
-
-    // ══ CHECKLIST ══
     if(Object.keys(i.checks||{}).length){
         const entries=Object.entries(i.checks);
         const done=entries.filter(([,v])=>v).length;
         sectionTitle(`POINTS DE VALIDATION  (${done}/${entries.length})`);
         entries.forEach(([k,v])=>{
-            check(8);
-            fill(...(v?[12,40,28]:[35,38,55]));rect(M,y,CW,8,1);
-            // Case à cocher
+            check(8);fill(...(v?[12,40,28]:[35,38,55]));rect(M,y,CW,8,1);
             if(v){fill(...GREEN);rect(M+4,y+1.5,5,5,0.8);}
             else{fill(...SURF);rect(M+4,y+1.5,5,5,0.8);draw(...MUTED);lw(0.3);rect(M+4,y+1.5,5,5,0.8,'S');}
-            sf(v?'bold':'normal',8,v?TEXT:MUTED);
-            txt(ps(k),M+13,y+5.5);
+            sf(v?'bold':'normal',8,v?TEXT:MUTED);txt(ps(k),M+13,y+5.5);
             if(v){sf('bold',7,GREEN);txt('OK',W-M-6,y+5.5,{align:'right'});}
             y+=8;
         });
         y+=5;
     }
-
-    // ══ RAPPORT DE CLÔTURE ══
     if(i.rapport){
         sectionTitle('RAPPORT DE CLOTURE',GREEN);
-        // Infos durée
         if(i.duree||i.dateResolution||i.chronoDebut){
-            check(10);
-            fill(...GREEN_BG);rect(M,y,CW,9,1.5);
+            check(10);fill(...GREEN_BG);rect(M,y,CW,9,1.5);
             sf('bold',7.5,GREEN);
             const parts2=[];
             if(i.duree)parts2.push('Duree : '+i.duree+'h');
@@ -2057,17 +2010,9 @@ async function generatePDF(id){
         }
         textBlock(i.rapport,GREEN_BG);
     }
-
-    // ══ PRÉCONISATIONS ══
-    if(i.preconisations){
-        sectionTitle('PRECONISATIONS / SUITES A DONNER',AMBER);
-        textBlock(i.preconisations,AMBER_BG);
-    }
-
-    // ══ SIGNATURE ══
+    if(i.preconisations){sectionTitle('PRECONISATIONS / SUITES A DONNER',AMBER);textBlock(i.preconisations,AMBER_BG);}
     if(i.signature){
-        check(45);
-        sectionTitle('SIGNATURE CLIENT');
+        check(45);sectionTitle('SIGNATURE CLIENT');
         fill(...SURF2);rect(M,y,CW,38,1.5);
         try{
             doc.addImage(i.signature,'PNG',M+4,y+3,70,28);
@@ -2076,15 +2021,11 @@ async function generatePDF(id){
         }catch(e){}
         y+=43;
     }
-
-    // ══ PHOTOS ══
     if(i.photos&&i.photos.length){
         sectionTitle(`PHOTOS DE L'INTERVENTION  (${i.photos.length})`);
         for(let pi=0;pi<i.photos.length;pi++){
-            const photo=i.photos[pi];
-            if(!photo.dataUrl)continue;
-            const imgMaxW=CW,imgMaxH=110;
-            let imgW=imgMaxW,imgH=imgMaxH;
+            const photo=i.photos[pi];if(!photo.dataUrl)continue;
+            const imgMaxW=CW,imgMaxH=110;let imgW=imgMaxW,imgH=imgMaxH;
             try{
                 const tmp=new Image();
                 await new Promise(r=>{tmp.onload=r;tmp.onerror=r;tmp.src=photo.dataUrl;});
@@ -2097,34 +2038,25 @@ async function generatePDF(id){
             const legendLines=photo.legend?splitW(photo.legend,imgW-8):[];
             const legendH=legendLines.length?legendLines.length*5+6:0;
             check(imgH+legendH+16);
-            // Numérotation
             sf('bold',7,MUTED);txt(`Photo ${pi+1} / ${i.photos.length}`,M,y);y+=4;
-            // Cadre + image
             fill(...SURF2);rect(M,y,imgW,imgH,1.5);
-            try{doc.addImage(photo.dataUrl,'JPEG',M,y,imgW,imgH,undefined,'FAST');}
-            catch(e){sf('normal',8,MUTED);txt('[Image non disponible]',M+imgW/2,y+imgH/2,{align:'center'});}
+            try{doc.addImage(photo.dataUrl,'JPEG',M,y,imgW,imgH,undefined,'FAST');}catch(e){sf('normal',8,MUTED);txt('[Image non disponible]',M+imgW/2,y+imgH/2,{align:'center'});}
             y+=imgH+2;
-            // Légende
             if(legendLines.length){
-                fill(...SURF);rect(M,y,imgW,legendH,1);
-                fill(...GOLD);rect(M,y,2.5,legendH,0);
-                sf('italic',7.5,TEXT);
-                legendLines.forEach((l,li)=>txt(l,M+6,y+5+li*5));
+                fill(...SURF);rect(M,y,imgW,legendH,1);fill(...GOLD);rect(M,y,2.5,legendH,0);
+                sf('italic',7.5,TEXT);legendLines.forEach((l,li)=>txt(l,M+6,y+5+li*5));
                 y+=legendH+2;
             }
             y+=8;
         }
     }
-
-    // ══ PIED DE PAGE TOUTES LES PAGES ══
+    // Pied de page toutes pages
     const pages=doc.getNumberOfPages();
     for(let p=1;p<=pages;p++){
         doc.setPage(p);
-        // Barre de pied
         fill(...DARK2);rect(0,H-12,W,12);
         fill(...GOLD);rect(0,H-12,W,0.5);
         fill(...GOLD);rect(0,H-1,W,1);
-        // Contenu pied
         sf('bold',6,GOLD);txt(ps(co.nom||'VERTEX'),M,H-4.5);
         const footRight=`Rapport N°${numRapport}  |  Page ${p} / ${pages}`;
         sf('normal',6,MUTED);txt(footRight,W-M,H-4.5,{align:'right'});
@@ -2133,8 +2065,6 @@ async function generatePDF(id){
             sf('normal',5.5,MUTED);txt(mid,W/2,H-4.5,{align:'center'});
         }
     }
-
-    // ══ TÉLÉCHARGEMENT ══
     const dateStr=new Date().toLocaleDateString('fr-FR').replace(/\//g,'-');
     const numStr=i.rapportNum?'N'+String(i.rapportNum).padStart(4,'0'):dateStr;
     const fn=`Rapport_${numStr}_${ps(i.titre).replace(/[^a-z0-9]/gi,'_').slice(0,25)}.pdf`;
@@ -2148,15 +2078,7 @@ function exportCSV(){
     const rows=interventions.map(i=>{
         const c=clients.find(cl=>cl.id===i.clientId);
         const itvTechs=(i.techniciens&&i.techniciens.length)?i.techniciens:(i.technicien?[i.technicien]:[]);
-        return [
-            i.id,i.titre,c?.nom||'',i.ref||'',i.site||'',i.type||'',
-            itvTechs.join(' / '),i.statut,i.priorite,i.dateCreation,
-            i.dateEcheance||'',i.dateResolution||'',i.duree||0,
-            (i.photos||[]).length,
-            (i.mesures||[]).map(m=>`${m.label}:${m.val}${m.unit}`).join(' | '),
-            (i.materiel||[]).join(' | '),
-            (i.description||'').replace(/\n/g,' '),(i.rapport||'').replace(/\n/g,' '),
-        ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+        return [i.id,i.titre,c?.nom||'',i.ref||'',i.site||'',i.type||'',itvTechs.join(' / '),i.statut,i.priorite,i.dateCreation,i.dateEcheance||'',i.dateResolution||'',i.duree||0,(i.photos||[]).length,(i.mesures||[]).map(m=>`${m.label}:${m.val}${m.unit}`).join(' | '),(i.materiel||[]).join(' | '),(i.description||'').replace(/\n/g,' '),(i.rapport||'').replace(/\n/g,' ')].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
     });
     const csv=[cols.join(','),...rows].join('\n');
     const a=document.createElement('a');
@@ -2210,8 +2132,7 @@ function syncDureeFields(){
 
 /* ══ PARAMÈTRES ENTREPRISE ══ */
 let companySettings={nom:'',adresse:'',tel:'',email:'',web:''};
-let companyLogo=''; // base64 dataUrl
-
+let companyLogo='';
 async function loadCompanySettings(){
     companySettings=await BO.read('bo_company',{nom:'',adresse:'',tel:'',email:'',web:''});
     companyLogo=await BO.read('bo_logo','');
@@ -2336,8 +2257,7 @@ async function addClient(){
     clients.push({id:BO.uid(),nom:name,contact,tel,email});
     ['new-client-name','new-client-contact','new-client-tel','new-client-email'].forEach(x=>document.getElementById(x).value='');
     await BO.write(BO.KEYS.clients,clients);
-    buildClientSelect(); // recalcule _sortedClients
-    renderClientList();
+    buildClientSelect();renderClientList();
     BO.toast('Client ajouté','success');
 }
 async function editClient(i){
@@ -2346,8 +2266,7 @@ async function editClient(i){
     const newContact=prompt('Contact :',c.contact||'');const newTel=prompt('Téléphone :',c.tel||'');const newEmail=prompt('Email :',c.email||'');
     clients[i]={...c,nom:newName.trim(),contact:(newContact||'').trim(),tel:(newTel||'').trim(),email:(newEmail||'').trim()};
     await BO.write(BO.KEYS.clients,clients);
-    buildClientSelect(); // recalcule _sortedClients
-    renderClientList();
+    buildClientSelect();renderClientList();
     BO.toast('Client modifié','success');
 }
 async function removeClient(i){
