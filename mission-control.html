@@ -170,6 +170,60 @@ body::before{
 
 /* ══ ANIMATIONS ══ */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+/* ══ SETUP OVERLAY ══ */
+.setup-ov{
+  position:fixed;inset:0;z-index:1000;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#020617 0%,#0a1628 100%);
+  opacity:0;transition:opacity .5s;
+}
+.setup-ov.show{opacity:1;}
+.setup-box{
+  width:480px;max-width:94vw;
+  background:rgba(15,23,42,.95);backdrop-filter:blur(40px);
+  border:1px solid rgba(255,215,0,.2);border-radius:2rem;
+  padding:2.5rem 2rem;text-align:center;
+  box-shadow:0 40px 80px rgba(0,0,0,.8);
+  animation:popIn .5s cubic-bezier(.16,1,.3,1);
+}
+.setup-logo{
+  width:56px;height:56px;border-radius:1rem;
+  background:linear-gradient(135deg,#FFD700,#B8860B);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-style:italic;font-size:1.2rem;color:#000;
+  margin:0 auto 1.25rem;box-shadow:0 8px 24px rgba(255,215,0,.3);
+}
+.setup-t{font-size:1.5rem;font-weight:900;font-style:italic;text-transform:uppercase;color:#fff;letter-spacing:-.02em;margin-bottom:.3rem;}
+.setup-t span{color:#FFD700;}
+.setup-s{font-size:.65rem;color:#64748b;font-weight:600;margin-bottom:2rem;line-height:1.6;}
+.setup-step{background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.12);border-radius:1.25rem;padding:1.25rem 1.5rem;margin-bottom:1rem;text-align:left;}
+.setup-step-num{font-size:.45rem;font-weight:900;text-transform:uppercase;letter-spacing:.2em;color:#FFD700;margin-bottom:.4rem;}
+.setup-step-t{font-size:.8rem;font-weight:700;color:#e2e8f0;margin-bottom:.2rem;}
+.setup-step-s{font-size:.58rem;color:#64748b;line-height:1.6;}
+.setup-step-s a{color:#60a5fa;text-decoration:none;}
+.setup-step-s a:hover{text-decoration:underline;}
+.setup-inp-row{display:flex;gap:.5rem;margin-top:.75rem;}
+.setup-inp{
+  flex:1;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);
+  border-radius:.65rem;padding:.65rem .85rem;font-family:'Outfit',sans-serif;
+  font-size:.8rem;color:#e2e8f0;outline:none;transition:border-color .2s;
+}
+.setup-inp::placeholder{color:#334155;}
+.setup-inp:focus{border-color:rgba(255,215,0,.3);}
+.setup-validate{
+  background:linear-gradient(135deg,#FFD700,#B8860B);color:#000;
+  font-family:'Outfit',sans-serif;font-weight:900;font-style:italic;
+  font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;
+  border:none;border-radius:.65rem;padding:.65rem 1.25rem;
+  cursor:pointer;transition:transform .2s,box-shadow .2s;white-space:nowrap;
+  box-shadow:0 4px 14px rgba(255,215,0,.25);
+}
+.setup-validate:hover{transform:scale(1.04);box-shadow:0 6px 20px rgba(255,215,0,.35);}
+.setup-validate:disabled{opacity:.5;cursor:wait;transform:none;}
+.setup-err{font-size:.58rem;color:#ef4444;margin-top:.4rem;display:none;}
+.setup-err.show{display:block;}
+.setup-free{display:inline-flex;align-items:center;gap:.3rem;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:999px;padding:.2rem .65rem;font-size:.5rem;font-weight:900;color:#34d399;text-transform:uppercase;letter-spacing:.1em;margin-bottom:1.5rem;}
+
 @keyframes popIn{0%{transform:scale(.88);opacity:0;}70%{transform:scale(1.04);}100%{transform:scale(1);opacity:1;}}
 @keyframes confetti{0%{transform:translateY(0) rotate(0);opacity:1;}100%{transform:translateY(90px) rotate(720deg);opacity:0;}}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -487,6 +541,39 @@ body::before{
   </div>
 </div></div>
 
+<!-- SETUP OVERLAY — Premier lancement -->
+<div class="setup-ov" id="setupOv">
+  <div class="setup-box">
+    <div class="setup-logo">V</div>
+    <div class="setup-t">Mission <span>Control</span></div>
+    <p class="setup-s">Ton back-office IA personnel.<br>Une seule configuration, et c'est parti.</p>
+
+    <div class="setup-free">✅ Gratuit — sans carte bancaire</div>
+
+    <div class="setup-step">
+      <div class="setup-step-num">Étape 1 — Obtenir ta clé gratuite</div>
+      <div class="setup-step-t">Crée ta clé Gemini en 2 minutes</div>
+      <div class="setup-step-s">
+        1. Va sur <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a><br>
+        2. Connecte-toi avec ton compte Google<br>
+        3. Clique <strong style="color:#e2e8f0">"Get API Key"</strong> → <strong style="color:#e2e8f0">"Create API key"</strong><br>
+        4. Copie la clé (commence par <code style="color:#FFD700;font-size:.6rem">AIzaSy…</code>)
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="setup-step-num">Étape 2 — Colle ta clé ici</div>
+      <div class="setup-step-t">Stockée uniquement dans ton navigateur</div>
+      <div class="setup-step-s">Jamais envoyée ailleurs. Tu peux la changer à tout moment dans Profil IA.</div>
+      <div class="setup-inp-row">
+        <input class="setup-inp" id="setupKeyInp" type="password" placeholder="AIzaSy…" onkeydown="if(event.key==='Enter')validateSetup()">
+        <button class="setup-validate" id="setupBtn" onclick="validateSetup()">Démarrer →</button>
+      </div>
+      <div class="setup-err" id="setupErr">Clé invalide — vérifie qu'elle commence par AIzaSy</div>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
 <!-- SIDEBAR -->
@@ -683,6 +770,49 @@ body::before{
     </div>
   </div>
 
+  <div class="sh"><span class="sh-t">Configuration IA</span><div class="sh-l"></div></div>
+  <div class="profil-card full" style="margin-bottom:.7rem">
+    <span class="pc-lbl">Modèle à utiliser</span>
+    <div style="display:flex;gap:.5rem;margin-bottom:.9rem;flex-wrap:wrap">
+      <div id="provBtn-claude" onclick="setProvider('claude')"
+        style="display:flex;align-items:center;gap:.5rem;border-radius:999px;padding:.45rem 1rem;font-size:.6rem;font-weight:900;cursor:pointer;transition:all .2s;border:1px solid var(--border-gold);background:var(--gold-glow);color:var(--gold);text-transform:uppercase;letter-spacing:.08em">
+        🤖 Claude (Anthropic)
+      </div>
+      <div id="provBtn-gemini" onclick="setProvider('gemini')"
+        style="display:flex;align-items:center;gap:.5rem;border-radius:999px;padding:.45rem 1rem;font-size:.6rem;font-weight:900;cursor:pointer;transition:all .2s;border:1px solid var(--border);background:var(--input-bg2);color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em">
+        ✨ Gemini (Google)
+      </div>
+    </div>
+
+    <div id="keyZone-claude">
+      <span class="pc-lbl">Clé API Claude (console.anthropic.com)</span>
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
+        <input type="password" id="claudeKeyInp" class="pc-ta" style="min-height:unset;padding:.5rem .75rem;font-family:monospace;font-size:.72rem"
+          placeholder="sk-ant-api03-…"
+          oninput="S.claudeKey=this.value;persist()">
+        <button class="btn-ghost" style="white-space:nowrap;font-size:.5rem" onclick="toggleKeyVis('claudeKeyInp',this)">👁 Voir</button>
+      </div>
+      <div style="font-size:.52rem;color:var(--text-dim);line-height:1.6">
+        Gratuit jusqu'à un certain quota sur <strong style="color:var(--gold)">console.anthropic.com</strong> → API Keys → Create key.<br>
+        Stockée <strong style="color:var(--green)">uniquement dans ton navigateur</strong>, jamais envoyée ailleurs.
+      </div>
+    </div>
+
+    <div id="keyZone-gemini" style="display:none">
+      <span class="pc-lbl">Clé API Gemini (aistudio.google.com)</span>
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
+        <input type="password" id="geminiKeyInp" class="pc-ta" style="min-height:unset;padding:.5rem .75rem;font-family:monospace;font-size:.72rem"
+          placeholder="AIzaSy…"
+          oninput="S.geminiKey=this.value;persist()">
+        <button class="btn-ghost" style="white-space:nowrap;font-size:.5rem" onclick="toggleKeyVis('geminiKeyInp',this)">👁 Voir</button>
+      </div>
+      <div style="font-size:.52rem;color:var(--text-dim);line-height:1.6">
+        Free tier très généreux sur <strong style="color:var(--blue)">aistudio.google.com</strong> → Get API Key → Créer.<br>
+        Utilise <strong>gemini-2.0-flash</strong> — rapide et gratuit.
+      </div>
+    </div>
+  </div>
+
   <div class="sh"><span class="sh-t">Documents de référence</span><div class="sh-l"></div></div>
   <div style="background:var(--bg3);border:1px solid var(--border);border-radius:1.25rem;padding:.75rem 1rem;margin-bottom:.85rem;font-size:.6rem;color:var(--text-mid);line-height:1.7">
     Catalogues, fiches techniques, grilles tarifaires, historiques… Tu choisis quels docs inclure dans chaque échange.
@@ -722,6 +852,9 @@ let S = {
   lastMailReply:'',
   pendingMailMissions:[],
   theme:'dark',
+  aiProvider:'claude',
+  claudeKey:'',
+  geminiKey:'',
 };
 
 const uid = () => Math.random().toString(36).slice(2,8);
@@ -748,10 +881,13 @@ function loadState(){
   try{
     const r=localStorage.getItem(SK); if(!r)return;
     const p=JSON.parse(r);
-    S.dossiers = p.dossiers||[];
-    S.xp       = p.xp||0;
-    S.profile  = {...S.profile,...(p.profile||{})};
-    S.theme    = p.theme||'dark';
+    S.dossiers    = p.dossiers||[];
+    S.xp          = p.xp||0;
+    S.profile     = {...S.profile,...(p.profile||{})};
+    S.theme       = p.theme||'dark';
+    S.aiProvider  = p.aiProvider||'claude';
+    S.claudeKey   = p.claudeKey||'';
+    S.geminiKey   = p.geminiKey||'';
     S.docs     = (p.docs||[]).map(d=>{
       if(d.type==='image' && d.dataUrl){
         const b64=d.dataUrl.split(',')[1]||'';
@@ -867,19 +1003,78 @@ function buildDocCtx(selectorId){
     '\n=== FIN DOCUMENTS ===\n\n';
 }
 
+// ═══════════════════════════════════
+// AI ROUTER — Claude ou Gemini
+// ═══════════════════════════════════
+async function callAI(content, maxTokens=1000){
+  // Détecter si on est dans claude.ai (pas besoin de clé)
+  const isClaudeAI = window.location.hostname.includes('claude.ai') ||
+                     window.location.hostname.includes('anthropic.com');
+
+  if(S.aiProvider==='gemini'){
+    return await callGemini(content, maxTokens);
+  }
+  // Claude — clé perso ou claude.ai natif
+  return await callClaude(content, maxTokens);
+}
+
 async function callClaude(content, maxTokens=1000){
+  const headers = {'Content-Type':'application/json'};
+  // Si clé perso dispo, on l'utilise ; sinon on essaie sans (claude.ai artifacts)
+  if(S.claudeKey) headers['x-api-key'] = S.claudeKey;
+  // Le header anthropic-version est requis avec une vraie clé
+  if(S.claudeKey) headers['anthropic-version'] = '2023-06-01';
+
   const resp = await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method:'POST', headers,
     body:JSON.stringify({
       model:'claude-sonnet-4-20250514',
       max_tokens:maxTokens,
       messages:[{role:'user',content}]
     })
   });
+  if(!resp.ok){
+    const err=await resp.json().catch(()=>({}));
+    // Si CORS/fetch bloqué et pas de clé → guider l'utilisateur
+    throw new Error(err?.error?.message || `HTTP ${resp.status} — Ajoute ta clé API dans Profil IA`);
+  }
   const data=await resp.json();
   if(data.error) throw new Error(data.error.message);
   return data.content.map(b=>b.text||'').join('');
+}
+
+async function callGemini(content, maxTokens=1000){
+  if(!S.geminiKey) throw new Error('Clé Gemini manquante — configure-la dans Profil IA');
+  const model = 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${S.geminiKey}`;
+
+  // Convertir content (string ou array Claude) → format Gemini
+  let parts;
+  if(typeof content === 'string'){
+    parts = [{text: content}];
+  } else {
+    // Array de blocs Claude → Gemini parts
+    parts = content.map(b=>{
+      if(b.type==='text') return {text: b.text};
+      if(b.type==='image') return {inlineData:{mimeType:b.source.media_type, data:b.source.data}};
+      return {text:''};
+    }).filter(p=>p.text!==''||p.inlineData);
+  }
+
+  const resp = await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      contents:[{parts}],
+      generationConfig:{maxOutputTokens:maxTokens}
+    })
+  });
+  if(!resp.ok){
+    const err=await resp.json().catch(()=>({}));
+    throw new Error(err?.error?.message || `Gemini HTTP ${resp.status}`);
+  }
+  const data=await resp.json();
+  return data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
 }
 
 function buildMultimodalContent(textPrompt, selectorId){
@@ -925,7 +1120,7 @@ async function askClaude(){
   const msgContent = buildMultimodalContent(textPrompt, 'ctxSelector');
 
   try{
-    const r=await callClaude(msgContent,900);
+    const r=await callAI(msgContent,900);
     S.lastAIResp=r;
     content.textContent=r;
   }catch(e){
@@ -941,7 +1136,7 @@ async function refine(){
   content.innerHTML='<div class="ai-spinner"><span class="spinner">⚙️</span>&nbsp;Affinement…</div>';
   const prompt=buildProfileCtx()+'Voici ta réponse précédente :\n'+S.lastAIResp+'\n\nAjuste selon : '+fb+'\n\nRéponds directement avec la version améliorée.';
   try{
-    const r=await callClaude(prompt,900);
+    const r=await callAI(prompt,900);
     S.lastAIResp=r;
     content.textContent=r;
     document.getElementById('refineInp').value='';
@@ -1032,7 +1227,7 @@ async function analyseMail(){
   const msgContent = buildMultimodalContent(textPrompt, 'mailCtxSelector');
 
   try{
-    const raw=await callClaude(msgContent, 1800);
+    const raw=await callAI(msgContent, 1800);
     const json=raw.replace(/```json|```/g,'').trim();
     const p=JSON.parse(json);
     lastMailAnalysis = p;
@@ -1194,7 +1389,7 @@ async function refineMail(){
   box.textContent='Affinement en cours…';
   const prompt=buildProfileCtx()+'Voici la réponse mail précédente :\n'+S.lastMailReply+'\n\nAjuste selon : '+fb+'\n\nRéponds directement avec le mail affiné.';
   try{
-    const r=await callClaude(prompt,1000);
+    const r=await callAI(prompt,1000);
     S.lastMailReply=r;
     box.textContent=r;
     document.getElementById('mailRefineInp').value='';
@@ -1283,6 +1478,30 @@ function toggleCtxDoc(selId, docId){ document.getElementById('ctxdoc-'+selId+'-'
 // ═══════════════════════════════════
 // PROFIL VIEW
 // ═══════════════════════════════════
+function setProvider(p){
+  S.aiProvider = p;
+  persist();
+  // Update buttons
+  ['claude','gemini'].forEach(x=>{
+    const btn = document.getElementById('provBtn-'+x);
+    const zone = document.getElementById('keyZone-'+x);
+    if(!btn) return;
+    if(x===p){
+      btn.style.borderColor='var(--border-gold)'; btn.style.background='var(--gold-glow)'; btn.style.color='var(--gold)';
+      if(zone) zone.style.display='block';
+    } else {
+      btn.style.borderColor='var(--border)'; btn.style.background='var(--input-bg2)'; btn.style.color='var(--text-mid)';
+      if(zone) zone.style.display='none';
+    }
+  });
+  showToast('🤖', p==='claude'?'Claude activé':'Gemini activé','','gold');
+}
+function toggleKeyVis(id, btn){
+  const inp = document.getElementById(id);
+  if(!inp) return;
+  if(inp.type==='password'){ inp.type='text'; btn.textContent='🙈 Cacher'; }
+  else { inp.type='password'; btn.textContent='👁 Voir'; }
+}
 function renderProfilView(){
   const p=S.profile;
   document.getElementById('pWho').value=p.who||'';
@@ -1291,6 +1510,13 @@ function renderProfilView(){
   document.getElementById('pProd').value=p.prod||'';
   document.getElementById('pAvoid').value=p.avoid||'';
   document.getElementById('pExamples').value=p.examples||'';
+  // Restore API key fields
+  const gInp = document.getElementById('geminiKeyInp');
+  if(gInp) gInp.value = S.geminiKey||'';
+  const cInp = document.getElementById('claudeKeyInp');
+  if(cInp) cInp.value = S.claudeKey||'';
+  // Apply provider button state
+  setProvider(S.aiProvider||'gemini');
   renderDocList();
 }
 function saveProfile(){
@@ -1537,6 +1763,44 @@ function renderStatsView(){
     :'<div style="color:var(--text-dim);font-size:.65rem;text-align:center">Aucune activité</div>';
 }
 
+// ═══ SETUP ═══
+function showSetup(){
+  const ov = document.getElementById('setupOv');
+  ov.classList.add('show');
+}
+function hideSetup(){
+  const ov = document.getElementById('setupOv');
+  ov.style.transition='opacity .4s';
+  ov.style.opacity='0';
+  setTimeout(()=>ov.style.display='none', 400);
+}
+async function validateSetup(){
+  const key = document.getElementById('setupKeyInp').value.trim();
+  const err = document.getElementById('setupErr');
+  const btn = document.getElementById('setupBtn');
+  err.classList.remove('show');
+  if(!key.startsWith('AIzaSy') && !key.startsWith('AIza')){
+    err.textContent = 'La clé doit commencer par AIzaSy…'; err.classList.add('show'); return;
+  }
+  btn.disabled=true; btn.textContent='Test…';
+  // Test rapide
+  try{
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:'Dis juste "OK"'}]}],generationConfig:{maxOutputTokens:5}})
+    });
+    if(!resp.ok){ const e=await resp.json(); throw new Error(e?.error?.message||'Erreur'); }
+    S.geminiKey = key;
+    S.aiProvider = 'gemini';
+    persist();
+    hideSetup();
+    showToast('✅','Gemini connecté','Tout est prêt !','green');
+  }catch(e){
+    err.textContent = 'Clé refusée par Gemini : '+e.message; err.classList.add('show');
+  }
+  btn.disabled=false; btn.textContent='Démarrer →';
+}
+
 // ═══ INIT ═══
 loadState();
 applyTheme();
@@ -1544,6 +1808,10 @@ tick(); setInterval(tick,1000);
 renderMissions(); renderStatsDash();
 renderAllCtxSelectors();
 document.body.classList.add('loaded');
+// Montrer setup si pas de clé Gemini configurée
+if(!S.geminiKey && !S.claudeKey){
+  showSetup();
+}
 </script>
 </body>
 </html>
