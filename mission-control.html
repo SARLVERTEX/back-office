@@ -510,6 +510,39 @@ body::before {
 .copy-btn:hover { background:rgba(200,160,0,.18); }
 
 /* ═══════════════════════════════════
+   PLAN DE MISSIONS IA
+═══════════════════════════════════ */
+.mission-plan-wrap { display:flex; flex-direction:column; gap:.6rem; margin-top:.8rem; }
+.mission-plan-card {
+  background:var(--input-bg); border:1px solid var(--border);
+  border-radius:1rem; overflow:hidden; transition:border-color .25s;
+}
+.mission-plan-card:hover { border-color:var(--border-gold); }
+.mission-plan-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.65rem .9rem; background:var(--gold-glow);
+  border-bottom:1px solid var(--border-gold);
+}
+.mission-plan-title { font-size:.72rem; font-weight:900; color:var(--gold); flex:1; }
+.mission-plan-meta { display:flex; align-items:center; gap:.4rem; }
+.mission-plan-xp { font-size:.48rem; font-weight:900; color:var(--gold); background:rgba(255,215,0,.1); border:1px solid var(--border-gold); border-radius:999px; padding:.1rem .5rem; }
+.mission-plan-substeps { padding:.65rem .9rem; display:flex; flex-direction:column; gap:.3rem; }
+.mission-plan-sub {
+  display:flex; align-items:flex-start; gap:.5rem;
+  font-size:.68rem; color:var(--text-mid); padding:.3rem .5rem;
+  background:var(--input-bg2); border-radius:.5rem;
+  border:1px solid var(--border);
+}
+.mission-plan-sub-dot { width:6px; height:6px; border-radius:50%; background:var(--gold-dim); flex-shrink:0; margin-top:.35rem; }
+.mission-plan-footer { display:flex; gap:.35rem; padding:.5rem .9rem; border-top:1px solid var(--border); background:var(--input-bg2); }
+.btn-add-plan-mission { background:var(--gold-glow); border:1px solid var(--border-gold); border-radius:.45rem; padding:.3rem .8rem; font-size:.5rem; font-weight:900; color:var(--gold); cursor:pointer; transition:all .2s; text-transform:uppercase; letter-spacing:.08em; }
+.btn-add-plan-mission:hover { background:rgba(200,160,0,.2); }
+.btn-add-plan-mission:disabled { opacity:.4; pointer-events:none; }
+.btn-add-all-missions { display:flex; align-items:center; justify-content:center; gap:.5rem; background:var(--gold-glow); border:1px solid var(--border-gold); border-radius:.65rem; padding:.45rem 1rem; font-size:.55rem; font-weight:900; color:var(--gold); cursor:pointer; transition:all .2s; text-transform:uppercase; letter-spacing:.1em; width:100%; }
+.btn-add-all-missions:hover { background:rgba(200,160,0,.2); }
+.mission-plan-summary { font-size:.72rem; color:var(--text-mid); line-height:1.7; margin-bottom:.6rem; padding:.65rem .9rem; background:var(--input-bg2); border-radius:.75rem; border:1px solid var(--border); }
+
+/* ═══════════════════════════════════
    PROPOSITIONS MULTIPLES
 ═══════════════════════════════════ */
 .proposals-wrap { display:flex; flex-direction:column; gap:.55rem; margin-top:.75rem; }
@@ -1313,6 +1346,7 @@ body::before {
           ></textarea>
           <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap">
             <button class="btn-gold" onclick="askClaude()" id="aiBtn">⚡ Demander à Claude →</button>
+            <button class="btn-gold" onclick="generateMissionPlan()" id="aiPlanBtn" style="background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--green)">🎯 Plan de missions →</button>
             <button class="btn-ghost" onclick="clearAI()">Effacer</button>
             <span style="font-size:.48rem; color:var(--text-dim)">Profil + dossiers + règles IA envoyés automatiquement.</span>
           </div>
@@ -1326,6 +1360,7 @@ body::before {
             </div>
             <div class="ai-box-content" id="aiContent"></div>
             <div id="aiProposals"></div>
+            <div id="aiMissionPlan"></div>
             <div class="refine-row">
               <span class="refine-lbl">Affiner ?</span>
               <input class="refine-in" id="refineInp" placeholder="Ex: plus court, plus percutant…" onkeydown="if(event.key==='Enter')refine()">
@@ -1655,7 +1690,7 @@ let S = {
   activeDosTab: 'commercial',
   profile: { who:'', style:'', goals:'', prod:'', avoid:'', examples:'' },
   rules:   { appel:'', relance:'', prospect:'', fidele:'', difficile:'', mail:'' },
-  docs: [], lastAIResp: '', lastMailReply: '', pendingMailMissions: [],
+  docs: [], lastAIResp: '', lastMailReply: '', lastAIPlan: [], pendingMailMissions: [],
   theme: 'dark', aiProvider: 'claude', claudeKey: '', geminiKey: '',
   lastExport: null, lastAutoSave: null, dossierLastAI: '',
 };
@@ -2120,6 +2155,8 @@ function setQ(txt) {
 function clearAI() {
   document.getElementById('aiPrompt').value='';
   document.getElementById('aiBox').classList.remove('show');
+  document.getElementById('aiMissionPlan').innerHTML='';
+  S.lastAIPlan = [];
 }
 
 async function askClaude() {
@@ -2159,6 +2196,109 @@ async function askClaude() {
     document.getElementById('aiProposals').innerHTML='';
   }
   btn.disabled=false; btn.textContent='⚡ Demander à Claude →';
+}
+
+// ─────────────────────────────────────────
+//  GÉNÉRATION DE PLAN DE MISSIONS IA
+// ─────────────────────────────────────────
+async function generateMissionPlan() {
+  const problem = document.getElementById('aiPrompt').value.trim();
+  if(!problem) { showToast('⚠️','Décris ton problème d\'abord','','gold'); return; }
+
+  const btn = document.getElementById('aiPlanBtn');
+  btn.disabled = true; btn.textContent = '⏳ Génération…';
+  document.getElementById('aiBox').classList.add('show');
+  document.getElementById('aiContent').innerHTML = '<div class="ai-spinner"><span class="spinner">⚙️</span>&nbsp;Décomposition du problème en missions…</div>';
+  document.getElementById('aiProposals').innerHTML = '';
+  document.getElementById('aiMissionPlan').innerHTML = '';
+
+  const systemCtx = buildProfileCtx() + buildDossierCtx() + buildMissionCtx();
+  const textPrompt = systemCtx +
+    `PROBLÈME EXPOSÉ : ${problem}\n\n` +
+    `Tu es un expert en gestion de projet et productivité. Analyse ce problème et génère un plan d'action structuré.\n` +
+    `Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication, avec ce format EXACT :\n` +
+    `{"summary":"Résumé concis du problème et de l approche (2-3 phrases)","missions":[{"title":"Titre de la mission principale","type":"appel","urgent":false,"substeps":[{"text":"Sous-mission 1"},{"text":"Sous-mission 2"}]},{"title":"Deuxième mission","type":"relance","urgent":false,"substeps":[{"text":"Étape A"},{"text":"Étape B"}]}]}\n` +
+    `RÈGLES STRICTES : 2 à 4 missions principales max. Chaque mission a 2 à 5 sous-missions concrètes et actionnables. Types disponibles uniquement: appel, relance, recap, technique. urgent=true seulement si vraiment critique. Le JSON doit être valide et complet.`;
+
+  const msgContent = buildMultimodalContent(textPrompt, 'ctxSelector');
+  try {
+    const raw = await callAI(msgContent, 1800);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    let parsed;
+    try { parsed = JSON.parse(clean); }
+    catch(e) {
+      const match = clean.match(/\{[\s\S]*\}/);
+      if(match) parsed = JSON.parse(match[0]);
+      else throw new Error('JSON invalide reçu de l\'IA');
+    }
+
+    document.getElementById('aiContent').textContent = '';
+    const plan = parsed.missions || [];
+    const summary = parsed.summary || '';
+    S.lastAIPlan = plan;
+
+    const planEl = document.getElementById('aiMissionPlan');
+    planEl.innerHTML = `
+      ${summary ? `<div class="mission-plan-summary">📋 ${esc(summary)}</div>` : ''}
+      <div class="mission-plan-wrap">
+        ${plan.map((m, i) => {
+          const typeEmoji = {appel:'📞',relance:'🔁',recap:'📝',technique:'🔧'}[m.type] || '🎯';
+          const xpVal = XP_M[m.type] || 60;
+          const substepsHTML = (m.substeps||[]).map(s =>
+            `<div class="mission-plan-sub"><div class="mission-plan-sub-dot"></div><span>${esc(s.text)}</span></div>`
+          ).join('');
+          return `<div class="mission-plan-card" id="planCard-${i}">
+            <div class="mission-plan-head">
+              <span class="mission-plan-title">${typeEmoji} ${esc(m.title)}</span>
+              <div class="mission-plan-meta">
+                ${m.urgent ? '<span style="font-size:.45rem;font-weight:900;color:var(--red);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:999px;padding:.1rem .5rem;text-transform:uppercase">🚨 Urgent</span>' : ''}
+                <span class="mission-plan-xp">+${xpVal} XP</span>
+              </div>
+            </div>
+            ${substepsHTML ? `<div class="mission-plan-substeps">${substepsHTML}</div>` : ''}
+            <div class="mission-plan-footer">
+              <button class="btn-add-plan-mission" id="addBtn-${i}" onclick="addPlanMission(${i})">+ Ajouter à mes missions</button>
+            </div>
+          </div>`;
+        }).join('')}
+        ${plan.length > 1 ? `<button class="btn-add-all-missions" onclick="addAllPlanMissions()">⚡ Tout ajouter (${plan.length} missions)</button>` : ''}
+      </div>`;
+
+  } catch(e) {
+    document.getElementById('aiContent').innerHTML = `<span style="color:var(--red)">Erreur : ${esc(e.message)}</span>`;
+    document.getElementById('aiMissionPlan').innerHTML = '';
+  }
+  btn.disabled = false; btn.textContent = '🎯 Plan de missions →';
+}
+
+function addPlanMission(i) {
+  const plan = S.lastAIPlan;
+  if(!plan || !plan[i]) return;
+  const m = plan[i];
+  const type = m.type || 'appel';
+  const substeps = (m.substeps||[]).map(s => ({ text: s.text, done: false }));
+  S.missions.push({
+    id: uid(), title: m.title, type, xp: XP_M[type]||60,
+    done: false, duration: DUR_M[type], prio: m.urgent ? 'high' : 'med',
+    substeps
+  });
+  renderMissions(); persist();
+  showToast('+XP', 'Mission ajoutée', m.title, 'gold');
+  const addBtn = document.getElementById('addBtn-'+i);
+  if(addBtn) { addBtn.textContent = '✓ Ajoutée'; addBtn.disabled = true; }
+  const card = document.getElementById('planCard-'+i);
+  if(card) { card.style.opacity = '.5'; card.style.borderColor = 'rgba(16,185,129,.3)'; }
+}
+
+function addAllPlanMissions() {
+  const plan = S.lastAIPlan;
+  if(!plan || !plan.length) return;
+  let added = 0;
+  plan.forEach((m, i) => {
+    const addBtn = document.getElementById('addBtn-'+i);
+    if(addBtn && !addBtn.disabled) { addPlanMission(i); added++; }
+  });
+  if(added > 0) showToast('🎯', `${added} missions ajoutées`, 'Plan complet intégré', 'gold');
 }
 
 async function refine() {
