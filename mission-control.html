@@ -1426,6 +1426,9 @@ body::before {
       <!-- STATS -->
       <div class="stats-row" id="statsRow"></div>
 
+      <!-- PLAN DU JOUR IA -->
+      <div id="dayPlanWrap" style="margin:0 0 1rem 0"></div>
+
       <!-- ALERTES -->
       <div id="alertsWrap" style="margin-bottom:1rem"></div>
 
@@ -1475,6 +1478,7 @@ body::before {
           <button class="btn-green" id="mailBtn" onclick="analyseMail()">⚡ Analyser →</button>
         </div>
         <div id="matchBanner" style="display:none; margin-top:.85rem"></div>
+        <div id="mailClarifications" style="display:none; margin-top:.75rem"></div>
         <div class="mail-result" id="mailResult">
           <div class="mail-sec-t" style="margin-top:.9rem">Actions détectées — clique pour ajouter</div>
           <div id="mailMissions"></div>
@@ -1744,6 +1748,7 @@ let S = {
   profile: { who:'', style:'', goals:'', prod:'', avoid:'', examples:'' },
   rules:   { appel:'', relance:'', prospect:'', fidele:'', difficile:'', mail:'' },
   docs: [], lastAIResp: '', lastMailReply: '', lastAIPlan: [], pendingMailMissions: [],
+  dailyPlan: null,
   theme: 'dark', aiProvider: 'claude', claudeKey: '', geminiKey: '',
   lastExport: null, lastAutoSave: null, dossierLastAI: '',
 };
@@ -1806,6 +1811,7 @@ function loadState() {
     S.geminiKey    = p.geminiKey   || '';
     S.lastExport   = p.lastExport  || null;
     S.lastAutoSave = p.lastAutoSave|| null;
+    S.dailyPlan    = p.dailyPlan   || null;
     S.docs = (p.docs||[]).map(d => {
       if (d.type==='image' && d.dataUrl) return { ...d, b64: d.dataUrl.split(',')[1]||'' };
       return d;
@@ -2517,7 +2523,9 @@ function addPlanMission(i) {
   S.missions.push({
     id: uid(), title: m.title, type, xp: XP_M[type]||60,
     done: false, duration: DUR_M[type], prio: m.urgent ? 'high' : 'med',
-    substeps
+    substeps,
+    source:'ai-plan',
+    createdAt:new Date().toISOString()
   });
   renderMissions(); persist();
   showToast('+XP', 'Mission ajoutée', m.title, 'gold');
@@ -2607,8 +2615,11 @@ async function analyseMail() {
   const textPrompt = buildProfileCtx()+buildDocCtx('mailCtxSelector')+
     `DOSSIERS EXISTANTS (JSON) :\n${dossiersJSON}\n\n`+
     `MAIL(S) REÇU(S) :\n${content}\n\n`+
-    `Analyse ce mail et génère 3 variantes de réponse. Réponds EN JSON UNIQUEMENT :\n`+
-    `{"client":"nom","subject":"objet","summary":"résumé 2 phrases","existingDossierId":"id ou null","isDuplicate":false,"duplicateNote":"","statusUpdate":"pending|urgent|ok|null","noteUpdate":"null","clientType":"prospect|fidele|difficile|vip|inactif ou null","missions":[{"title":"action","type":"appel|relance|recap|technique","xp":75,"urgent":false}],"replies":[{"style":"direct","note":"note courte","content":"réponse complète"},{"style":"soft","note":"note courte","content":"réponse complète"},{"style":"formal","note":"note courte","content":"réponse complète"}],"historyEntry":"phrase courte"}`;
+    `Étape 1 : classe chaque mail dans une catégorie métier pour orienter la réponse.\n`+
+    `Catégories possibles : "prospect", "client_fidele", "sav_critique", "sav_normal", "relance_devis", "litige", "interne", "autre".\n`+
+    `Étape 2 : selon la catégorie, propose les missions et les réponses adaptées.\n`+
+    `Réponds EN JSON UNIQUEMENT, format exact :\n`+
+    `{"client":"nom","subject":"objet","summary":"résumé 2 phrases","existingDossierId":"id ou null","isDuplicate":false,"duplicateNote":"","statusUpdate":"pending|urgent|ok|null","noteUpdate":"null","clientType":"prospect|fidele|difficile|vip|inactif ou null","category":"prospect|client_fidele|sav_critique|sav_normal|relance_devis|litige|interne|autre","categoryConfidence":0.0,"missions":[{"title":"action","type":"appel|relance|recap|technique","xp":75,"urgent":false}],"replies":[{"style":"direct","note":"note courte","content":"réponse complète"},{"style":"soft","note":"note courte","content":"réponse complète"},{"style":"formal","note":"note courte","content":"réponse complète"}],"historyEntry":"phrase courte","clarificationNeeded":false,"clarificationQuestions":["question 1","question 2"]}`;
 
   const msgContent = buildMultimodalContent(textPrompt,'mailCtxSelector');
   try {
@@ -2617,6 +2628,24 @@ async function analyseMail() {
     lastMailAnalysis     = p;
     S.pendingMailMissions = p.missions||[];
     S.lastMailReply       = p.replies?.[0]?.content||'';
+
+    const clarWrap = document.getElementById('mailClarifications');
+    if (clarWrap) {
+      if (p.clarificationNeeded && Array.isArray(p.clarificationQuestions) && p.clarificationQuestions.length) {
+        clarWrap.style.display='block';
+        clarWrap.innerHTML = `
+          <div class="mail-sec-t" style="margin-top:.6rem">Questions de clarification</div>
+          <ul style="margin:.35rem 0 0 1rem;font-size:.7rem;color:var(--text-mid);line-height:1.4">
+            ${p.clarificationQuestions.map(q=>`<li>${esc(q)}</li>`).join('')}
+          </ul>
+          <div style="font-size:.6rem;color:var(--text-dim);margin-top:.25rem">
+            Réponds mentalement à ces questions et ajuste le dossier, les missions ou le mail si besoin.
+          </div>`;
+      } else {
+        clarWrap.style.display='none';
+        clarWrap.innerHTML='';
+      }
+    }
 
     let matchedDossier = null;
     if(p.existingDossierId) matchedDossier = S.dossiers.find(d=>d.id===p.existingDossierId);
@@ -2671,6 +2700,9 @@ function autoUpdateDossier(dossierId, analysis, rawContent) {
   d.history.push({ text:'📧 '+(analysis.historyEntry||analysis.summary||'Mail reçu'), type:'mail', date:new Date().toISOString() });
   d.lastContact = new Date().toISOString();
   if(analysis.statusUpdate&&['urgent','pending','ok'].includes(analysis.statusUpdate)) d.status=analysis.statusUpdate;
+  // Routage par catégorie métier
+  if(analysis.category==='sav_critique') d.status='urgent';
+  if(analysis.category==='sav_normal' && d.status!=='urgent') d.status=d.status||'pending';
   if(analysis.noteUpdate&&analysis.noteUpdate!=='null') d.note=analysis.noteUpdate;
   if(analysis.clientType&&!d.clientType) d.clientType=analysis.clientType;
   persist();
@@ -2687,11 +2719,18 @@ function applyDossierUpdate(id) {
 function createDossierFromMail() {
   if(!lastMailAnalysis) return;
   const raw = document.getElementById('mailContent').value;
+  // Mappage catégorie -> type client / statut par défaut
+  let defClientType = lastMailAnalysis.clientType||'prospect';
+  let defStatus = lastMailAnalysis.statusUpdate||'pending';
+  if(lastMailAnalysis.category==='client_fidele') defClientType='fidele';
+  if(lastMailAnalysis.category==='litige') defClientType='difficile';
+  if(lastMailAnalysis.category==='sav_critique') defStatus='urgent';
+  if(lastMailAnalysis.category==='sav_normal' && defStatus!=='urgent') defStatus='pending';
   const d = {
     id:'d'+uid(), name:lastMailAnalysis.client||'Nouveau client', type:'client',
-    status:lastMailAnalysis.statusUpdate||'pending',
+    status:defStatus,
     note:(lastMailAnalysis.noteUpdate&&lastMailAnalysis.noteUpdate!=='null')?lastMailAnalysis.noteUpdate:lastMailAnalysis.summary||'',
-    clientType:lastMailAnalysis.clientType||'prospect', clientInfo:'',
+    clientType:defClientType, clientInfo:'',
     emoji:'📁', color:'#FFD700', tags:[], subDossiers:[], activeSubDossier:null,
     tickets:[], iaRules:{ clientType:'auto', mailTone:'auto', actionTone:'auto', custom:'' },
     mailHistory:[{ id:uid(), date:new Date().toISOString(), subject:lastMailAnalysis.subject||'(sans objet)', summary:lastMailAnalysis.summary||'', rawSnippet:raw.substring(0,300) }],
@@ -2709,7 +2748,7 @@ function createDossierFromMail() {
 function addMailMission(i) {
   const m=S.pendingMailMissions[i]; if(!m||m._added) return;
   m._added=true;
-  S.missions.push({ id:uid(),...m, done:false, duration:DUR_M[m.type]||'~20 min', prio:m.urgent?'high':'med', substeps:[] });
+  S.missions.push({ id:uid(),...m, done:false, duration:DUR_M[m.type]||'~20 min', prio:m.urgent?'high':'med', substeps:[], source:'ai-mail', createdAt:new Date().toISOString() });
   document.getElementById('mm-'+i)?.classList.add('added');
   renderMissions(); persist(); showToast('+'+m.xp+' XP',m.title,'📨','gold');
 }
@@ -2881,7 +2920,213 @@ function renderStatsDash() {
     <div class="stat fi"><div class="stat-n">${S.missions.length}</div><div class="stat-l">Total aujourd'hui</div></div>
     <div class="stat fi"><div class="stat-n">${urg}</div><div class="stat-l">Urgences</div></div>
     <div class="stat fi"><div class="stat-n">${S.todayXP}</div><div class="stat-l">XP aujourd'hui</div></div>`;
+  renderDailyPlan();
   renderAlerts();
+}
+
+// ─────────────────────────────────────────
+//  PLAN DU JOUR IA (MISSIONS IA UNIQUEMENT)
+// ─────────────────────────────────────────
+function getWorkdayMeta(d) {
+  const day = d.getDay(); // 0=dim,1=lun,...,6=sam
+  const isWorkday = day>=1 && day<=5;
+  if (!isWorkday) return { isWorkday:false, slots:[] };
+  if (day===5) {
+    return {
+      isWorkday:true,
+      slots:[
+        { id:'am', label:'Matin',  range:'8h25-12h00' },
+        { id:'pm', label:'Après-midi', range:'13h00-16h25' }
+      ]
+    };
+  }
+  return {
+    isWorkday:true,
+    slots:[
+      { id:'am', label:'Matin',  range:'8h25-12h00' },
+      { id:'pm', label:'Après-midi', range:'13h00-17h25' }
+    ]
+  };
+}
+
+function getTodayISODate() {
+  const d = new Date();
+  return d.toISOString().slice(0,10); // YYYY-MM-DD
+}
+
+function getAIMissionsForPlan() {
+  const today = getTodayISODate();
+  return S.missions.filter(m=>{
+    if (m.done) return false;
+    if (!m.source || (m.source!=='ai-mail' && m.source!=='ai-plan')) return false;
+    if (!m.createdAt) return true;
+    return m.createdAt.slice(0,10) === today;
+  });
+}
+
+function renderDailyPlan() {
+  const wrap = document.getElementById('dayPlanWrap'); if (!wrap) return;
+  const today = getTodayISODate();
+  const aiMissions = getAIMissionsForPlan();
+  const meta = getWorkdayMeta(new Date());
+
+  // Pas de missions IA
+  if (!aiMissions.length) {
+    wrap.innerHTML = `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:1.1rem;padding:.7rem .9rem;font-size:.7rem;color:var(--text-mid);display:flex;justify-content:space-between;align-items:center;gap:.7rem">
+        <div>
+          <div style="font-weight:800;text-transform:uppercase;letter-spacing:.14em;font-size:.58rem;color:var(--text-dim)">Plan du jour IA</div>
+          <div style="margin-top:.2rem">Aucune mission IA à prioriser pour aujourd'hui.</div>
+        </div>
+        <button class="btn-ghost" style="font-size:.52rem" onclick="generateDailyPlan(false)">Rechercher des priorités</button>
+      </div>`;
+    return;
+  }
+
+  const hasTodayPlan = S.dailyPlan && S.dailyPlan.day === today && Array.isArray(S.dailyPlan.missions) && S.dailyPlan.missions.length;
+  if (!hasTodayPlan) {
+    wrap.innerHTML = `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:1.1rem;padding:.7rem .9rem;font-size:.7rem;color:var(--text-mid);display:flex;justify-content:space-between;align-items:center;gap:.7rem">
+        <div>
+          <div style="font-weight:800;text-transform:uppercase;letter-spacing:.14em;font-size:.58rem;color:var(--text-dim)">Plan du jour IA</div>
+          <div style="margin-top:.2rem">Missions IA ouvertes : ${aiMissions.length}. Laisse Claude proposer l'ordre idéal selon tes dossiers et tes horaires (${meta.slots.map(s=>s.range).join(' / ')}).</div>
+        </div>
+        <button class="btn-green" style="font-size:.52rem;padding:.35rem .7rem" onclick="generateDailyPlan(false)">⚡ Générer</button>
+      </div>`;
+    return;
+  }
+
+  const p = S.dailyPlan;
+  const missionsHTML = p.missions
+    .slice()
+    .sort((a,b)=>(a.order||999)-(b.order||999))
+    .map(m=>{
+      const base = S.missions.find(x=>x.id===m.missionId);
+      const label = m.slotLabel || m.slot || '';
+      const est = m.estimatedMinutes ? ` · ~${m.estimatedMinutes} min` : '';
+      const focus = m.focus || m.reason || '';
+      const title = base?.title || m.title || '(mission)';
+      const typ = base?.type || m.type || 'appel';
+      return `<div style="padding:.35rem .45rem;border-radius:.6rem;border:1px solid var(--border);margin-top:.25rem;display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start">
+        <div style="font-size:.7rem">
+          <div style="font-weight:700;color:var(--text)">${m.order||'?'} • ${title}</div>
+          <div style="font-size:.6rem;color:var(--text-dim);margin-top:.1rem">${TL_M[typ]||typ}${est}${label?` · ${label}`:''}</div>
+          ${focus?`<div style="font-size:.58rem;color:var(--text-mid);margin-top:.12rem">${esc(focus)}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+  wrap.innerHTML = `
+    <div style="background:var(--bg3);border:1px solid var(--border-gold);border-radius:1.1rem;padding:.75rem .9rem;font-size:.7rem;color:var(--text-mid)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:.3rem">
+        <div>
+          <div style="font-weight:800;text-transform:uppercase;letter-spacing:.14em;font-size:.58rem;color:var(--gold)">Plan du jour IA</div>
+          <div style="margin-top:.15rem;font-size:.66rem;color:var(--text)">${p.summary ? esc(p.summary) : 'Ordre proposé pour traiter tes missions IA du jour.'}</div>
+        </div>
+        <button class="btn-gold" style="font-size:.52rem;padding:.35rem .7rem" onclick="acceptDailyPlan()">Accepter le plan</button>
+      </div>
+      <div style="font-size:.58rem;color:var(--text-dim);margin-bottom:.2rem">Horaires pris en compte : ${meta.slots.map(s=>s.range).join(' / ')}</div>
+      ${missionsHTML}
+      <div style="margin-top:.4rem;display:flex;justify-content:flex-end;gap:.4rem">
+        <button class="btn-ghost" style="font-size:.5rem;padding:.3rem .6rem" onclick="generateDailyPlan(false)">↺ Recalculer</button>
+      </div>
+    </div>`;
+}
+
+async function generateDailyPlan(auto) {
+  const aiMissions = getAIMissionsForPlan();
+  const today = getTodayISODate();
+  const meta = getWorkdayMeta(new Date());
+
+  if (!aiMissions.length) {
+    if (!auto) showToast('ℹ️','Aucune mission IA à prioriser','','gold');
+    S.dailyPlan = null; persist(); renderDailyPlan();
+    return;
+  }
+
+  const btnWrap = document.getElementById('dayPlanWrap');
+  if (btnWrap) {
+    btnWrap.innerHTML = `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:1.1rem;padding:.7rem .9rem;font-size:.7rem;color:var(--text-mid);display:flex;justify-content:space-between;align-items:center;gap:.7rem">
+        <div>
+          <div style="font-weight:800;text-transform:uppercase;letter-spacing:.14em;font-size:.58rem;color:var(--text-dim)">Plan du jour IA</div>
+          <div style="margin-top:.2rem">Claude construit ton ordre de priorités…</div>
+        </div>
+        <span class="spinner" style="font-size:1rem">⚙️</span>
+      </div>`;
+  }
+
+  const missionsPayload = aiMissions.map(m=>({
+    id:m.id,
+    title:m.title,
+    type:m.type,
+    urgent:!!m.urgent,
+    dossier:m.dossier||null,
+    duration:m.duration||DUR_M[m.type]||null
+  }));
+
+  const textPrompt =
+    buildProfileCtx()+
+    buildDossierCtx()+
+    'MISSIONS IA OUVERTES (JSON) :\n'+JSON.stringify(missionsPayload)+'\n\n'+
+    `TES HORAIRES DE TRAVAIL :\n- Lundi à jeudi : 8h25-12h00 et 13h00-17h25\n- Vendredi : 8h25-12h00 et 13h00-16h25\n\n`+
+    `Nous sommes le ${new Date().toLocaleDateString('fr-FR')}.\n`+
+    `Objectif : proposer un plan du jour en ordonnant ces missions IA seulement.\n`+
+    `Réponds UNIQUEMENT en JSON strict, format EXACT :\n`+
+    `{"day":"${today}","summary":"phrase qui résume le focus du jour","missions":[{"missionId":"id d une mission ci-dessus","order":1,"slotLabel":"Matin" ,"estimatedMinutes":30,"focus":"raison du placement (ex: commencer par les urgences clients X et Y)"}]}\n`+
+    `RÈGLES :\n- Utilise uniquement les missionId fournis\n- order commence à 1 et suit l ordre conseillé dans la journée\n- slotLabel ∈ {"Matin","Après-midi"}\n- estimatedMinutes ≈ durée utile pour traiter la mission\n- focus explique en une phrase pourquoi cette mission est à cet endroit.`;
+
+  try {
+    const raw = await callAI(textPrompt, 1600);
+    const clean = raw.replace(/```json|```/g,'').trim();
+    let parsed;
+    try { parsed = JSON.parse(clean); }
+    catch(e) {
+      const m = clean.match(/\{[\s\S]*\}/);
+      if (m) parsed = JSON.parse(m[0]); else throw e;
+    }
+    const missions = (parsed.missions||[]).filter(m=>aiMissions.some(x=>x.id===m.missionId));
+    S.dailyPlan = {
+      day: parsed.day || today,
+      summary: parsed.summary || '',
+      missions,
+      generatedAt: new Date().toISOString()
+    };
+    persist();
+    renderDailyPlan();
+    if (!auto) showToast('🎯','Plan du jour généré','','green');
+  } catch(e) {
+    console.error('generateDailyPlan error', e);
+    S.dailyPlan = null; persist();
+    renderDailyPlan();
+    if (!auto) showToast('❌','Erreur plan du jour',e.message||'', 'gold');
+  }
+}
+
+function acceptDailyPlan() {
+  const today = getTodayISODate();
+  if (!S.dailyPlan || S.dailyPlan.day !== today || !Array.isArray(S.dailyPlan.missions)) {
+    showToast('⚠️','Aucun plan à appliquer','','gold');
+    return;
+  }
+  const orders = {};
+  S.dailyPlan.missions.forEach((m,idx)=>{
+    if (!m.missionId) return;
+    orders[m.missionId] = m.order || (idx+1);
+  });
+  S.missions.forEach(m=>{
+    m.planOrder = orders[m.id] || null;
+  });
+  S.missions.sort((a,b)=>{
+    const ao = a.planOrder || 9999;
+    const bo = b.planOrder || 9999;
+    if (ao!==bo) return ao-bo;
+    return 0;
+  });
+  renderMissions();
+  renderStatsDash();
+  persist();
+  showToast('🎯','Plan du jour appliqué','Missions réordonnées','green');
 }
 
 function setMissionReminder(i,val) { if(!S.missions[i]) return; S.missions[i].reminder=val||null; persist(); renderMissions(); if(val) showToast('⏰','Rappel défini',new Date(val).toLocaleDateString('fr-FR'),'gold'); }
@@ -2900,7 +3145,7 @@ function deleteM(i){ if(!confirm('Supprimer cette mission ?')) return; S.mission
 function addM() {
   const inp=document.getElementById('addInp'), type=document.getElementById('addType').value, title=inp.value.trim();
   if(!title) return;
-  S.missions.push({ id:uid(), title, type, xp:XP_M[type]||60, done:false, duration:DUR_M[type], prio:'med', substeps:[] });
+  S.missions.push({ id:uid(), title, type, xp:XP_M[type]||60, done:false, duration:DUR_M[type], prio:'med', substeps:[], source:'manual', createdAt:new Date().toISOString() });
   inp.value=''; renderMissions(); renderStatsDash(); persist();
 }
 function helpMission(i){ const m=S.missions[i]; setQ(`Aide-moi à bien préparer et exécuter cette mission : "${m.title}". Étapes concrètes, points clés, points d'attention.`); }
@@ -3198,7 +3443,7 @@ function addManualNote(id) {
 function addToDossier(id) {
   const inp=document.getElementById('dAddInp'), type=document.getElementById('dAddType')?.value||'appel';
   const title=inp?.value?.trim(); if(!title) return;
-  S.missions.push({ id:uid(), title, type, xp:XP_M[type]||60, done:false, duration:DUR_M[type], prio:'med', substeps:[], dossierId:id, dossier:S.dossiers.find(x=>x.id===id)?.name||'' });
+  S.missions.push({ id:uid(), title, type, xp:XP_M[type]||60, done:false, duration:DUR_M[type], prio:'med', substeps:[], dossierId:id, dossier:S.dossiers.find(x=>x.id===id)?.name||'', source:'manual', createdAt:new Date().toISOString() });
   if(inp) inp.value='';
   renderMissions(); persist(); renderDossierDetail(id,S.activeDosTab);
 }
