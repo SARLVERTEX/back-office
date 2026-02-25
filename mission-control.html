@@ -2276,7 +2276,7 @@ const WORKER_URL = 'https://vertex-relay.allan-pleutin.workers.dev';
 async function callAI(content, maxTokens=1200) {
   const resp = await fetch(WORKER_URL, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:maxTokens, messages:[{role:'user',content}] }),
+    body: JSON.stringify({ model:'claude-3-5-sonnet-20241022', max_tokens:maxTokens, messages:[{role:'user',content}] }),
   });
   if(!resp.ok) { const err=await resp.json().catch(()=>({})); throw new Error(err?.error?.message||`Erreur ${resp.status}`); }
   const data = await resp.json();
