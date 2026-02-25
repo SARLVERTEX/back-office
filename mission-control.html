@@ -1354,6 +1354,10 @@ body::before {
           <span class="backup-dot"></span>
           <span id="backupBtnLbl">💾 Backup</span>
         </button>
+        <button class="backup-btn" onclick="syncAllToDisk()">
+          <span class="backup-dot"></span>
+          <span>Sauvegarder sur le PC</span>
+        </button>
         <div class="theme-toggle" onclick="toggleTheme()">
           <div class="theme-toggle-knob" id="themeKnob">🌙</div>
         </div>
@@ -1977,6 +1981,116 @@ function updateBackupBtn() {
     btn.className='backup-btn saved';
     lbl.textContent=`💾 ${mins<2?'Sauvé':mins<60?'Il y a '+mins+'min':'Backup'}`;
   } else { btn.className='backup-btn'; lbl.textContent='💾 Backup'; }
+}
+
+// ─────────────────────────────────────────
+//  SYNC DISQUE LOCAL (dossiers/fichiers sur le PC)
+// ─────────────────────────────────────────
+let FS_ROOT_HANDLE = null;
+
+async function chooseWorkspaceFolder() {
+  try {
+    if (!window.showDirectoryPicker) {
+      showToast('⚠️','Navigateur limité','showDirectoryPicker non disponible','gold');
+      return;
+    }
+    const handle = await window.showDirectoryPicker();
+    FS_ROOT_HANDLE = handle;
+    showToast('📁','Dossier choisi',handle.name,'green');
+  } catch(e) {
+    console.warn('Dossier non choisi', e);
+    showToast('⚠️','Dossier non choisi','', 'gold');
+  }
+}
+
+async function ensureSubDir(root, path) {
+  const parts = String(path).split('/').filter(Boolean);
+  let current = root;
+  for (const part of parts) {
+    current = await current.getDirectoryHandle(part, { create: true });
+  }
+  return current;
+}
+
+async function writeTextFile(dirHandle, fileName, content) {
+  const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(content);
+  await writable.close();
+}
+
+async function syncAllToDisk() {
+  try {
+    if (!FS_ROOT_HANDLE) {
+      await chooseWorkspaceFolder();
+      if (!FS_ROOT_HANDLE) return;
+    }
+
+    const root = FS_ROOT_HANDLE;
+
+    // 1) Profil & règles + vue synthèse
+    const cfgDir = await ensureSubDir(root, 'config');
+    const profilTxt =
+      (buildProfileCtx?.() || '') +
+      (buildDossierCtx?.() || '') +
+      (buildMissionCtx?.() || '');
+    await writeTextFile(cfgDir, 'profil-et-regles.txt', profilTxt);
+
+    // 2) Dossiers clients
+    const dosRoot = await ensureSubDir(root, 'dossiers');
+    for (const d of (S.dossiers || [])) {
+      const safeName = (d.name || ('Dossier-' + d.id))
+        .replace(/[<>:"/\\|?*]+/g, '_')
+        .substring(0, 40);
+      const dDir = await ensureSubDir(dosRoot, `${d.id} - ${safeName}`);
+
+      const meta = {
+        id: d.id,
+        name: d.name,
+        status: d.status,
+        clientType: d.clientType,
+        tags: d.tags || [],
+        clientInfo: d.clientInfo || '',
+        iaRules: d.iaRules || {},
+        lastContact: d.lastContact || null,
+      };
+      await writeTextFile(dDir, 'meta.json', JSON.stringify(meta, null, 2));
+
+      const dm = (S.missions || []).filter(m => m.dossierId === d.id);
+      await writeTextFile(dDir, 'missions.json', JSON.stringify(dm, null, 2));
+
+      if (d.tickets && d.tickets.length) {
+        await writeTextFile(dDir, 'sav.json', JSON.stringify(d.tickets, null, 2));
+      }
+
+      if (typeof buildFullDossierCtx === 'function') {
+        const fullTxt = buildFullDossierCtx(d.id);
+        await writeTextFile(dDir, 'resume.txt', fullTxt);
+      }
+    }
+
+    // 3) Missions globales
+    const misDir = await ensureSubDir(root, 'missions-globales');
+    await writeTextFile(misDir, 'missions.json', JSON.stringify(S.missions || [], null, 2));
+
+    // 4) Docs (Vnnox, GHX, etc.)
+    const docsDir = await ensureSubDir(root, 'docs');
+    for (const doc of (S.docs || [])) {
+      if (doc.type === 'text' || doc.type === 'pdf') {
+        const safe = (doc.name || ('doc-' + doc.id))
+          .replace(/[<>:"/\\|?*]+/g, '_')
+          .substring(0, 40);
+        const ext = '.txt';
+        const content = doc.content || '';
+        await writeTextFile(docsDir, safe + ext, content);
+      }
+    }
+
+    showToast('💾','Synchro PC OK','Données écrites sur le disque','green');
+  } catch(e) {
+    console.error('syncAllToDisk error', e);
+    showToast('❌','Erreur synchro',e.message || '', 'gold');
+  }
 }
 
 let _ast=null;
