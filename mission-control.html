@@ -2278,15 +2278,20 @@ async function callAI(content, maxTokens=1200) {
     method:'POST', 
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ 
-      model: 'claude-3-sonnet-20240229', 
-      max_tokens: 1024,
+      model: 'claude-3-5-sonnet@20240620', // Format spécifique souvent utilisé sur Vertex
+      max_tokens: maxTokens,
       messages: [{role: 'user', content: content}] 
     }),
   });
-  if(!resp.ok) { const err=await resp.json().catch(()=>({})); throw new Error(err?.error?.message||`Erreur ${resp.status}`); }
+  if(!resp.ok) { 
+    const err = await resp.json().catch(() => ({})); 
+    throw new Error(err?.error?.message || `Erreur ${resp.status}`); 
+  }
   const data = await resp.json();
   if(data.error) throw new Error(data.error.message);
-  return data.content.map(b=>b.text||'').join('');
+  
+  // Structure de réponse type Vertex/Anthropic
+  return data.content[0].text || '';
 }
 
 // ─────────────────────────────────────────
