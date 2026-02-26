@@ -1375,129 +1375,58 @@ body::before {
         <span id="workdayPct" style="font-size:.55rem;color:var(--text-mid);font-variant-numeric:tabular-nums;">0%</span>
       </div>
 
-      <!-- AI PANEL -->
-      <div class="ai-panel" id="aiPanel">
-        <div class="ai-panel-head" onclick="toggleAIPanel()">
-          <div class="ai-panel-head-left">
-            <div class="ai-dot"></div>
-            <div>
-              <div class="ai-panel-title">Assistant IA — Claude</div>
-              <div class="ai-panel-sub">Toujours 2 propositions minimum — choisis la meilleure</div>
-            </div>
-          </div>
-          <span class="ai-chevron">▼</span>
-        </div>
-        <div class="ai-panel-body">
-          <div id="ctxWrap" style="display:none; margin-bottom:.6rem">
-            <div style="font-size:.46rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.3rem">Inclure dans le contexte :</div>
-            <div class="ctx-selector" id="ctxSelector"></div>
-          </div>
-          <div class="quick-prompts">
-            <button class="qp" onclick="setQ('Aide-moi à préparer la mission la plus urgente en cours')">🎯 Mission urgente</button>
-            <button class="qp" onclick="setQ('Que faire en priorité aujourd\'hui selon mes dossiers ?')">📌 Priorités</button>
-            <button class="qp" onclick="setQ('Rédige un script d\'appel pour relancer un client silencieux')">📞 Script appel</button>
-            <button class="qp" onclick="setQ('Génère 3 missions concrètes à partir de mes dossiers en attente')">⚡ Générer missions</button>
-          </div>
-          <textarea
-            class="ai-ta"
-            id="aiPrompt"
-            placeholder="Pose ta question ou décris ce dont tu as besoin… Claude te donnera plusieurs options."
-          ></textarea>
-          <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap">
-            <button class="btn-gold" onclick="askClaude()" id="aiBtn">⚡ Demander à Claude →</button>
-            <button class="btn-ghost" onclick="clearAI()">Effacer</button>
-            <span style="font-size:.48rem; color:var(--text-dim)">Profil + dossiers + règles IA envoyés automatiquement.</span>
-          </div>
-          <div class="ai-box" id="aiBox">
-            <div class="ai-box-head">
-              <div class="ai-box-by">🤖 Claude — Vertex Assistant</div>
-              <div class="ai-box-actions">
-                <button class="copy-btn" onclick="copyAI()">📋 Copier tout</button>
-                <button class="copy-btn" style="background:rgba(16,185,129,.07);border-color:rgba(16,185,129,.2);color:var(--green)" onclick="addAIAsMission()">+ Mission</button>
-              </div>
-            </div>
-          <div class="ai-box-content" id="aiContent"></div>
-          <div id="aiProposals"></div>
-          <div id="aiMissionPlan"></div>
-            <div class="refine-row">
-              <span class="refine-lbl">Affiner ?</span>
-              <input class="refine-in" id="refineInp" placeholder="Ex: plus court, plus percutant…" onkeydown="if(event.key==='Enter')refine()">
-              <button class="btn-refine" onclick="refine()">↺ Affiner</button>
-            </div>
-          </div>
-        </div>
-
-      <!-- MAIL + MISSIONS (FUSIONNÉ DANS LE DASHBOARD) -->
-      <div class="mail-banner">
+      <!-- BLOC UNIQUE (SIMPLE) -->
+      <div class="mail-banner" style="margin-top:.25rem">
         <div class="mail-banner-dot"></div>
         <div>
-          <div class="mail-banner-t">Analyse mail + missions — tout en un</div>
-          <div class="mail-banner-s">Colle le mail reçu, précise ta problématique, et l’IA génère en une fois la réponse + les missions associées.</div>
+          <div class="mail-banner-t">Assistant quotidien — programme structuré</div>
+          <div class="mail-banner-s">Colle ici tes mails, ta problématique et tout contexte. L’IA te rend un plan d’action ordonné (mails à envoyer + missions à faire, au bon moment).</div>
         </div>
       </div>
+
       <div id="mailCtxWrap" style="display:none; margin-bottom:.75rem">
         <div style="font-size:.46rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.3rem">Enrichir avec tes documents :</div>
         <div class="ctx-selector" id="mailCtxSelector"></div>
       </div>
+
       <div class="mail-zone">
-        <div style="font-size:.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.18em;color:var(--text-dim);margin-bottom:.4rem">Mail(s) reçu(s)</div>
+        <div style="font-size:.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.18em;color:var(--text-dim);margin-bottom:.4rem">Contexte (mails + problématique + notes)</div>
         <textarea
           class="mail-ta"
-          id="mailContent"
-          placeholder="De : client@exemple.com&#10;Objet : Devis LED showroom&#10;&#10;Colle ici le mail ou l'échange complet."
-        ></textarea>
-        <div style="font-size:.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.18em;color:var(--text-dim);margin:0.75rem 0 .3rem 0">Problématique / objectif</div>
-        <textarea
-          class="mail-ta"
-          id="mailProblem"
-          placeholder="Ex : le client hésite sur le budget, je veux une réponse ferme mais bienveillante, qui propose 2 options claires."
-          style="min-height:80px"
+          id="unifiedInput"
+          placeholder="Colle ici le mail reçu / l'échange complet, puis ajoute ta problématique.\n\nEx:\nMAIL:\nDe: ...\nObjet: ...\n...\n\nPROBLÉMATIQUE:\nJe veux répondre de façon ferme mais bienveillante + proposer 2 options.\n\nCONTRAINTES:\n- Délai: mardi matin\n- Ton: pro mais direct"
+          style="min-height:220px"
         ></textarea>
         <div class="mail-footer">
-          <span class="mail-note">3 variantes de réponse + missions générées automatiquement selon les règles IA du dossier.</span>
-          <button class="btn-green" id="mailBtn" onclick="analyseMail()">⚡ Analyser le mail & générer les missions →</button>
+          <span class="mail-note">Sortie : étapes ordonnées (mails + missions), prêtes à exécuter.</span>
+          <span id="aiWhoMain" style="font-size:.5rem;color:var(--text-dim);font-weight:800;margin-left:auto;margin-right:.5rem;white-space:nowrap">IA: —</span>
+          <button class="btn-green" id="unifiedBtn" onclick="generateProgram()">⚡ Générer mon programme →</button>
         </div>
-        <div id="matchBanner" style="display:none; margin-top:.85rem"></div>
-        <div id="mailClarifications" style="display:none; margin-top:.75rem"></div>
-        <div class="mail-result" id="mailResult">
-          <div class="mail-sec-t" style="margin-top:.9rem">Actions détectées — clique pour ajouter</div>
-          <div id="mailMissions"></div>
-          <div class="mail-reply-wrap">
-            <div class="mail-reply-head">
-              <div class="mail-reply-lbl">3 variantes de réponse — choisis la tienne</div>
-            </div>
-            <div id="mailProposals"></div>
-            <div id="mailSelectedWrap" style="display:none; margin-top:.75rem">
-              <div style="font-size:.48rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;color:var(--green);margin-bottom:.35rem">✅ Variante sélectionnée — affiner si besoin</div>
-              <div class="mail-reply-box" id="mailReplyBox"></div>
-              <div class="mail-refine" style="margin-top:.5rem">
-                <input class="mail-refine-in" id="mailRefineInp" placeholder="Ajuste : 'plus court', 'ajoute délai 3 semaines'…" onkeydown="if(event.key==='Enter')refineMail()">
-                <button class="btn-green" onclick="refineMail()" style="font-size:.5rem;padding:.38rem .75rem">↺ Affiner</button>
-                <button class="copy-btn" onclick="copyMailReply()" style="margin-left:.2rem">📋</button>
-              </div>
-            </div>
-          </div>
+
+        <div class="mail-result" id="unifiedResult" style="display:none">
+          <div class="mail-sec-t" style="margin-top:.9rem">Programme — étapes à suivre (dans l’ordre)</div>
+          <div id="unifiedSummary" style="margin-top:.4rem;color:var(--text-mid);font-size:.7rem;line-height:1.4"></div>
+          <div id="unifiedSteps" style="margin-top:.6rem"></div>
         </div>
       </div>
-      </div>
 
-      <!-- STATS -->
-      <div class="stats-row" id="statsRow"></div>
+      <!-- STATS (masqué pour épurer) -->
+      <div class="stats-row" id="statsRow" style="display:none"></div>
 
-      <!-- PLAN DU JOUR IA -->
-      <div id="dayPlanWrap" style="margin:0 0 1rem 0"></div>
+      <!-- PLAN DU JOUR IA (masqué pour épurer) -->
+      <div id="dayPlanWrap" style="margin:0 0 1rem 0;display:none"></div>
 
-      <!-- ALERTES -->
-      <div id="alertsWrap" style="margin-bottom:1rem"></div>
+      <!-- ALERTES (masqué pour épurer) -->
+      <div id="alertsWrap" style="margin-bottom:1rem;display:none"></div>
 
-      <!-- MISSIONS -->
-      <div class="sh">
+      <!-- MISSIONS (masqué pour épurer) -->
+      <div class="sh" style="display:none">
         <span class="sh-t">Missions du jour</span>
         <div class="sh-l"></div>
         <span class="sh-b" id="missBadge">0/0</span>
       </div>
-      <div class="missions-list" id="missList"></div>
-      <div class="add-row">
+      <div class="missions-list" id="missList" style="display:none"></div>
+      <div class="add-row" style="display:none">
         <input class="add-inp" id="addInp" placeholder="Ajouter une mission…" onkeydown="if(event.key==='Enter')addM()">
         <select class="add-sel" id="addType">
           <option value="appel">📞 Appel</option>
@@ -2322,6 +2251,11 @@ const PROVIDER_CONFIG = {
   },
 };
 
+function setAIWho(label) {
+  const el = document.getElementById('aiWhoMain') || document.getElementById('aiWhoMail');
+  if (el) el.textContent = label ? `IA: ${label}` : 'IA: —';
+}
+
 // Appel du Worker pour un provider donné, avec gestion de timeout
 async function callWorkerOnce(providerKey, content, maxTokens) {
   const cfg = PROVIDER_CONFIG[providerKey];
@@ -2336,6 +2270,7 @@ async function callWorkerOnce(providerKey, content, maxTokens) {
 
     for (const model of modelsToTry) {
       try {
+        setAIWho(`${providerKey} · ${model}`);
         const resp = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2795,6 +2730,7 @@ async function analyseMail() {
   document.getElementById('mailResult').classList.remove('show');
   document.getElementById('matchBanner').style.display='none';
   document.getElementById('mailSelectedWrap').style.display='none';
+  setAIWho('—');
 
   const dossiersJSON = JSON.stringify(S.dossiers.map(d=>({
     id:d.id, name:d.name, status:d.status, note:d.note, clientType:d.clientType,
@@ -2866,17 +2802,128 @@ async function analyseMail() {
     ).join('')||'<div style="color:var(--text-dim);font-size:.65rem;padding:.4rem 0">Aucune action détectée</div>';
 
     renderProposals(document.getElementById('mailProposals'), p.replies, i=>{
-      S.lastMailReply=p.replies[i].content;
-      document.getElementById('mailReplyBox').textContent=p.replies[i].content;
-      document.getElementById('mailSelectedWrap').style.display='block';
+      S.lastMailReply = p.replies[i].content;
+      document.getElementById('mailReplyBox').textContent = p.replies[i].content;
+      document.getElementById('mailSelectedWrap').style.display = 'block';
       showToast('✓',`Variante "${p.replies[i].style}" sélectionnée`,'','green');
     });
+
+    // Auto-sélection de la 1ère variante pour éviter un écran "vide"
+    if (p.replies && p.replies.length) {
+      document.getElementById('mailReplyBox').textContent = p.replies[0].content || '';
+      document.getElementById('mailSelectedWrap').style.display = 'block';
+    }
 
     document.getElementById('mailResult').classList.add('show');
   } catch(e) {
     showToast('❌','Erreur IA',e.message,'gold'); console.error(e);
   }
-  btn.disabled=false; btn.textContent='⚡ Analyser →';
+  btn.disabled=false; btn.textContent='⚡ Analyser le mail & générer les missions →';
+}
+
+// ─────────────────────────────────────────
+//  PROGRAMME STRUCTURÉ (BLOC UNIQUE)
+// ─────────────────────────────────────────
+function escHTML(s){return esc(s||'');}
+
+function renderProgram(plan) {
+  const wrap = document.getElementById('unifiedResult');
+  const sum  = document.getElementById('unifiedSummary');
+  const stepsEl = document.getElementById('unifiedSteps');
+  if (!wrap || !sum || !stepsEl) return;
+
+  wrap.style.display = 'block';
+  sum.textContent = plan.summary || '';
+
+  const steps = Array.isArray(plan.steps) ? plan.steps : [];
+  if (!steps.length) {
+    stepsEl.innerHTML = `<div style="color:var(--text-dim);font-size:.7rem;padding:.4rem 0">Aucune étape détectée. Ajoute plus de contexte (mail complet + objectif) puis relance.</div>`;
+    return;
+  }
+
+  stepsEl.innerHTML = steps.map((st, idx) => {
+    const kind = st.kind || st.type || 'action';
+    const title = st.title || `Étape ${idx+1}`;
+    const when = st.when || st.timing || '';
+    const body = st.content || st.text || '';
+    const tagColor = kind === 'mail' ? 'rgba(16,185,129,.12)' : 'rgba(200,160,0,.12)';
+    const tagBorder = kind === 'mail' ? 'rgba(16,185,129,.35)' : 'rgba(200,160,0,.35)';
+    const tagLbl = kind === 'mail' ? '📧 Mail' : (kind === 'mission' ? '✅ Mission' : '🧩 Action');
+    const copyBtn = body ? `<button class="copy-btn" onclick="navigator.clipboard.writeText(${JSON.stringify(body)}).then(()=>showToast('📋','Copié','','green'))">📋</button>` : '';
+    const addMissionBtn = (kind === 'mission' && st.missionType && st.title)
+      ? `<button class="copy-btn" style="background:rgba(200,160,0,.08);border-color:rgba(200,160,0,.25);color:var(--gold)" onclick="addProgramMission(${idx})">+ Mission</button>`
+      : '';
+    return `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:1.2rem;padding:.9rem;margin-bottom:.6rem">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <span style="font-size:.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;padding:.2rem .45rem;border-radius:.6rem;background:${tagColor};border:1px solid ${tagBorder}">${tagLbl}</span>
+          <div style="font-weight:900;color:var(--text);font-size:.78rem">${escHTML(title)}</div>
+          ${when ? `<div style="margin-left:auto;color:var(--text-dim);font-size:.62rem;font-weight:800">${escHTML(when)}</div>` : `<div style="margin-left:auto"></div>`}
+          ${copyBtn}
+          ${addMissionBtn}
+        </div>
+        ${body ? `<div style="margin-top:.55rem;color:var(--text-mid);font-size:.72rem;line-height:1.5;white-space:pre-wrap">${escHTML(body)}</div>` : ``}
+      </div>
+    `;
+  }).join('');
+}
+
+function addProgramMission(idx) {
+  try {
+    const plan = S.lastProgramPlan;
+    const st = plan?.steps?.[idx];
+    if (!st) return;
+    const type = st.missionType || 'relance';
+    const title = st.title || 'Mission';
+    if (!S.missions) S.missions = [];
+    S.missions.push({ id: uid(), title, type, done:false, urgent: !!st.urgent, xp: st.xp || 75, createdAt: new Date().toISOString() });
+    persist();
+    renderMissions();
+    showToast('✓','Mission ajoutée',TL_M[type]||type,'green');
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function generateProgram() {
+  const input = document.getElementById('unifiedInput')?.value?.trim() || '';
+  if (!input) { showToast('⚠️','Écris/colle ton contexte','','gold'); return; }
+
+  const btn = document.getElementById('unifiedBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analyse…'; }
+  setAIWho('—');
+  const wrap = document.getElementById('unifiedResult');
+  if (wrap) wrap.style.display = 'none';
+
+  const dossiersCtx = buildDossierCtx();
+  const missionsCtx = buildMissionCtx();
+  const docsCtx = buildDocCtx('mailCtxSelector');
+  const profileCtx = buildProfileCtx();
+
+  const prompt =
+    profileCtx + dossiersCtx + missionsCtx + docsCtx +
+    `CONTEXTE UTILISATEUR (mails + problématique + notes) :\n${input}\n\n` +
+    `OBJECTIF : Tu es mon chef de projet opérationnel. Donne-moi une marche à suivre SIMPLE et exécutable.\n` +
+    `RÈGLES :\n` +
+    `- Réponds UNIQUEMENT en JSON strict (pas de markdown, pas de texte autour)\n` +
+    `- Génère une liste d'étapes ORDONNÉES (dans l'ordre où je dois agir)\n` +
+    `- Chaque étape est soit un mail à envoyer (kind="mail"), soit une mission/action (kind="mission")\n` +
+    `- Pour kind="mail", "content" = le mail complet prêt à copier-coller\n` +
+    `- Pour kind="mission", "title" = action courte, missionType ∈ {"appel","relance","recap","technique"}\n` +
+    `- "when" doit indiquer le moment (ex: "Maintenant", "Aujourd'hui matin", "Après le mail", etc.)\n` +
+    `FORMAT EXACT :\n` +
+    `{"summary":"1-2 phrases","steps":[{"kind":"mail|mission","when":"moment","title":"titre court","content":"texte (mail complet si kind=mail)","missionType":"appel|relance|recap|technique","urgent":false}]}`;
+
+  try {
+    const plan = await callAIJson(prompt, 2600);
+    S.lastProgramPlan = plan;
+    renderProgram(plan);
+  } catch(e) {
+    showToast('❌','Erreur IA',e.message,'gold');
+    console.error(e);
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '⚡ Générer mon programme →'; }
 }
 
 function autoUpdateDossier(dossierId, analysis, rawContent) {
