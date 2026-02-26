@@ -1407,6 +1407,10 @@ body::before {
           <div class="mail-sec-t" style="margin-top:.9rem">Programme — étapes à suivre (dans l’ordre)</div>
           <div id="unifiedSummary" style="margin-top:.4rem;color:var(--text-mid);font-size:.7rem;line-height:1.4"></div>
           <div id="unifiedSteps" style="margin-top:.6rem"></div>
+          <div class="mail-refine" style="margin-top:.7rem">
+            <input class="mail-refine-in" id="programRefineInp" placeholder="Affiner : plus direct, plus court, ajouter une option 2, etc." onkeydown="if(event.key==='Enter')refineProgram()">
+            <button class="btn-green" onclick="refineProgram()" style="font-size:.5rem;padding:.38rem .75rem">↺ Affiner le programme</button>
+          </div>
         </div>
       </div>
 
@@ -1419,14 +1423,14 @@ body::before {
       <!-- ALERTES (masqué pour épurer) -->
       <div id="alertsWrap" style="margin-bottom:1rem;display:none"></div>
 
-      <!-- MISSIONS (masqué pour épurer) -->
-      <div class="sh" style="display:none">
+      <!-- MISSIONS (réactivé pour le suivi par cases à cocher) -->
+      <div class="sh">
         <span class="sh-t">Missions du jour</span>
         <div class="sh-l"></div>
         <span class="sh-b" id="missBadge">0/0</span>
       </div>
-      <div class="missions-list" id="missList" style="display:none"></div>
-      <div class="add-row" style="display:none">
+      <div class="missions-list" id="missList"></div>
+      <div class="add-row">
         <input class="add-inp" id="addInp" placeholder="Ajouter une mission…" onkeydown="if(event.key==='Enter')addM()">
         <select class="add-sel" id="addType">
           <option value="appel">📞 Appel</option>
@@ -2835,13 +2839,22 @@ function renderProgram(plan) {
   wrap.style.display = 'block';
   sum.textContent = plan.summary || '';
 
+  // Questions de clarification éventuelles
+  const clar = plan.clarificationNeeded && Array.isArray(plan.clarificationQuestions) && plan.clarificationQuestions.length
+    ? `<div style="margin-top:.5rem;padding:.6rem .75rem;border-radius:.9rem;border:1px dashed rgba(245,158,11,.5);background:rgba(245,158,11,.06);font-size:.7rem;color:var(--text-mid)">
+        <div style="font-weight:900;text-transform:uppercase;letter-spacing:.14em;font-size:.52rem;margin-bottom:.25rem;color:var(--gold)">Questions de clarification</div>
+        <ul style="margin:.25rem 0 0 1rem;line-height:1.45">${plan.clarificationQuestions.map(q=>`<li>${escHTML(q)}</li>`).join('')}</ul>
+        <div style="font-size:.6rem;color:var(--text-dim);margin-top:.25rem">Réponds à ces questions dans ta tête, complète le contexte si besoin, puis relance une génération.</div>
+      </div>`
+    : '';
+
   const steps = Array.isArray(plan.steps) ? plan.steps : [];
   if (!steps.length) {
-    stepsEl.innerHTML = `<div style="color:var(--text-dim);font-size:.7rem;padding:.4rem 0">Aucune étape détectée. Ajoute plus de contexte (mail complet + objectif) puis relance.</div>`;
+    stepsEl.innerHTML = clar || `<div style="color:var(--text-dim);font-size:.7rem;padding:.4rem 0">Aucune étape détectée. Ajoute plus de contexte (mail complet + objectif) puis relance.</div>`;
     return;
   }
 
-  stepsEl.innerHTML = steps.map((st, idx) => {
+  const stepsHTML = steps.map((st, idx) => {
     const kind = st.kind || st.type || 'action';
     const title = st.title || `Étape ${idx+1}`;
     const when = st.when || st.timing || '';
@@ -2866,6 +2879,8 @@ function renderProgram(plan) {
       </div>
     `;
   }).join('');
+
+  stepsEl.innerHTML = clar + stepsHTML;
 }
 
 function addProgramMission(idx) {
@@ -2905,6 +2920,7 @@ async function generateProgram() {
     `CONTEXTE UTILISATEUR (mails + problématique + notes) :\n${input}\n\n` +
     `OBJECTIF : Tu es mon chef de projet opérationnel. Donne-moi une marche à suivre SIMPLE et exécutable.\n` +
     `RÈGLES :\n` +
+    `- Si des informations importantes manquent, mets "clarificationNeeded":true et 2 à 5 "clarificationQuestions"\n` +
     `- Réponds UNIQUEMENT en JSON strict (pas de markdown, pas de texte autour)\n` +
     `- Génère une liste d'étapes ORDONNÉES (dans l'ordre où je dois agir)\n` +
     `- Chaque étape est soit un mail à envoyer (kind="mail"), soit une mission/action (kind="mission")\n` +
@@ -2912,7 +2928,7 @@ async function generateProgram() {
     `- Pour kind="mission", "title" = action courte, missionType ∈ {"appel","relance","recap","technique"}\n` +
     `- "when" doit indiquer le moment (ex: "Maintenant", "Aujourd'hui matin", "Après le mail", etc.)\n` +
     `FORMAT EXACT :\n` +
-    `{"summary":"1-2 phrases","steps":[{"kind":"mail|mission","when":"moment","title":"titre court","content":"texte (mail complet si kind=mail)","missionType":"appel|relance|recap|technique","urgent":false}]}`;
+    `{"summary":"1-2 phrases","steps":[{"kind":"mail|mission","when":"moment","title":"titre court","content":"texte (mail complet si kind=mail)","missionType":"appel|relance|recap|technique","urgent":false}],"clarificationNeeded":false,"clarificationQuestions":["question 1","question 2"]}`;
 
   try {
     const plan = await callAIJson(prompt, 2600);
@@ -2924,6 +2940,35 @@ async function generateProgram() {
   }
 
   if (btn) { btn.disabled = false; btn.textContent = '⚡ Générer mon programme →'; }
+}
+
+async function refineProgram() {
+  const fb = document.getElementById('programRefineInp')?.value?.trim() || '';
+  if (!fb || !S.lastProgramPlan) return;
+
+  const btn = document.getElementById('programRefineInp');
+  btn.disabled = true;
+
+  const basePlan = JSON.stringify(S.lastProgramPlan);
+  const prompt =
+    `Voici le programme actuel, au format JSON :\n${basePlan}\n\n` +
+    `L'utilisateur souhaite l'affiner avec ces consignes : "${fb}".\n` +
+    `RÉÉCRIS le programme en JSON STRICT, MÊME FORMAT que l'original (summary, steps[], clarificationNeeded, clarificationQuestions).\n` +
+    `- Garde la même logique d'étapes, mais ajuste le ton / la formulation / l'ordre selon les consignes.\n` +
+    `- Pour les mails, renvoie le texte complet dans "content".\n` +
+    `- Ne renvoie QUE le JSON (pas de markdown, pas de commentaires).`;
+
+  try {
+    const newPlan = await callAIJson(prompt, 2600);
+    S.lastProgramPlan = newPlan;
+    renderProgram(newPlan);
+    document.getElementById('programRefineInp').value = '';
+  } catch (e) {
+    showToast('❌','Erreur IA', e.message,'gold');
+    console.error(e);
+  }
+
+  btn.disabled = false;
 }
 
 function autoUpdateDossier(dossierId, analysis, rawContent) {
