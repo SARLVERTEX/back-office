@@ -2316,7 +2316,8 @@ const PROVIDER_CONFIG = {
   },
   gemini: {
     provider: 'gemini',
-    model: 'gemini-1.5-pro-latest', // adapte ce nom de modèle à ta config Vertex/Gemini
+    // Les modèles Gemini changent souvent : on tente plusieurs IDs en cascade
+    model: ['gemini-2.5-flash','gemini-2.0-flash-lite','gemini-1.5-flash-latest'],
     timeoutMs: 15000,
   },
 };
@@ -2330,28 +2331,43 @@ async function callWorkerOnce(providerKey, content, maxTokens) {
   const timeoutId = setTimeout(() => controller.abort(), cfg.timeoutMs || 15000);
 
   try {
-    const resp = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        provider: cfg.provider,
-        model: cfg.model,
-        max_tokens: maxTokens,
-        messages: [{ role: 'user', content }],
-      }),
-    });
+    const modelsToTry = Array.isArray(cfg.model) ? cfg.model : [cfg.model];
+    let lastErr = null;
 
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Erreur ${resp.status}`);
+    for (const model of modelsToTry) {
+      try {
+        const resp = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            provider: cfg.provider,
+            model,
+            max_tokens: maxTokens,
+            messages: [{ role: 'user', content }],
+          }),
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `Erreur ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
+
+        return data.content.map(b => b.text || '').join('');
+      } catch (e) {
+        lastErr = e;
+        const msg = (e && e.message) ? e.message : '';
+        // Si c'est un modèle introuvable/non supporté, on tente le suivant
+        if (/model.*not found|not supported/i.test(msg)) continue;
+        // Sinon on stoppe tout de suite (clé invalide, quota, etc.)
+        throw e;
+      }
     }
 
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-
-    // On suppose que le Worker renvoie : { content:[{text:'...'}, ...] }
-    return data.content.map(b => b.text || '').join('');
+    throw lastErr || new Error('Aucun modèle Gemini compatible trouvé');
   } finally {
     clearTimeout(timeoutId);
   }
@@ -2780,7 +2796,7 @@ async function analyseMail() {
 
     document.getElementById('mailResult').classList.add('show');
   } catch(e) {
-    showToast('❌','Erreur Claude',e.message,'gold'); console.error(e);
+    showToast('❌','Erreur IA',e.message,'gold'); console.error(e);
   }
   btn.disabled=false; btn.textContent='⚡ Analyser →';
 }
