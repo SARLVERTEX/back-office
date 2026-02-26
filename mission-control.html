@@ -1304,9 +1304,6 @@ body::before {
     <button class="s-btn active" onclick="goView('dashboard', this)">
       <span>📊</span><span class="s-lbl">Dashboard</span>
     </button>
-    <button class="s-btn" onclick="goView('mail', this)">
-      <span>📨</span><span class="s-lbl">Analyser mail</span>
-    </button>
     <button class="s-btn" onclick="goView('dossiers', this)">
       <span>📁</span><span class="s-lbl">Dossiers</span>
       <span class="s-badge" id="urgBadge" style="display:none">0</span>
@@ -1369,6 +1366,15 @@ body::before {
     ═══════════════════════════════ -->
     <div class="view active" id="view-dashboard">
 
+      <!-- JOURNÉE DE TRAVAIL -->
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem">
+        <span style="font-size:.6rem;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.15em">Journée de travail</span>
+        <div class="xp-bar-mini" style="flex:1;max-width:260px;">
+          <div class="xp-fill-mini" id="workdayFill" style="width:0%"></div>
+        </div>
+        <span id="workdayPct" style="font-size:.55rem;color:var(--text-mid);font-variant-numeric:tabular-nums;">0%</span>
+      </div>
+
       <!-- AI PANEL -->
       <div class="ai-panel" id="aiPanel">
         <div class="ai-panel-head" onclick="toggleAIPanel()">
@@ -1399,7 +1405,6 @@ body::before {
           ></textarea>
           <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap">
             <button class="btn-gold" onclick="askClaude()" id="aiBtn">⚡ Demander à Claude →</button>
-            <button class="btn-gold" onclick="generateMissionPlan()" id="aiPlanBtn" style="background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--green)">🎯 Plan de missions →</button>
             <button class="btn-ghost" onclick="clearAI()">Effacer</button>
             <span style="font-size:.48rem; color:var(--text-dim)">Profil + dossiers + règles IA envoyés automatiquement.</span>
           </div>
@@ -1411,9 +1416,9 @@ body::before {
                 <button class="copy-btn" style="background:rgba(16,185,129,.07);border-color:rgba(16,185,129,.2);color:var(--green)" onclick="addAIAsMission()">+ Mission</button>
               </div>
             </div>
-            <div class="ai-box-content" id="aiContent"></div>
-            <div id="aiProposals"></div>
-            <div id="aiMissionPlan"></div>
+          <div class="ai-box-content" id="aiContent"></div>
+          <div id="aiProposals"></div>
+          <div id="aiMissionPlan"></div>
             <div class="refine-row">
               <span class="refine-lbl">Affiner ?</span>
               <input class="refine-in" id="refineInp" placeholder="Ex: plus court, plus percutant…" onkeydown="if(event.key==='Enter')refine()">
@@ -1421,6 +1426,59 @@ body::before {
             </div>
           </div>
         </div>
+
+      <!-- MAIL + MISSIONS (FUSIONNÉ DANS LE DASHBOARD) -->
+      <div class="mail-banner">
+        <div class="mail-banner-dot"></div>
+        <div>
+          <div class="mail-banner-t">Analyse mail + missions — tout en un</div>
+          <div class="mail-banner-s">Colle le mail reçu, précise ta problématique, et l’IA génère en une fois la réponse + les missions associées.</div>
+        </div>
+      </div>
+      <div id="mailCtxWrap" style="display:none; margin-bottom:.75rem">
+        <div style="font-size:.46rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.3rem">Enrichir avec tes documents :</div>
+        <div class="ctx-selector" id="mailCtxSelector"></div>
+      </div>
+      <div class="mail-zone">
+        <div style="font-size:.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.18em;color:var(--text-dim);margin-bottom:.4rem">Mail(s) reçu(s)</div>
+        <textarea
+          class="mail-ta"
+          id="mailContent"
+          placeholder="De : client@exemple.com&#10;Objet : Devis LED showroom&#10;&#10;Colle ici le mail ou l'échange complet."
+        ></textarea>
+        <div style="font-size:.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.18em;color:var(--text-dim);margin:0.75rem 0 .3rem 0">Problématique / objectif</div>
+        <textarea
+          class="mail-ta"
+          id="mailProblem"
+          placeholder="Ex : le client hésite sur le budget, je veux une réponse ferme mais bienveillante, qui propose 2 options claires."
+          style="min-height:80px"
+        ></textarea>
+        <div class="mail-footer">
+          <span class="mail-note">3 variantes de réponse + missions générées automatiquement selon les règles IA du dossier.</span>
+          <button class="btn-green" id="mailBtn" onclick="analyseMail()">⚡ Analyser le mail & générer les missions →</button>
+        </div>
+        <div id="matchBanner" style="display:none; margin-top:.85rem"></div>
+        <div id="mailClarifications" style="display:none; margin-top:.75rem"></div>
+        <div class="mail-result" id="mailResult">
+          <div class="mail-sec-t" style="margin-top:.9rem">Actions détectées — clique pour ajouter</div>
+          <div id="mailMissions"></div>
+          <div class="mail-reply-wrap">
+            <div class="mail-reply-head">
+              <div class="mail-reply-lbl">3 variantes de réponse — choisis la tienne</div>
+            </div>
+            <div id="mailProposals"></div>
+            <div id="mailSelectedWrap" style="display:none; margin-top:.75rem">
+              <div style="font-size:.48rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;color:var(--green);margin-bottom:.35rem">✅ Variante sélectionnée — affiner si besoin</div>
+              <div class="mail-reply-box" id="mailReplyBox"></div>
+              <div class="mail-refine" style="margin-top:.5rem">
+                <input class="mail-refine-in" id="mailRefineInp" placeholder="Ajuste : 'plus court', 'ajoute délai 3 semaines'…" onkeydown="if(event.key==='Enter')refineMail()">
+                <button class="btn-green" onclick="refineMail()" style="font-size:.5rem;padding:.38rem .75rem">↺ Affiner</button>
+                <button class="copy-btn" onclick="copyMailReply()" style="margin-left:.2rem">📋</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
 
       <!-- STATS -->
@@ -1452,54 +1510,9 @@ body::before {
     </div>
 
     <!-- ═══════════════════════════════
-         VUE — MAIL
+         VUE — MAIL (fusionnée dans le dashboard)
     ═══════════════════════════════ -->
-    <div class="view" id="view-mail">
-      <div class="mail-banner">
-        <div class="mail-banner-dot"></div>
-        <div>
-          <div class="mail-banner-t">Mode Superviseur — Claude propose, toi tu choisis</div>
-          <div class="mail-banner-s">Claude génère <strong>3 variantes de réponse</strong> (ton direct, ton formel, ton relance douce). Tu sélectionnes celle qui colle, tu l'affines si besoin.</div>
-        </div>
-      </div>
-      <div id="mailCtxWrap" style="display:none; margin-bottom:.75rem">
-        <div style="font-size:.46rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.3rem">Enrichir avec tes documents :</div>
-        <div class="ctx-selector" id="mailCtxSelector"></div>
-      </div>
-      <div class="mail-zone">
-        <div style="font-size:.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.18em;color:var(--text-dim);margin-bottom:.4rem">Mail(s) reçu(s)</div>
-        <textarea
-          class="mail-ta"
-          id="mailContent"
-          placeholder="De : client@exemple.com&#10;Objet : Devis LED showroom&#10;&#10;Colle ici le mail ou l'échange complet."
-        ></textarea>
-        <div class="mail-footer">
-          <span class="mail-note">3 variantes de réponse générées automatiquement selon les règles IA du dossier.</span>
-          <button class="btn-green" id="mailBtn" onclick="analyseMail()">⚡ Analyser →</button>
-        </div>
-        <div id="matchBanner" style="display:none; margin-top:.85rem"></div>
-        <div id="mailClarifications" style="display:none; margin-top:.75rem"></div>
-        <div class="mail-result" id="mailResult">
-          <div class="mail-sec-t" style="margin-top:.9rem">Actions détectées — clique pour ajouter</div>
-          <div id="mailMissions"></div>
-          <div class="mail-reply-wrap">
-            <div class="mail-reply-head">
-              <div class="mail-reply-lbl">3 variantes de réponse — choisis la tienne</div>
-            </div>
-            <div id="mailProposals"></div>
-            <div id="mailSelectedWrap" style="display:none; margin-top:.75rem">
-              <div style="font-size:.48rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;color:var(--green);margin-bottom:.35rem">✅ Variante sélectionnée — affiner si besoin</div>
-              <div class="mail-reply-box" id="mailReplyBox"></div>
-              <div class="mail-refine" style="margin-top:.5rem">
-                <input class="mail-refine-in" id="mailRefineInp" placeholder="Ajuste : 'plus court', 'ajoute délai 3 semaines'…" onkeydown="if(event.key==='Enter')refineMail()">
-                <button class="btn-green" onclick="refineMail()" style="font-size:.5rem;padding:.38rem .75rem">↺ Affiner</button>
-                <button class="copy-btn" onclick="copyMailReply()" style="margin-left:.2rem">📋</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="view" id="view-mail" style="display:none"></div>
 
     <!-- ═══════════════════════════════
          VUE — DOSSIERS
@@ -2147,6 +2160,23 @@ function tick() {
   const dp = document.getElementById('datePill');
   if (tp) tp.textContent = n.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   if (dp) dp.textContent = n.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+
+  // Progression visuelle de la journée de travail (ex: 09h–18h)
+  const wf = document.getElementById('workdayFill');
+  const wp = document.getElementById('workdayPct');
+  if (wf && wp) {
+    const start = new Date(n);
+    start.setHours(9,0,0,0);
+    const end = new Date(n);
+    end.setHours(18,0,0,0);
+    let pct;
+    if (n <= start) pct = 0;
+    else if (n >= end) pct = 100;
+    else pct = ((n - start) / (end - start)) * 100;
+    const pInt = Math.max(0, Math.min(100, Math.round(pct)));
+    wf.style.width = pInt + '%';
+    wp.textContent = pInt + '%';
+  }
 }
 
 // ─────────────────────────────────────────
@@ -2664,6 +2694,7 @@ let lastMailAnalysis=null;
 async function analyseMail() {
   const content = document.getElementById('mailContent').value.trim();
   if(!content) { showToast('⚠️','Colle un mail d\'abord','','gold'); return; }
+  const problem = document.getElementById('mailProblem')?.value.trim() || '';
   const btn = document.getElementById('mailBtn');
   btn.disabled=true; btn.textContent='Analyse…';
   document.getElementById('mailResult').classList.remove('show');
@@ -2678,6 +2709,7 @@ async function analyseMail() {
   const textPrompt = buildProfileCtx()+buildDocCtx('mailCtxSelector')+
     `DOSSIERS EXISTANTS (JSON) :\n${dossiersJSON}\n\n`+
     `MAIL(S) REÇU(S) :\n${content}\n\n`+
+    `PROBLÉMATIQUE / OBJECTIF :\n${problem||'(non précisé)'}\n\n`+
     `Étape 1 : classe chaque mail dans une catégorie métier pour orienter la réponse.\n`+
     `Catégories possibles : "prospect", "client_fidele", "sav_critique", "sav_normal", "relance_devis", "litige", "interne", "autre".\n`+
     `Étape 2 : selon la catégorie, propose les missions et les réponses adaptées.\n`+
