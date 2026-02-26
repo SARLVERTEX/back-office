@@ -2376,13 +2376,36 @@ async function callWorkerOnce(providerKey, content, maxTokens) {
 // ─────────────────────────────────────────
 //  JSON "tolérant" (réponses IA parfois mal échappées)
 // ─────────────────────────────────────────
-function extractFirstJsonObject(text) {
+function extractFirstCompleteJsonObject(text) {
   if (!text) return '';
   const clean = String(text).replace(/```json|```/g, '').trim();
+
   const start = clean.indexOf('{');
+  if (start === -1) return clean;
+
+  let depth = 0;
+  let inStr = false;
+  let escaped = false;
+  for (let i = start; i < clean.length; i++) {
+    const ch = clean[i];
+    if (inStr) {
+      if (escaped) { escaped = false; continue; }
+      if (ch === '\\') { escaped = true; continue; }
+      if (ch === '"') { inStr = false; continue; }
+      continue;
+    }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === '{') depth++;
+    if (ch === '}') {
+      depth--;
+      if (depth === 0) return clean.slice(start, i + 1);
+    }
+  }
+
+  // pas trouvé de fin propre -> fallback: du premier { au dernier }
   const end = clean.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) return clean;
-  return clean.slice(start, end + 1);
+  if (end !== -1 && end > start) return clean.slice(start, end + 1);
+  return clean.slice(start);
 }
 
 function sanitizeJsonNewlinesInStrings(jsonText) {
@@ -2413,13 +2436,29 @@ function sanitizeJsonNewlinesInStrings(jsonText) {
 }
 
 function parseAIJson(rawText) {
-  const candidate = extractFirstJsonObject(rawText);
+  const candidate = extractFirstCompleteJsonObject(rawText);
   try {
     return JSON.parse(candidate);
   } catch (e) {
     // tentative 2: on "répare" les retours à la ligne bruts dans les strings
     const repaired = sanitizeJsonNewlinesInStrings(candidate);
     return JSON.parse(repaired);
+  }
+}
+
+async function callAIJson(prompt, maxTokens, attemptTag='') {
+  const raw = await callAI(prompt, maxTokens);
+  try {
+    return parseAIJson(raw);
+  } catch (e) {
+    // Relance de réparation: on demande à l'IA de ressortir un JSON strict valide
+    const fixPrompt =
+      `Tu es un correcteur JSON. Transforme le CONTENU ci-dessous en JSON strict valide.\n`+
+      `RÈGLES: renvoie UNIQUEMENT le JSON (pas de markdown, pas de texte), échappe les retours ligne avec \\n, et échappe les guillemets dans les valeurs.\n`+
+      `CONTENU À CORRIGER:\n`+
+      raw;
+    const raw2 = await callAI(fixPrompt, Math.min(2400, maxTokens + 600));
+    return parseAIJson(raw2);
   }
 }
 
@@ -2503,8 +2542,7 @@ async function askClaude() {
 
   const msgContent = buildMultimodalContent(textPrompt,'ctxSelector');
   try {
-    const raw    = await callAI(msgContent, 1400);
-    const parsed = parseAIJson(raw);
+    const parsed = await callAIJson(msgContent, 1400);
     S.lastAIResp = parsed.proposals?.map(p=>p.content).join('\n\n---\n\n')||raw;
     document.getElementById('aiContent').textContent = parsed.summary||'';
     renderProposals(document.getElementById('aiProposals'), parsed.proposals, i=>{
@@ -2555,10 +2593,7 @@ async function generateMissionPlan() {
 
   const msgContent = buildMultimodalContent(textPrompt, 'ctxSelector');
   try {
-    const raw = await callAI(msgContent, 1800);
-    let parsed;
-    try { parsed = parseAIJson(raw); }
-    catch(e) { throw new Error('Réponse IA invalide — réessaie'); }
+    const parsed = await callAIJson(msgContent, 1800);
 
     document.getElementById('aiContent').textContent = '';
     const plan = parsed.missions || [];
@@ -2778,8 +2813,7 @@ async function analyseMail() {
 
   const msgContent = buildMultimodalContent(textPrompt,'mailCtxSelector');
   try {
-    const raw = await callAI(msgContent,2400);
-    const p   = parseAIJson(raw);
+    const p = await callAIJson(msgContent, 2400);
     lastMailAnalysis     = p;
     S.pendingMailMissions = p.missions||[];
     S.lastMailReply       = p.replies?.[0]?.content||'';
@@ -3232,10 +3266,7 @@ async function generateDailyPlan(auto) {
     `RÈGLES :\n- Utilise uniquement les missionId fournis\n- order commence à 1 et suit l ordre conseillé dans la journée\n- slotLabel ∈ {"Matin","Après-midi"}\n- estimatedMinutes ≈ durée utile pour traiter la mission\n- focus explique en une phrase pourquoi cette mission est à cet endroit.`;
 
   try {
-    const raw = await callAI(textPrompt, 1600);
-    let parsed;
-    try { parsed = parseAIJson(raw); }
-    catch(e) { throw e; }
+    const parsed = await callAIJson(textPrompt, 1600);
     const missions = (parsed.missions||[]).filter(m=>aiMissions.some(x=>x.id===m.missionId));
     S.dailyPlan = {
       day: parsed.day || today,
@@ -3706,8 +3737,7 @@ async function askClaudeDossier(id, forcePrompt) {
     `IMPORTANT : Génère 2-3 propositions distinctes. Réponds EN JSON UNIQUEMENT :\n`+
     `{"summary":"analyse courte","proposals":[{"style":"direct|soft|formal","note":"note 5 mots","content":"contenu complet"}]}`;
   try {
-    const raw=await callAI(fullCtx,1800);
-    const parsed=parseAIJson(raw);
+    const parsed = await callAIJson(fullCtx, 1800);
     S.dossierLastAI=parsed.proposals?.map(p=>p.content).join('\n\n---\n\n')||raw;
     content.textContent=parsed.summary||'';
     renderProposals(proposalsEl,parsed.proposals,i=>{
