@@ -1340,7 +1340,7 @@ body::before {
           🔍 <span style="opacity:.6">Rechercher</span>
           <span style="font-size:.4rem;opacity:.45;background:var(--input-bg);border:1px solid var(--border);border-radius:.3rem;padding:.1rem .35rem">⌘K</span>
         </button>
-        <div class="pill pill-xp">
+        <div class="pill pill-xp" style="display:none">
           <span id="xpLvl">LVL 1</span>
           <div class="xp-bar-mini"><div class="xp-fill-mini" id="xpFill" style="width:0%"></div></div>
           <span id="xpNum">0 XP</span>
@@ -1407,6 +1407,15 @@ body::before {
           <div class="mail-sec-t" style="margin-top:.9rem">Programme — étapes à suivre (dans l’ordre)</div>
           <div id="unifiedSummary" style="margin-top:.4rem;color:var(--text-mid);font-size:.7rem;line-height:1.4"></div>
           <div id="unifiedSteps" style="margin-top:.6rem"></div>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.75rem;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:.35rem">
+              <span style="font-size:.6rem;color:var(--text-dim);font-weight:800;text-transform:uppercase;letter-spacing:.14em">Associer à un dossier</span>
+              <select id="programDossierSel" class="add-sel" style="min-width:140px">
+                <option value="">— Choisir un dossier —</option>
+              </select>
+              <button class="btn-gold" style="font-size:.5rem;padding:.3rem .7rem" onclick="saveProgramToDossier()">📁 Enregistrer</button>
+            </div>
+          </div>
           <div class="mail-refine" style="margin-top:.7rem">
             <input class="mail-refine-in" id="programRefineInp" placeholder="Affiner : plus direct, plus court, ajouter une option 2, etc." onkeydown="if(event.key==='Enter')refineProgram()">
             <button class="btn-green" onclick="refineProgram()" style="font-size:.5rem;padding:.38rem .75rem">↺ Affiner le programme</button>
@@ -2881,6 +2890,14 @@ function renderProgram(plan) {
   }).join('');
 
   stepsEl.innerHTML = clar + stepsHTML;
+
+  // alimenter la liste déroulante des dossiers pour l'enregistrement
+  const sel = document.getElementById('programDossierSel');
+  if (sel) {
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Choisir un dossier —</option>' +
+      (S.dossiers||[]).map(d=>`<option value="${d.id}" ${d.id===current?'selected':''}>${escHTML(d.emoji||'📁')} ${escHTML(d.name||'Dossier')}</option>`).join('');
+  }
 }
 
 function addProgramMission(idx) {
@@ -2934,6 +2951,29 @@ async function generateProgram() {
     const plan = await callAIJson(prompt, 2600);
     S.lastProgramPlan = plan;
     renderProgram(plan);
+    // auto-pousser les missions du plan dans les missions du jour (rattachées au dossier choisi plus tard)
+    if (!S.missions) S.missions = [];
+    const steps = Array.isArray(plan.steps) ? plan.steps : [];
+    steps.filter(s=> (s.kind||s.type)==='mission').forEach(st=>{
+      const type = st.missionType || 'relance';
+      const title = st.title || 'Mission';
+      const substeps = Array.isArray(st.substeps) ? st.substeps.map(t=>({text:t.text||t,done:false})) : [];
+      S.missions.push({
+        id: uid(),
+        title,
+        type,
+        done:false,
+        urgent: !!st.urgent,
+        xp: 0,
+        duration: st.duration || '',
+        prio: st.urgent?'high':'med',
+        substeps,
+        source:'program',
+        createdAt:new Date().toISOString()
+      });
+    });
+    renderMissions();
+    persist();
   } catch(e) {
     showToast('❌','Erreur IA',e.message,'gold');
     console.error(e);
@@ -2946,8 +2986,8 @@ async function refineProgram() {
   const fb = document.getElementById('programRefineInp')?.value?.trim() || '';
   if (!fb || !S.lastProgramPlan) return;
 
-  const btn = document.getElementById('programRefineInp');
-  btn.disabled = true;
+  const inp = document.getElementById('programRefineInp');
+  if (inp) inp.disabled = true;
 
   const basePlan = JSON.stringify(S.lastProgramPlan);
   const prompt =
@@ -2962,13 +3002,66 @@ async function refineProgram() {
     const newPlan = await callAIJson(prompt, 2600);
     S.lastProgramPlan = newPlan;
     renderProgram(newPlan);
-    document.getElementById('programRefineInp').value = '';
+    if (inp) inp.value = '';
   } catch (e) {
     showToast('❌','Erreur IA', e.message,'gold');
     console.error(e);
   }
 
-  btn.disabled = false;
+  if (inp) inp.disabled = false;
+}
+
+function saveProgramToDossier() {
+  if (!S.lastProgramPlan) { showToast('⚠️','Pas de programme à enregistrer','','gold'); return; }
+  const sel = document.getElementById('programDossierSel');
+  if (!sel) return;
+  let id = sel.value;
+  if (!id) {
+    const name = prompt('Nom du dossier client à créer (ou laisse vide pour annuler) :','Nouveau client');
+    if (!name) return;
+    const d = {
+      id:'d'+uid(), name, type:'client',
+      status:'pending',
+      note:'',
+      clientType:'prospect', clientInfo:'',
+      emoji:'📁', color:'#3b82f6', tags:[], subDossiers:[], activeSubDossier:null,
+      tickets:[], iaRules:{ clientType:'auto', mailTone:'auto', actionTone:'auto', custom:'' },
+      mailHistory:[],
+      history:[{ text:'Dossier créé depuis programme IA', type:'recap', date:new Date().toISOString() }],
+      lastContact:new Date().toISOString(),
+      programmes:[]
+    };
+    if (!S.dossiers) S.dossiers = [];
+    S.dossiers.push(d);
+    id = d.id;
+    S.activeDossier = id;
+    showToast('📁','Dossier créé',name,'green');
+  }
+
+  const d = (S.dossiers||[]).find(x=>x.id===id);
+  if (!d) { showToast('⚠️','Dossier introuvable','','gold'); return; }
+  if (!d.programmes) d.programmes = [];
+
+  // enregistrer le programme complet
+  d.programmes.push({
+    id:'p'+uid(),
+    createdAt:new Date().toISOString(),
+    summary:S.lastProgramPlan.summary||'',
+    steps:S.lastProgramPlan.steps||[],
+  });
+
+  // lier les missions existantes du jour à ce dossier
+  (S.missions||[]).forEach(m=>{
+    if (m.source==='program' && !m.dossierId) {
+      m.dossierId = d.id;
+      m.dossier = d.name;
+    }
+  });
+
+  persist();
+  renderMissions();
+  renderDTabs();
+  showToast('📁','Programme enregistré',d.name,'green');
 }
 
 function autoUpdateDossier(dossierId, analysis, rawContent) {
@@ -3161,11 +3254,6 @@ function renderMissions() {
   const done=S.missions.filter(m=>m.done).length;
   const mb=document.getElementById('missBadge');
   if(mb) mb.textContent=done+'/'+S.missions.length;
-  const lv=Math.floor(S.xp/300)+1, inL=S.xp%300, pct=Math.round(inL/300*100);
-  const xpLvl=document.getElementById('xpLvl'), xpNum=document.getElementById('xpNum'), xpFill=document.getElementById('xpFill');
-  if(xpLvl)  xpLvl.textContent='LVL '+lv;
-  if(xpNum)  xpNum.textContent=S.xp+' XP';
-  if(xpFill) xpFill.style.width=pct+'%';
   const urg=S.dossiers.filter(d=>d.status==='urgent').length;
   const b=document.getElementById('urgBadge');
   if(b){ b.style.display=urg?'flex':'none'; b.textContent=urg; }
