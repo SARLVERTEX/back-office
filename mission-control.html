@@ -2852,12 +2852,21 @@ function renderProgram(plan) {
   const clar = plan.clarificationNeeded && Array.isArray(plan.clarificationQuestions) && plan.clarificationQuestions.length
     ? `<div style="margin-top:.5rem;padding:.6rem .75rem;border-radius:.9rem;border:1px dashed rgba(245,158,11,.5);background:rgba(245,158,11,.06);font-size:.7rem;color:var(--text-mid)">
         <div style="font-weight:900;text-transform:uppercase;letter-spacing:.14em;font-size:.52rem;margin-bottom:.25rem;color:var(--gold)">Questions de clarification</div>
-        <ul style="margin:.25rem 0 0 1rem;line-height:1.45">${plan.clarificationQuestions.map(q=>`<li>${escHTML(q)}</li>`).join('')}</ul>
-        <div style="font-size:.6rem;color:var(--text-dim);margin-top:.25rem">Réponds à ces questions dans ta tête, complète le contexte si besoin, puis relance une génération.</div>
+        <div style="margin:.25rem 0 0 0;line-height:1.45">
+          ${plan.clarificationQuestions.map((q,i)=>`
+            <div style="margin-bottom:.5rem">
+              <div style="font-weight:700;font-size:.7rem;margin-bottom:.15rem">${i+1}. ${escHTML(q)}</div>
+              <textarea id="clarAns-${i}" data-clar-idx="${i}" class="mail-ta" style="min-height:50px;font-size:.7rem" placeholder="Ta réponse à cette question…"></textarea>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn-gold" style="font-size:.55rem;padding:.3rem .9rem;margin-top:.25rem" onclick="answerClarifications()">↪ Envoyer mes réponses & régénérer</button>
       </div>`
     : '';
 
   const steps = Array.isArray(plan.steps) ? plan.steps : [];
+  const completed = steps.filter(s=>s && s.done).length;
+  const total = steps.length;
   if (!steps.length) {
     stepsEl.innerHTML = clar || `<div style="color:var(--text-dim);font-size:.7rem;padding:.4rem 0">Aucune étape détectée. Ajoute plus de contexte (mail complet + objectif) puis relance.</div>`;
     return;
@@ -2875,9 +2884,12 @@ function renderProgram(plan) {
     const addMissionBtn = (kind === 'mission' && st.missionType && st.title)
       ? `<button class="copy-btn" style="background:rgba(200,160,0,.08);border-color:rgba(200,160,0,.25);color:var(--gold)" onclick="addProgramMission(${idx})">+ Mission</button>`
       : '';
+    const doneCls = st.done ? 'done-step' : '';
+    const chk = `<div class="chk" style="width:18px;height:18px;border-radius:999px;border:2px solid ${st.done?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:.6rem;cursor:pointer;margin-right:.25rem" onclick="toggleProgramStep(${idx})">${st.done?'✓':''}</div>`;
     return `
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:1.2rem;padding:.9rem;margin-bottom:.6rem">
-        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:1.2rem;padding:.9rem;margin-bottom:.6rem;opacity:${st.done?.valueOf? (st.done?0.65:1): (st.done?0.65:1)}" class="${doneCls}">
+        <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+          ${chk}
           <span style="font-size:.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;padding:.2rem .45rem;border-radius:.6rem;background:${tagColor};border:1px solid ${tagBorder}">${tagLbl}</span>
           <div style="font-weight:900;color:var(--text);font-size:.78rem">${escHTML(title)}</div>
           ${when ? `<div style="margin-left:auto;color:var(--text-dim);font-size:.62rem;font-weight:800">${escHTML(when)}</div>` : `<div style="margin-left:auto"></div>`}
@@ -2889,7 +2901,17 @@ function renderProgram(plan) {
     `;
   }).join('');
 
-  stepsEl.innerHTML = clar + stepsHTML;
+  const pct = total ? Math.round(completed/total*100) : 0;
+  const progressHTML = `
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+      <span style="font-size:.6rem;color:var(--text-dim);font-weight:800;text-transform:uppercase;letter-spacing:.14em">Avancement</span>
+      <div class="xp-bar-mini" style="flex:1;max-width:260px;">
+        <div class="xp-fill-mini" style="width:${pct}%;background:var(--green)"></div>
+      </div>
+      <span style="font-size:.6rem;color:var(--text-mid);font-variant-numeric:tabular-nums;">${completed}/${total}</span>
+    </div>`;
+
+  stepsEl.innerHTML = progressHTML + clar + stepsHTML;
 
   // alimenter la liste déroulante des dossiers pour l'enregistrement
   const sel = document.getElementById('programDossierSel');
@@ -3009,6 +3031,44 @@ async function refineProgram() {
   }
 
   if (inp) inp.disabled = false;
+}
+
+function toggleProgramStep(idx){
+  if(!S.lastProgramPlan || !Array.isArray(S.lastProgramPlan.steps)) return;
+  if(!S.lastProgramPlan.steps[idx]) return;
+  S.lastProgramPlan.steps[idx].done = !S.lastProgramPlan.steps[idx].done;
+  renderProgram(S.lastProgramPlan);
+}
+
+async function answerClarifications() {
+  if (!S.lastProgramPlan || !Array.isArray(S.lastProgramPlan.clarificationQuestions) || !S.lastProgramPlan.clarificationQuestions.length) return;
+  const q = S.lastProgramPlan.clarificationQuestions;
+  const qa = [];
+  for (let i=0;i<q.length;i++) {
+    const inp = document.getElementById('clarAns-'+i);
+    const ans = inp?.value?.trim() || '';
+    qa.push({ question:q[i], answer:ans });
+  }
+
+  const basePlan = JSON.stringify(S.lastProgramPlan);
+  const prompt =
+    `Voici le programme actuel, au format JSON :\n${basePlan}\n\n`+
+    `Et voici les réponses de l'utilisateur aux questions de clarification, sous forme de Q/R :\n`+
+    qa.map(x=>`Q: ${x.question}\nR: ${x.answer}\n`).join('\n')+
+    `\nÀ partir de ça, régénère un NOUVEAU programme au même format JSON (summary, steps[], clarificationNeeded, clarificationQuestions).\n`+
+    `- Intègre les réponses dans les mails et les missions.\n`+
+    `- Réduis clarificationNeeded à false si les infos sont suffisantes.\n`+
+    `- Pour les missions, ajoute 2 à 5 substeps très concrètes (substeps:[{"text":"action 1"},…]).\n`+
+    `- Ne renvoie QUE le JSON strict.`;
+
+  try {
+    const newPlan = await callAIJson(prompt, 2600);
+    S.lastProgramPlan = newPlan;
+    renderProgram(newPlan);
+  } catch(e) {
+    showToast('❌','Erreur IA',e.message,'gold');
+    console.error(e);
+  }
 }
 
 function saveProgramToDossier() {
@@ -3267,7 +3327,7 @@ function renderMissions() {
     const reminderDue=m.reminder&&new Date(m.reminder)<=new Date();
     const reminderBadge=(m.reminder&&!m.done)?`<span class="m-reminder ${reminderDue?'due':''}" onclick="event.stopPropagation();document.getElementById('rem-${i}').showPicker()">⏰ ${new Date(m.reminder).toLocaleDateString('fr-FR')}</span>`:'';
     const substepsHTML=st?'<div class="substeps">'+m.substeps.map((s,si)=>`<div class="sub ${s.done?'done-s':''}" onclick="event.stopPropagation();toggleStep(${i},${si})"><div class="sub-chk">${s.done?'✓':''}</div><span>${s.text}</span></div>`).join('')+'</div>':'';
-    const rightHTML=m.done?`<span class="xp-tag">+${m.xp} XP ✓</span>`:`<span class="xp-tag">+${m.xp} XP</span><input type="datetime-local" id="rem-${i}" style="display:none" value="${m.reminder?m.reminder.slice(0,16):''}" onchange="setMissionReminder(${i},this.value)"><button class="btn-mini" onclick="event.stopPropagation();document.getElementById('rem-${i}').showPicker()" title="Rappel">⏰</button><button class="btn-mini" onclick="event.stopPropagation();helpMission(${i})">🤖</button><button class="btn-mini danger" onclick="event.stopPropagation();deleteM(${i})">✕</button>`;
+  const rightHTML=m.done?`<span class="xp-tag">✓</span>`:`<input type="datetime-local" id="rem-${i}" style="display:none" value="${m.reminder?m.reminder.slice(0,16):''}" onchange="setMissionReminder(${i},this.value)"><button class="btn-mini" onclick="event.stopPropagation();document.getElementById('rem-${i}').showPicker()" title="Rappel">⏰</button><button class="btn-mini" onclick="event.stopPropagation();helpMission(${i})">🤖</button><button class="btn-mini danger" onclick="event.stopPropagation();deleteM(${i})">✕</button>`;
     return `<div class="mc fi ${m.done?'done':''} prio-${m.prio||'low'}" id="mc-${i}">
       <div class="chk" onclick="toggleM(${i})">${m.done?'✓':''}</div>
       <div class="mb">
@@ -3287,8 +3347,7 @@ function renderStatsDash() {
   if(sr) sr.innerHTML=`
     <div class="stat fi"><div class="stat-n">${done}</div><div class="stat-l">Missions faites</div></div>
     <div class="stat fi"><div class="stat-n">${S.missions.length}</div><div class="stat-l">Total aujourd'hui</div></div>
-    <div class="stat fi"><div class="stat-n">${urg}</div><div class="stat-l">Urgences</div></div>
-    <div class="stat fi"><div class="stat-n">${S.todayXP}</div><div class="stat-l">XP aujourd'hui</div></div>`;
+    <div class="stat fi"><div class="stat-n">${urg}</div><div class="stat-l">Urgences</div></div>`;
   renderDailyPlan();
   renderAlerts();
 }
@@ -3495,10 +3554,10 @@ function setMissionReminder(i,val) { if(!S.missions[i]) return; S.missions[i].re
 
 function toggleM(i) {
   const m=S.missions[i]; if(!m||m.done) return;
-  m.done=true; S.xp+=m.xp; S.todayXP+=m.xp;
+  m.done=true;
   if(m.dossierId){ const d=S.dossiers.find(x=>x.id===m.dossierId); if(d){ if(!d.history) d.history=[]; d.history.push({text:'✅ '+m.title,type:m.type,date:new Date().toISOString()}); d.lastContact=new Date().toISOString(); } }
   spawnConfetti(document.getElementById('mc-'+i));
-  showToast('+'+m.xp+' XP',m.title,'✨','gold');
+  showToast('✓',m.title,'Mission terminée','green');
   if(S.missions.every(x=>x.done)) setTimeout(()=>showToast('🏆','Toutes les missions accomplies !','Parfait','gold'),500);
   renderMissions(); renderStatsDash(); persist();
 }
